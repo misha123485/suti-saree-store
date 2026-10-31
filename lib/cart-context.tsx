@@ -274,6 +274,11 @@ interface CartContextValue {
   removeItem: (productId: string, size: string, color?: string | null) => void;
   updateQuantity: (productId: string, size: string, quantity: number, color?: string | null) => void;
   clearCart: () => void;
+  /** False until the saved cart (localStorage) + Buy Now item (sessionStorage) have been read
+   *  on the client. Before that `items` is always [] — pages must show a loader, NOT
+   *  "Your cart is empty", while this is false (that flash happened on every reload /
+   *  slow connection / return from login). */
+  cartReady: boolean;
   isCartOpen: boolean;
   setCartOpen: (open: boolean) => void;
   /** Coupon currently applied to the cart, shared across cart drawer, cart page & checkout. */
@@ -682,6 +687,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     removeItem,
     updateQuantity,
     clearCart,
+    cartReady: hydrated,
     isCartOpen,
     setCartOpen,
     appliedCoupon,

@@ -153,6 +153,7 @@ export default function CheckoutPage() {
     items: cartItems,
     subtotal: cartSubtotal,
     clearCart,
+    cartReady,
     addItem,
     removeItem,
     updateQuantity,
@@ -1594,6 +1595,19 @@ export default function CheckoutPage() {
       <div className="container-boutique flex flex-col items-center gap-3 py-24 text-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Redirecting to your order confirmation…</p>
+      </div>
+    );
+  }
+
+  // The saved cart is read from the browser a moment after the page appears
+  // (and the server-rendered HTML never has it). Until then `items` is [] —
+  // showing "Your cart is empty" here is what made checkout look empty on
+  // reload / slow networks / coming back from login. Show a loader instead.
+  if (!cartReady) {
+    return (
+      <div className="container-boutique flex flex-col items-center gap-3 py-24 text-center" aria-busy="true">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading your cart…</p>
       </div>
     );
   }

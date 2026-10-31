@@ -36,6 +36,7 @@ export default function CartPage() {
     removeItem,
     subtotal,
     clearCart,
+    cartReady,
     appliedCoupon,
     couponDiscount,
     primaryCouponDiscount,
@@ -175,6 +176,17 @@ export default function CartPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]);
+
+  // Saved cart is read from the browser a moment after load; don't flash
+  // "Your cart is empty" before it arrives.
+  if (!cartReady) {
+    return (
+      <div className="container-boutique flex flex-col items-center gap-3 py-24 text-center" aria-busy="true">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading your cart…</p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
