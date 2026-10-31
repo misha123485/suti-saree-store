@@ -269,6 +269,37 @@ export default function CheckoutPage() {
   // sizes are also fixed now (no "compact when keyboard is open" switch), so
   // nothing above or below the field being typed in changes size or position.
   const sheetRef = useRef<HTMLDivElement | null>(null);
+  // ROOT FIX for "the whole popup moves up/down when I tap a field":
+  // by default Android Chrome keeps the page the same size when the keyboard
+  // opens and instead PANS the visual viewport to reveal the focused field, so
+  // everything fixed on screen (our popup) slides up/down. Telling the browser
+  // to RESIZE the layout when the keyboard opens (interactive-widget=
+  // resizes-content) removes that panning completely — the popup just gets
+  // shorter and the form scrolls inside it. Applied only on this page and put
+  // back on leave. (iOS Safari ignores this hint; the pinning effect below
+  // covers it.)
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) return;
+    const original = meta.getAttribute('content') || '';
+    if (!/interactive-widget/.test(original)) {
+      meta.setAttribute('content', `${original}${original ? ', ' : ''}interactive-widget=resizes-content`);
+    }
+    return () => {
+      meta.setAttribute('content', original);
+    };
+  }, []);
+  // While the popup is open, stop the page behind it from rubber-banding /
+  // scrolling (that also made the popup feel like it was shifting).
+  useEffect(() => {
+    if (!detailsSheetOpen) return;
+    const html = document.documentElement;
+    const prev = html.style.overscrollBehavior;
+    html.style.overscrollBehavior = 'none';
+    return () => {
+      html.style.overscrollBehavior = prev;
+    };
+  }, [detailsSheetOpen]);
   useEffect(() => {
     if (!detailsSheetOpen) return;
     const vv = window.visualViewport;
@@ -302,7 +333,7 @@ export default function CheckoutPage() {
       el.style.bottom = 'auto';
     };
     const schedule = () => {
-      if (!raf) raf = requestAnimationFrame(apply);
+      apply();
     };
     schedule();
     vv.addEventListener('resize', schedule);
