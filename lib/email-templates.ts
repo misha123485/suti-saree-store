@@ -1,4 +1,5 @@
 import { formatINR } from './format';
+import { toPublicMediaUrl } from './media-url';
 import { getSupabaseAdmin } from './supabase-admin';
 import { getOrCreateReviewToken } from './review-link-tokens';
 import { getReviewRewardSettings } from './review-reward-settings';
@@ -93,11 +94,30 @@ function wrapper(
 </html>`;
 }
 
+// Email clients (Gmail/Outlook/Apple Mail) load images from the open internet,
+// so the URL must be (1) on our public domain and (2) ABSOLUTE. Product images
+// are saved on orders as raw storage URLs (old Supabase / R2 CDN) or relative
+// paths like "/media/..." -- the website rewrites them with toPublicMediaUrl()
+// when it renders, but the emails used the raw value, so the picture broke.
+function emailImageUrl(raw: unknown): string {
+  if (!raw || typeof raw !== 'string') return '';
+  let url = raw.trim();
+  if (!url) return '';
+  url = toPublicMediaUrl(url) || '';
+  if (!url) return '';
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com').replace(/\/$/, '');
+  if (url.startsWith('//')) url = `https:${url}`;
+  else if (url.startsWith('/')) url = `${base}${url}`;
+  else if (!/^https?:\/\//i.test(url)) return '';
+  if (url.startsWith('http://')) url = url.replace('http://', 'https://');
+  return url.replace(/"/g, '%22').replace(/ /g, '%20');
+}
+
 function itemsTable(items: any[]) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
   const rows = (items || [])
     .map((it) => {
-      const img = it.image_url || it.image || it.images?.[0] || '';
+      const img = emailImageUrl(it.image_url || it.image || it.images?.[0]);
       const thumb = img
         ? `<img src="${img}" alt="" width="52" height="52" style="width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid #ecdfd2; display:block;" />`
         : `<div style="width:52px; height:52px; border-radius:8px; background:#f1e9e2;"></div>`;
@@ -398,7 +418,7 @@ export function supportTicketReplyEmail(ticket: {
   const productBlock = sp
     ? `
     <div style="margin:16px 0 0; padding:14px; background:#fff; border:1px solid #ecdfd2; border-radius:8px; display:flex; gap:12px; align-items:center;">
-      ${sp.image ? `<img src="${sp.image}" alt="" width="64" height="64" style="width:64px; height:64px; object-fit:cover; border-radius:6px; display:block;" />` : ''}
+      ${emailImageUrl(sp.image) ? `<img src="${emailImageUrl(sp.image)}" alt="" width="64" height="64" style="width:64px; height:64px; object-fit:cover; border-radius:6px; display:block;" />` : ''}
       <div>
         <p style="margin:0 0 2px; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#a89a8f;">We recommend</p>
         <p style="margin:0; font-weight:bold; color:${BRAND_COLOR};">${sp.name}</p>
@@ -1152,7 +1172,7 @@ export function returnAutomationAdminAlert(alert: {
 export function restockEmail(product: { name: string; slug: string; price: number; images?: string[] }) {
   const subject = `Back in stock — ${product.name}`;
   const url = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/product/${product.slug}`;
-  const image = product.images?.[0];
+  const image = emailImageUrl(product.images?.[0]);
   const html = wrapper(`
     <h2 style="margin-top:0; color:${BRAND_COLOR};">Good news — it's back!</h2>
     <p><strong>${product.name}</strong> is available again, just the way you wanted it.</p>
