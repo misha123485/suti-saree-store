@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import PaymentPendingBanner from '@/components/order/payment-pending-banner';
 import { toPublicMediaUrl } from '@/lib/media-url';
+import { listMyLegacyOrders, type MyLegacyOrder } from '@/lib/legacy-orders-customer';
 
 const STATUS_VARIANT: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800',
@@ -17,6 +18,11 @@ const STATUS_VARIANT: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800',
   returned: 'bg-gray-200 text-gray-800',
   failed: 'bg-red-100 text-red-800',
+  completed: 'bg-green-100 text-green-800',
+  processing: 'bg-sky-100 text-sky-800',
+  packed: 'bg-blue-100 text-blue-800',
+  refunded: 'bg-purple-100 text-purple-800',
+  'on-hold': 'bg-amber-100 text-amber-800',
 };
 
 export default async function OrdersPage() {
@@ -47,11 +53,22 @@ export default async function OrdersPage() {
 
   const orders = allOrders;
 
+  // Earlier (old website / WooCommerce) orders, matched by VERIFIED email only.
+  // Wrapped so a problem here can never break the normal orders list.
+  let legacyOrders: MyLegacyOrder[] = [];
+  if (user?.email && user.email_confirmed_at) {
+    try {
+      legacyOrders = await listMyLegacyOrders(user.email);
+    } catch (e) {
+      console.error('[account/orders] legacy orders failed', e);
+    }
+  }
+
   return (
     <div>
       <h1 className="font-serif text-2xl font-bold text-primary">My Orders</h1>
 
-      {!orders || orders.length === 0 ? (
+      {(!orders || orders.length === 0) && legacyOrders.length === 0 ? (
         <div className="mt-8 flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center text-muted-foreground">
           <Package className="h-10 w-10" />
           <p>You haven&apos;t placed any orders yet.</p>
@@ -164,6 +181,50 @@ export default async function OrdersPage() {
             );
           })}
         </div>
+      )}
+
+      {legacyOrders.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-serif text-xl font-bold text-primary">Earlier orders</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Orders you placed on our previous website.
+          </p>
+          <div className="mt-4 space-y-3">
+            {legacyOrders.map((o) => (
+              <Link
+                key={o.id}
+                href={`/account/orders/old/${o.id}`}
+                className="block rounded-lg border border-border/60 p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">Order #{o.id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Placed on{' '}
+                      {o.date_created_gmt
+                        ? new Date(
+                            o.date_created_gmt.endsWith('Z') || o.date_created_gmt.includes('+')
+                              ? o.date_created_gmt
+                              : `${o.date_created_gmt}Z`
+                          ).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })
+                        : '—'}
+                    </p>
+                  </div>
+                  <Badge className={`capitalize ${STATUS_VARIANT[o.status] ?? 'bg-muted'}`}>
+                    {o.status.replace(/[-_]/g, ' ')}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    {o.first_item ?? 'Items'}
+                    {o.item_count > 1 ? ` +${o.item_count - 1} more` : ''}
+                  </span>
+                  <span className="shrink-0 font-semibold text-primary">{formatINR(o.total_amount)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
