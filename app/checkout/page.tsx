@@ -261,36 +261,62 @@ export default function CheckoutPage() {
   }, [sheetError?.nonce, sheetError?.visible]);
 
   // Phone keyboards: the page does NOT shrink when the keyboard opens — only the
-  // "visual viewport" does. That mismatch is what made the sheet wobble and left
-  // almost no room for the form. While the sheet is open on a phone, follow the
-  // visual viewport exactly (top + height) so the sheet is always precisely the
-  // visible area, and tell the layout when the keyboard is up so it can
-  // compact the header/footer.
-  const [sheetViewport, setSheetViewport] = useState<{ top: number; height: number } | null>(null);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  // "visual viewport" does. While the sheet is open on a phone we pin it to the
+  // visual viewport, but we do it IMPERATIVELY (direct style writes, batched in
+  // one requestAnimationFrame) instead of through React state. Going through
+  // state re-rendered the whole 3000-line page on every viewport event while the
+  // keyboard animated in, which is what made the form wobble. The header/footer
+  // sizes are also fixed now (no "compact when keyboard is open" switch), so
+  // nothing above or below the field being typed in changes size or position.
+  const sheetRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!detailsSheetOpen) {
-      setSheetViewport(null);
-      setKeyboardOpen(false);
-      return;
-    }
+    if (!detailsSheetOpen) return;
     const vv = window.visualViewport;
     if (!vv) return;
-    const update = () => {
-      if (window.innerWidth >= 640) {
-        setSheetViewport(null);
-        setKeyboardOpen(false);
+    let raf = 0;
+    let lastTop = -1;
+    let lastHeight = -1;
+    const apply = () => {
+      raf = 0;
+      const el = sheetRef.current;
+      if (!el) {
+        // Portal content not mounted yet — try again next frame.
+        raf = requestAnimationFrame(apply);
         return;
       }
-      setSheetViewport({ top: vv.offsetTop, height: vv.height });
-      setKeyboardOpen(window.innerHeight - vv.height > 120);
+      if (window.innerWidth >= 640) {
+        el.style.removeProperty('top');
+        el.style.removeProperty('height');
+        el.style.removeProperty('bottom');
+        lastTop = lastHeight = -1;
+        return;
+      }
+      const top = Math.round(vv.offsetTop);
+      const height = Math.round(vv.height);
+      // Skip no-op writes so we never trigger needless layout.
+      if (top === lastTop && height === lastHeight) return;
+      lastTop = top;
+      lastHeight = height;
+      el.style.top = `${top}px`;
+      el.style.height = `${height}px`;
+      el.style.bottom = 'auto';
     };
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    schedule();
+    vv.addEventListener('resize', schedule);
+    vv.addEventListener('scroll', schedule);
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      vv.removeEventListener('resize', schedule);
+      vv.removeEventListener('scroll', schedule);
+      if (raf) cancelAnimationFrame(raf);
+      const el = sheetRef.current;
+      if (el) {
+        el.style.removeProperty('top');
+        el.style.removeProperty('height');
+        el.style.removeProperty('bottom');
+      }
     };
   }, [detailsSheetOpen]);
   // Mark the offending field red (aria-invalid) while the banner is showing.
@@ -2054,12 +2080,15 @@ export default function CheckoutPage() {
                 }}
               >
                 <SheetContent
+                  ref={sheetRef}
                   side="bottom"
                   hideClose
                   // Full-screen on phones (max-sm), the familiar rounded bottom
-                  // sheet from sm: up. `style` pins it to the visible area so
-                  // the keyboard can't push/shake it.
-                  style={sheetViewport ? { top: sheetViewport.top, height: sheetViewport.height, bottom: 'auto' } : undefined}
+                  // sheet from sm: up. Top/height are pinned to the visible
+                  // area by the effect above so the keyboard can't push/shake it.
+                  // Don't auto-focus the first field on open: that popped the
+                  // keyboard up mid slide-in animation and made the sheet jump.
+                  onOpenAutoFocus={(e) => e.preventDefault()}
                   className="mx-auto flex max-w-lg flex-col gap-0 overscroll-none p-0 data-[state=open]:duration-300 max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-w-none max-sm:rounded-none max-sm:border-t-0 max-sm:pt-[env(safe-area-inset-top)] sm:max-h-[92dvh] sm:rounded-t-3xl"
                 >
                   {/* Grab handle (only on the bottom-sheet look, not full-screen) */}
@@ -2094,11 +2123,11 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <SheetHeader className={`border-b border-border/60 px-5 text-left ${keyboardOpen ? 'pb-2.5 pt-3' : 'pb-4 pt-4'}`}>
+                  <SheetHeader className="border-b border-border/60 px-5 pb-4 pt-4 text-left">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1">
                         <SheetTitle className="font-serif text-xl font-bold text-primary">Delivery details</SheetTitle>
-                        <SheetDescription className={keyboardOpen ? 'hidden' : undefined}>
+                        <SheetDescription>
                           Tell us where to send your handcrafted piece.
                         </SheetDescription>
                       </div>
@@ -2123,7 +2152,7 @@ export default function CheckoutPage() {
                     onInputCapture={() => {
                       if (invalidField) hideSheetError();
                     }}
-                    className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 max-sm:[&_[role=combobox]]:h-11 max-sm:[&_input]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
+                    className="min-h-0 flex-1 scroll-py-20 overflow-y-auto overscroll-contain px-5 py-5 [overflow-anchor:none] max-sm:[&_[role=combobox]]:h-11 max-sm:[&_input]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
                   >
               {/* Contact */}
               <section>
@@ -2340,15 +2369,11 @@ export default function CheckoutPage() {
             </div>
           </section>
                   </div>
-                  <div
-                    className={`shrink-0 border-t border-border/60 bg-card px-5 ${
-                      keyboardOpen ? 'pb-2 pt-2' : 'pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4'
-                    }`}
-                  >
+                  <div className="shrink-0 border-t border-border/60 bg-card px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
                     <Button type="button" className="h-12 w-full text-base" size="lg" onClick={saveDeliveryDetails}>
                       Save &amp; continue
                     </Button>
-                    <p className={`mt-2 items-center justify-center gap-1.5 text-[11px] text-muted-foreground ${keyboardOpen ? 'hidden' : 'flex'}`}>
+                    <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
                       <Lock className="h-3 w-3" /> Your details are used only to deliver this order.
                     </p>
                   </div>
