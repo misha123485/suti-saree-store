@@ -260,37 +260,33 @@ export default function CheckoutPage() {
     return () => clearTimeout(t);
   }, [sheetError?.nonce, sheetError?.visible]);
 
-  // ROOT FIX for "the whole popup moves up/down when I tap a field":
-  // by default Android Chrome keeps the page the same size when the keyboard
-  // opens and instead PANS the visual viewport to reveal the focused field, so
-  // everything fixed on screen (our popup) slides up/down. Telling the browser
-  // to RESIZE the layout when the keyboard opens (interactive-widget=
-  // resizes-content) removes that panning completely — the popup just gets
-  // shorter and the form scrolls inside it. Applied only on this page and put
-  // back on leave. (iOS Safari ignores this hint; the pinning effect below
-  // covers it.)
+  // PHONES: the delivery form is NOT a fixed popup any more. A fixed popup is
+  // what the iPhone/Android keyboard kept pushing up and down. On phones the
+  // form now opens as a normal part of the page (the checkout content is just
+  // hidden meanwhile), so the browser scrolls it natively like any other web
+  // page, which is rock solid. Tablets/desktop keep the rounded popup.
+  const [isPhone, setIsPhone] = useState(false);
   useEffect(() => {
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) return;
-    const original = meta.getAttribute('content') || '';
-    if (!/interactive-widget/.test(original)) {
-      meta.setAttribute('content', `${original}${original ? ', ' : ''}interactive-widget=resizes-content`);
-    }
-    return () => {
-      meta.setAttribute('content', original);
-    };
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => setIsPhone(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
   }, []);
-  // While the popup is open, stop the page behind it from rubber-banding /
-  // scrolling (that also made the popup feel like it was shifting).
+  const phoneFormOpen = detailsSheetOpen && isPhone;
+  const [phoneHeaderH, setPhoneHeaderH] = useState(0);
+  const savedScrollY = useRef(0);
   useEffect(() => {
-    if (!detailsSheetOpen) return;
-    const html = document.documentElement;
-    const prev = html.style.overscrollBehavior;
-    html.style.overscrollBehavior = 'none';
+    if (!phoneFormOpen) return;
+    savedScrollY.current = window.scrollY;
+    window.scrollTo(0, 0);
+    document.body.setAttribute('data-delivery-open', '');
+    setPhoneHeaderH(document.querySelector('header')?.getBoundingClientRect().height ?? 0);
     return () => {
-      html.style.overscrollBehavior = prev;
+      document.body.removeAttribute('data-delivery-open');
+      window.scrollTo(0, savedScrollY.current);
     };
-  }, [detailsSheetOpen]);
+  }, [phoneFormOpen]);
   // Mark the offending field red (aria-invalid) while the banner is showing.
   useEffect(() => {
     if (!invalidField) return;
@@ -1734,8 +1730,291 @@ export default function CheckoutPage() {
   const hasSavedAddressSummary =
     !!user && savedAddresses.length > 0 && !showAddressForm && selectedAddressId !== 'new';
 
+  const detailsFields = (
+    <>
+{/* Contact */}
+              <section>
+                <h2 className="mb-4 font-serif text-lg font-bold text-primary">
+                  Contact Information
+                </h2>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="firstName">First name *</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  autoComplete="given-name"
+                  required
+                  placeholder="Aanya"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="lastName">Last name *</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  autoComplete="family-name"
+                  required
+                  placeholder="Sharma"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="aanya@example.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setTrackingEmail(e.target.value);
+                  }}
+                />
+              </div>
+              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
+                <Label htmlFor="phone">Phone *</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  required
+                  placeholder="+91 98765 43210"
+                  value={shipPhone}
+                  onChange={(e) => setShipPhone(e.target.value)}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Shipping */}
+          <section className="mt-7">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
+            </div>
+            <div className="grid gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="address">Street address *</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  autoComplete="address-line1"
+                  required
+                  placeholder="12, MG Road, Apt 304"
+                  value={addressLine1}
+                  onChange={(e) => setAddressLine1(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
+                <Input
+                  id="address2"
+                  name="address2"
+                  autoComplete="address-line2"
+                  placeholder="Bandra West"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="landmark">Landmark (optional)</Label>
+                <Input
+                  id="landmark"
+                  name="landmark"
+                  placeholder="Near City Hospital / Opposite SBI Bank"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Helps our delivery partner find your address faster.
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="pincode">PIN code *</Label>
+                <Input
+                  id="pincode"
+                  name="pincode"
+                  autoComplete="postal-code"
+                  required
+                  placeholder="400050"
+                  inputMode="numeric"
+                  value={pincode}
+                  className={
+                    deliveryEstimate?.pincode === pincode.trim() && deliveryEstimate.verified === 'no'
+                      ? 'border-red-400 focus-visible:ring-red-400'
+                      : undefined
+                  }
+                  onChange={(e) => {
+                    // Typing a new pincode is a clear signal the shopper
+                    // wants fresh City/State for THIS pincode — so let the
+                    // lookup below overwrite both, even if City/State were
+                    // holding an older value (from a saved draft or an
+                    // earlier manual edit) that would otherwise block it.
+                    cityAutoFilledRef.current = true;
+                    stateAutoFilledRef.current = true;
+                    setPincode(e.target.value);
+                  }}
+                />
+                {verifyingPincode && (
+                  <p className="text-[11px] text-muted-foreground">Checking pincode…</p>
+                )}
+                {!verifyingPincode && deliveryEstimate?.pincode === pincode.trim() && (
+                  <>
+                    {deliveryEstimate.verified === 'yes' && (
+                      <p className="text-[11px] font-medium text-emerald-600">
+                        ✓ Verified: {deliveryEstimate.city}, {deliveryEstimate.state}
+                      </p>
+                    )}
+                    {deliveryEstimate.verified === 'no' && (
+                      <p className="text-[11px] font-medium text-red-600">
+                        This PIN code doesn't seem to exist. Please double-check it.
+                      </p>
+                    )}
+                  </>
+                )}
+                {deliveryEstimate?.serviceable && (city || stateName) && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Auto-filled City/State below — you can edit if needed.
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="city">City *</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    autoComplete="address-level2"
+                    required
+                    placeholder="Mumbai"
+                    value={city}
+                    onChange={(e) => {
+                      // Shopper is typing city by hand — stop treating it as
+                      // ours to overwrite on the next pincode lookup.
+                      cityAutoFilledRef.current = false;
+                      setCity(e.target.value);
+                    }}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="state">State *</Label>
+                  <Select
+                    value={stateName || undefined}
+                    onValueChange={(v) => {
+                      stateAutoFilledRef.current = false;
+                      setStateName(v);
+                    }}
+                  >
+                    <SelectTrigger id="state">
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* If pincode auto-fill or a saved address ever returns
+                          a state name that doesn't exactly match our list,
+                          add it in so the real value is never lost/blanked. */}
+                      {(INDIAN_STATES.includes(stateName) || !stateName
+                        ? INDIAN_STATES
+                        : [stateName, ...INDIAN_STATES]
+                      ).map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="country">Country *</Label>
+                <Select value={country || 'India'} onValueChange={setCountry}>
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Only India for now — more countries can be added here
+                        later without changing how this field works. */}
+                    <SelectItem value="India">India</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+    </>
+  );
+
   return (
-    <div className="container-boutique py-8">
+    <>
+      {phoneFormOpen && (
+        <div
+          onInputCapture={() => {
+            if (invalidField) hideSheetError();
+          }}
+          className="container-boutique pb-10 pt-4 [&_input]:h-11 [&_[role=combobox]]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
+        >
+          {sheetError?.visible && (
+            <div
+              role="alert"
+              style={{ top: phoneHeaderH }}
+              className="sticky z-40 mb-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="flex-1 leading-snug">{sheetError.message}</span>
+              <button
+                type="button"
+                onClick={hideSheetError}
+                aria-label="Dismiss message"
+                className="-mr-1 rounded-full p-1 text-red-400"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="mb-5 flex items-start justify-between gap-3 border-b border-border/60 pb-4">
+            <div className="min-w-0 space-y-1">
+              <h2 className="font-serif text-xl font-bold text-primary">Delivery details</h2>
+              <p className="text-sm text-muted-foreground">Tell us where to send your handcrafted piece.</p>
+              {user && savedAddresses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={openAddressPicker}
+                  className="pt-1 text-sm font-medium text-secondary underline-offset-2 hover:underline"
+                >
+                  Choose from saved addresses
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              aria-label="Close delivery details"
+              onClick={() => {
+                setDetailsSheetOpen(false);
+                setSheetError(null);
+                setInvalidField(null);
+              }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-secondary/40 bg-gradient-to-b from-background to-muted text-primary shadow-sm"
+            >
+              <X className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            </button>
+          </div>
+          {detailsFields}
+          <div className="mt-6">
+            <Button type="button" className="h-12 w-full text-base" size="lg" onClick={saveDeliveryDetails}>
+              Save &amp; continue
+            </Button>
+            <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+              <Lock className="h-3 w-3" /> Your details are used only to deliver this order.
+            </p>
+          </div>
+        </div>
+      )}
+    <div className={`container-boutique py-8 ${phoneFormOpen ? 'hidden' : ''}`}>
       {/* Loaded only here (not site-wide in app/layout.tsx) since only the
           checkout page ever opens the Razorpay popup — this used to load
           on every single page load across the whole site for no reason. */}
@@ -2042,7 +2321,7 @@ export default function CheckoutPage() {
               </section>
 
               <Sheet
-                open={detailsSheetOpen}
+                open={detailsSheetOpen && !isPhone}
                 onOpenChange={(open) => {
                   setDetailsSheetOpen(open);
                   if (!open) {
@@ -2123,245 +2402,9 @@ export default function CheckoutPage() {
                     onInputCapture={() => {
                       if (invalidField) hideSheetError();
                     }}
-                    // iPhone fix: iOS Safari slides the WHOLE screen (and so the
-                    // whole popup) up/down whenever the tapped field would end up
-                    // hidden behind the keyboard. So the moment a field gets
-                    // focus we (1) add spare room at the bottom of the form and
-                    // (2) scroll the form INSTANTLY so that field sits near the
-                    // top of the popup — i.e. already above the keyboard. iOS
-                    // then sees nothing to reveal and never moves the popup.
-                    onFocusCapture={(e) => {
-                      const t = e.target as HTMLElement;
-                      if (window.innerWidth >= 640) return;
-                      if (!t.matches('input, textarea')) return;
-                      const c = e.currentTarget;
-                      c.style.paddingBottom = '60dvh';
-                      const row = (t.closest('div.grid') as HTMLElement | null) || t;
-                      const delta = row.getBoundingClientRect().top - c.getBoundingClientRect().top - 12;
-                      if (Math.abs(delta) > 1) c.scrollTop += delta;
-                    }}
-                    onBlurCapture={(e) => {
-                      const c = e.currentTarget;
-                      const next = e.relatedTarget as HTMLElement | null;
-                      if (next && c.contains(next) && next.matches('input, textarea')) return;
-                      c.style.paddingBottom = '';
-                    }}
-                    className="min-h-0 flex-1 scroll-py-20 overflow-y-auto overscroll-contain px-5 py-5 [overflow-anchor:none] max-sm:[&_[role=combobox]]:h-11 max-sm:[&_input]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
                   >
-              {/* Contact */}
-              <section>
-                <h2 className="mb-4 font-serif text-lg font-bold text-primary">
-                  Contact Information
-                </h2>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="firstName">First name *</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  autoComplete="given-name"
-                  required
-                  placeholder="Aanya"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="lastName">Last name *</Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  autoComplete="family-name"
-                  required
-                  placeholder="Sharma"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  placeholder="aanya@example.com"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setTrackingEmail(e.target.value);
-                  }}
-                />
-              </div>
-              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
-                <Label htmlFor="phone">Phone *</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  required
-                  placeholder="+91 98765 43210"
-                  value={shipPhone}
-                  onChange={(e) => setShipPhone(e.target.value)}
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Shipping */}
-          <section className="mt-7">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
-            </div>
-            <div className="grid gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="address">Street address *</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  autoComplete="address-line1"
-                  required
-                  placeholder="12, MG Road, Apt 304"
-                  value={addressLine1}
-                  onChange={(e) => setAddressLine1(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
-                <Input
-                  id="address2"
-                  name="address2"
-                  autoComplete="address-line2"
-                  placeholder="Bandra West"
-                  value={addressLine2}
-                  onChange={(e) => setAddressLine2(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="landmark">Landmark (optional)</Label>
-                <Input
-                  id="landmark"
-                  name="landmark"
-                  placeholder="Near City Hospital / Opposite SBI Bank"
-                  value={landmark}
-                  onChange={(e) => setLandmark(e.target.value)}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Helps our delivery partner find your address faster.
-                </p>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="pincode">PIN code *</Label>
-                <Input
-                  id="pincode"
-                  name="pincode"
-                  autoComplete="postal-code"
-                  required
-                  placeholder="400050"
-                  inputMode="numeric"
-                  value={pincode}
-                  className={
-                    deliveryEstimate?.pincode === pincode.trim() && deliveryEstimate.verified === 'no'
-                      ? 'border-red-400 focus-visible:ring-red-400'
-                      : undefined
-                  }
-                  onChange={(e) => {
-                    // Typing a new pincode is a clear signal the shopper
-                    // wants fresh City/State for THIS pincode — so let the
-                    // lookup below overwrite both, even if City/State were
-                    // holding an older value (from a saved draft or an
-                    // earlier manual edit) that would otherwise block it.
-                    cityAutoFilledRef.current = true;
-                    stateAutoFilledRef.current = true;
-                    setPincode(e.target.value);
-                  }}
-                />
-                {verifyingPincode && (
-                  <p className="text-[11px] text-muted-foreground">Checking pincode…</p>
-                )}
-                {!verifyingPincode && deliveryEstimate?.pincode === pincode.trim() && (
-                  <>
-                    {deliveryEstimate.verified === 'yes' && (
-                      <p className="text-[11px] font-medium text-emerald-600">
-                        ✓ Verified: {deliveryEstimate.city}, {deliveryEstimate.state}
-                      </p>
-                    )}
-                    {deliveryEstimate.verified === 'no' && (
-                      <p className="text-[11px] font-medium text-red-600">
-                        This PIN code doesn't seem to exist. Please double-check it.
-                      </p>
-                    )}
-                  </>
-                )}
-                {deliveryEstimate?.serviceable && (city || stateName) && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Auto-filled City/State below — you can edit if needed.
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="city">City *</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    autoComplete="address-level2"
-                    required
-                    placeholder="Mumbai"
-                    value={city}
-                    onChange={(e) => {
-                      // Shopper is typing city by hand — stop treating it as
-                      // ours to overwrite on the next pincode lookup.
-                      cityAutoFilledRef.current = false;
-                      setCity(e.target.value);
-                    }}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="state">State *</Label>
-                  <Select
-                    value={stateName || undefined}
-                    onValueChange={(v) => {
-                      stateAutoFilledRef.current = false;
-                      setStateName(v);
-                    }}
-                  >
-                    <SelectTrigger id="state">
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* If pincode auto-fill or a saved address ever returns
-                          a state name that doesn't exactly match our list,
-                          add it in so the real value is never lost/blanked. */}
-                      {(INDIAN_STATES.includes(stateName) || !stateName
-                        ? INDIAN_STATES
-                        : [stateName, ...INDIAN_STATES]
-                      ).map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="country">Country *</Label>
-                <Select value={country || 'India'} onValueChange={setCountry}>
-                  <SelectTrigger id="country">
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Only India for now — more countries can be added here
-                        later without changing how this field works. */}
-                    <SelectItem value="India">India</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </section>
+              {detailsFields}
                   </div>
                   <div className="shrink-0 border-t border-border/60 bg-card px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
                     <Button type="button" className="h-12 w-full text-base" size="lg" onClick={saveDeliveryDetails}>
@@ -3035,5 +3078,6 @@ export default function CheckoutPage() {
         </aside>
       </form>
     </div>
+    </>
   );
 }

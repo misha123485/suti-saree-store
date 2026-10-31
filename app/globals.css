@@ -231,3 +231,10 @@
   animation: admin-focus-flash 4.5s ease-out;
   border-radius: 0.5rem;
 }
+
+/* Phone delivery form is a normal page view: hide fixed floating bars so they
+   can't sit on top of the form / keyboard. */
+body[data-delivery-open] nav.fixed.bottom-0,
+body[data-delivery-open] .fixed.bottom-24 {
+  display: none !important;
+}
