@@ -6,8 +6,8 @@ import Image from 'next/image';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import NextScript from 'next/script';
 import { useRouter } from 'next/navigation';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Lock, Loader2, CreditCard, Tag, X, Wallet, Sparkles, Gift, Store, Minus, Plus, ChevronRight, ChevronDown, BadgePercent, BadgeCheck, MapPin, Phone, Pencil } from 'lucide-react';
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Lock, Loader2, CreditCard, Tag, X, AlertCircle, Wallet, Sparkles, Gift, Store, Minus, Plus, ChevronRight, ChevronDown, BadgePercent, BadgeCheck, MapPin, Phone, Pencil } from 'lucide-react';
 import {
   useCart,
   usePaymentDiscount,
@@ -239,6 +239,25 @@ export default function CheckoutPage() {
   // sheet (opened from the "Delivery details" card) instead of two long inline
   // sections -- no OTP or account needed.
   const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
+  // Validation message shown INSIDE the delivery-details sheet (above the title
+  // and close button) instead of a floating toast that used to cover them.
+  const [sheetError, setSheetError] = useState<{ message: string; nonce: number } | null>(null);
+  const [invalidField, setInvalidField] = useState<string | null>(null);
+  useEffect(() => {
+    if (!sheetError) return;
+    const t = setTimeout(() => {
+      setSheetError(null);
+      setInvalidField(null);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [sheetError]);
+  // Mark the offending field red (aria-invalid) while the banner is showing.
+  useEffect(() => {
+    if (!invalidField) return;
+    const el = document.getElementById(invalidField);
+    el?.setAttribute('aria-invalid', 'true');
+    return () => el?.removeAttribute('aria-invalid');
+  }, [invalidField]);
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -1161,7 +1180,7 @@ export default function CheckoutPage() {
     if (!hasSavedAddressSummary) {
       const detailsError = validateDeliveryDetails();
       if (detailsError) {
-        toast.error(detailsError);
+        showSheetError(detailsError);
         setDetailsSheetOpen(true);
         return;
       }
@@ -1616,12 +1635,40 @@ export default function CheckoutPage() {
     return null;
   };
 
+  const DELIVERY_ERROR_FIELD: Record<string, string> = {
+    'Please enter your first name': 'firstName',
+    'Please enter your last name': 'lastName',
+    'Please enter a valid email address': 'email',
+    'Please enter a valid 10-digit phone number': 'phone',
+    'Please enter your street address': 'address',
+    'Please enter a valid 6-digit PIN code': 'pincode',
+    'Please enter your city': 'city',
+    'Please select your state': 'state',
+  };
+
+  // Show the message in the sheet's top banner, mark + focus the field that
+  // needs fixing (scrolled into view so the keyboard never hides it).
+  const showSheetError = (message: string) => {
+    setSheetError({ message, nonce: Date.now() });
+    const fieldId = DELIVERY_ERROR_FIELD[message] ?? null;
+    setInvalidField(fieldId);
+    if (fieldId) {
+      setTimeout(() => {
+        const el = document.getElementById(fieldId);
+        el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el?.focus({ preventScroll: true });
+      }, 320);
+    }
+  };
+
   const saveDeliveryDetails = () => {
     const err = validateDeliveryDetails();
     if (err) {
-      toast.error(err);
+      showSheetError(err);
       return;
     }
+    setSheetError(null);
+    setInvalidField(null);
     setDetailsSheetOpen(false);
   };
 
@@ -1939,14 +1986,62 @@ export default function CheckoutPage() {
                 )}
               </section>
 
-              <Sheet open={detailsSheetOpen} onOpenChange={setDetailsSheetOpen}>
+              <Sheet
+                open={detailsSheetOpen}
+                onOpenChange={(open) => {
+                  setDetailsSheetOpen(open);
+                  if (!open) {
+                    setSheetError(null);
+                    setInvalidField(null);
+                  }
+                }}
+              >
                 <SheetContent
                   side="bottom"
-                  className="mx-auto flex max-h-[92vh] max-w-lg flex-col gap-0 rounded-t-3xl p-0"
+                  hideClose
+                  className="mx-auto flex max-h-[92dvh] max-w-lg flex-col gap-0 rounded-t-3xl p-0 data-[state=open]:duration-300"
                 >
-                  <SheetHeader className="border-b border-border/60 px-5 pb-4 pt-6 text-left">
-                    <SheetTitle className="font-serif text-xl font-bold text-primary">Delivery details</SheetTitle>
-                    <SheetDescription>Tell us where to send your handcrafted piece.</SheetDescription>
+                  {/* Grab handle */}
+                  <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden="true" />
+
+                  {/* Error banner — lives ABOVE the title and the close button,
+                      so it never covers either of them. */}
+                  {sheetError && (
+                    <div
+                      key={sheetError.nonce}
+                      role="alert"
+                      aria-live="assertive"
+                      className="mx-4 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm duration-200 animate-in fade-in slide-in-from-top-2"
+                    >
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span className="flex-1 leading-snug">{sheetError.message}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSheetError(null);
+                          setInvalidField(null);
+                        }}
+                        aria-label="Dismiss message"
+                        className="-mr-1 rounded-full p-1 text-red-400 transition-colors hover:bg-red-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  <SheetHeader className="border-b border-border/60 px-5 pb-4 pt-4 text-left">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <SheetTitle className="font-serif text-xl font-bold text-primary">Delivery details</SheetTitle>
+                        <SheetDescription>Tell us where to send your handcrafted piece.</SheetDescription>
+                      </div>
+                      <SheetClose
+                        aria-label="Close delivery details"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-secondary/40 bg-gradient-to-b from-background to-muted text-primary shadow-sm transition-all duration-200 hover:rotate-90 hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-90"
+                      >
+                        <X className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                      </SheetClose>
+                    </div>
                     {user && savedAddresses.length > 0 && (
                       <button
                         type="button"
@@ -1957,13 +2052,18 @@ export default function CheckoutPage() {
                       </button>
                     )}
                   </SheetHeader>
-                  <div className="flex-1 overflow-y-auto px-5 py-5">
+                  <div
+                    onInputCapture={() => {
+                      if (invalidField) setInvalidField(null);
+                    }}
+                    className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 max-sm:[&_[role=combobox]]:h-11 max-sm:[&_input]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
+                  >
               {/* Contact */}
               <section>
                 <h2 className="mb-4 font-serif text-lg font-bold text-primary">
                   Contact Information
                 </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
               <div className="grid gap-1.5">
                 <Label htmlFor="firstName">First name *</Label>
                 <Input
@@ -1988,7 +2088,7 @@ export default function CheckoutPage() {
                   onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
-              <div className="grid gap-1.5">
+              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
@@ -2004,7 +2104,7 @@ export default function CheckoutPage() {
                   }}
                 />
               </div>
-              <div className="grid gap-1.5">
+              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
                 <Label htmlFor="phone">Phone *</Label>
                 <Input
                   id="phone"
@@ -2173,8 +2273,8 @@ export default function CheckoutPage() {
             </div>
           </section>
                   </div>
-                  <div className="border-t border-border/60 bg-card px-5 pb-6 pt-4">
-                    <Button type="button" className="w-full" size="lg" onClick={saveDeliveryDetails}>
+                  <div className="border-t border-border/60 bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
+                    <Button type="button" className="h-12 w-full text-base" size="lg" onClick={saveDeliveryDetails}>
                       Save &amp; continue
                     </Button>
                     <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
