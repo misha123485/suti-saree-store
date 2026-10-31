@@ -242,16 +242,57 @@ export default function CheckoutPage() {
   const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
   // Validation message shown INSIDE the delivery-details sheet (above the title
   // and close button) instead of a floating toast that used to cover them.
-  const [sheetError, setSheetError] = useState<{ message: string; nonce: number } | null>(null);
+  // `visible` toggles the banner open/closed with a height transition (the text
+  // stays mounted while it collapses) — so the form below never jumps when the
+  // message appears or disappears.
+  const [sheetError, setSheetError] = useState<{ message: string; nonce: number; visible: boolean } | null>(null);
   const [invalidField, setInvalidField] = useState<string | null>(null);
+  const hideSheetError = () => {
+    setSheetError((e) => (e ? { ...e, visible: false } : e));
+    setInvalidField(null);
+  };
   useEffect(() => {
-    if (!sheetError) return;
+    if (!sheetError?.visible) return;
     const t = setTimeout(() => {
-      setSheetError(null);
+      setSheetError((e) => (e ? { ...e, visible: false } : e));
       setInvalidField(null);
     }, 5000);
     return () => clearTimeout(t);
-  }, [sheetError]);
+  }, [sheetError?.nonce, sheetError?.visible]);
+
+  // Phone keyboards: the page does NOT shrink when the keyboard opens — only the
+  // "visual viewport" does. That mismatch is what made the sheet wobble and left
+  // almost no room for the form. While the sheet is open on a phone, follow the
+  // visual viewport exactly (top + height) so the sheet is always precisely the
+  // visible area, and tell the layout when the keyboard is up so it can
+  // compact the header/footer.
+  const [sheetViewport, setSheetViewport] = useState<{ top: number; height: number } | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (!detailsSheetOpen) {
+      setSheetViewport(null);
+      setKeyboardOpen(false);
+      return;
+    }
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      if (window.innerWidth >= 640) {
+        setSheetViewport(null);
+        setKeyboardOpen(false);
+        return;
+      }
+      setSheetViewport({ top: vv.offsetTop, height: vv.height });
+      setKeyboardOpen(window.innerHeight - vv.height > 120);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, [detailsSheetOpen]);
   // Mark the offending field red (aria-invalid) while the banner is showing.
   useEffect(() => {
     if (!invalidField) return;
@@ -1663,15 +1704,18 @@ export default function CheckoutPage() {
   // Show the message in the sheet's top banner, mark + focus the field that
   // needs fixing (scrolled into view so the keyboard never hides it).
   const showSheetError = (message: string) => {
-    setSheetError({ message, nonce: Date.now() });
+    setSheetError({ message, nonce: Date.now(), visible: true });
     const fieldId = DELIVERY_ERROR_FIELD[message] ?? null;
     setInvalidField(fieldId);
     if (fieldId) {
+      // Let the sheet finish opening / the keyboard finish resizing the
+      // viewport first, then focus the field and centre it (no smooth scroll —
+      // animated scrolling fought the keyboard and made the screen shake).
       setTimeout(() => {
         const el = document.getElementById(fieldId);
-        el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        el?.focus({ preventScroll: true });
-      }, 320);
+        el?.focus();
+        setTimeout(() => el?.scrollIntoView({ block: 'center' }), 250);
+      }, 350);
     }
   };
 
@@ -1681,8 +1725,7 @@ export default function CheckoutPage() {
       showSheetError(err);
       return;
     }
-    setSheetError(null);
-    setInvalidField(null);
+    hideSheetError();
     setDetailsSheetOpen(false);
   };
 
@@ -2013,41 +2056,51 @@ export default function CheckoutPage() {
                 <SheetContent
                   side="bottom"
                   hideClose
-                  className="mx-auto flex max-h-[92dvh] max-w-lg flex-col gap-0 rounded-t-3xl p-0 data-[state=open]:duration-300"
+                  // Full-screen on phones (max-sm), the familiar rounded bottom
+                  // sheet from sm: up. `style` pins it to the visible area so
+                  // the keyboard can't push/shake it.
+                  style={sheetViewport ? { top: sheetViewport.top, height: sheetViewport.height, bottom: 'auto' } : undefined}
+                  className="mx-auto flex max-w-lg flex-col gap-0 overscroll-none p-0 data-[state=open]:duration-300 max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-w-none max-sm:rounded-none max-sm:border-t-0 max-sm:pt-[env(safe-area-inset-top)] sm:max-h-[92dvh] sm:rounded-t-3xl"
                 >
-                  {/* Grab handle */}
-                  <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden="true" />
+                  {/* Grab handle (only on the bottom-sheet look, not full-screen) */}
+                  <div className="mx-auto mt-2.5 hidden h-1 w-10 shrink-0 rounded-full bg-border sm:block" aria-hidden="true" />
 
                   {/* Error banner — lives ABOVE the title and the close button,
                       so it never covers either of them. */}
-                  {sheetError && (
-                    <div
-                      key={sheetError.nonce}
-                      role="alert"
-                      aria-live="assertive"
-                      className="mx-4 mt-3 flex shrink-0 items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm duration-200 animate-in fade-in slide-in-from-top-2"
-                    >
-                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                      <span className="flex-1 leading-snug">{sheetError.message}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSheetError(null);
-                          setInvalidField(null);
-                        }}
-                        aria-label="Dismiss message"
-                        className="-mr-1 rounded-full p-1 text-red-400 transition-colors hover:bg-red-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                  <div
+                    aria-live="assertive"
+                    className={`grid shrink-0 transition-[grid-template-rows] duration-200 ease-out ${
+                      sheetError?.visible ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      {sheetError && (
+                        <div
+                          role="alert"
+                          className="mx-4 mt-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm"
+                        >
+                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span className="flex-1 leading-snug">{sheetError.message}</span>
+                          <button
+                            type="button"
+                            onClick={hideSheetError}
+                            aria-label="Dismiss message"
+                            className="-mr-1 rounded-full p-1 text-red-400 transition-colors hover:bg-red-100 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
 
-                  <SheetHeader className="border-b border-border/60 px-5 pb-4 pt-4 text-left">
+                  <SheetHeader className={`border-b border-border/60 px-5 text-left ${keyboardOpen ? 'pb-2.5 pt-3' : 'pb-4 pt-4'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1">
                         <SheetTitle className="font-serif text-xl font-bold text-primary">Delivery details</SheetTitle>
-                        <SheetDescription>Tell us where to send your handcrafted piece.</SheetDescription>
+                        <SheetDescription className={keyboardOpen ? 'hidden' : undefined}>
+                          Tell us where to send your handcrafted piece.
+                        </SheetDescription>
                       </div>
                       <SheetClose
                         aria-label="Close delivery details"
@@ -2068,7 +2121,7 @@ export default function CheckoutPage() {
                   </SheetHeader>
                   <div
                     onInputCapture={() => {
-                      if (invalidField) setInvalidField(null);
+                      if (invalidField) hideSheetError();
                     }}
                     className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 max-sm:[&_[role=combobox]]:h-11 max-sm:[&_input]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
                   >
@@ -2287,11 +2340,15 @@ export default function CheckoutPage() {
             </div>
           </section>
                   </div>
-                  <div className="border-t border-border/60 bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
+                  <div
+                    className={`shrink-0 border-t border-border/60 bg-card px-5 ${
+                      keyboardOpen ? 'pb-2 pt-2' : 'pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4'
+                    }`}
+                  >
                     <Button type="button" className="h-12 w-full text-base" size="lg" onClick={saveDeliveryDetails}>
                       Save &amp; continue
                     </Button>
-                    <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                    <p className={`mt-2 items-center justify-center gap-1.5 text-[11px] text-muted-foreground ${keyboardOpen ? 'hidden' : 'flex'}`}>
                       <Lock className="h-3 w-3" /> Your details are used only to deliver this order.
                     </p>
                   </div>
