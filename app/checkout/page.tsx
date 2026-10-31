@@ -260,15 +260,6 @@ export default function CheckoutPage() {
     return () => clearTimeout(t);
   }, [sheetError?.nonce, sheetError?.visible]);
 
-  // Phone keyboards: the page does NOT shrink when the keyboard opens — only the
-  // "visual viewport" does. While the sheet is open on a phone we pin it to the
-  // visual viewport, but we do it IMPERATIVELY (direct style writes, batched in
-  // one requestAnimationFrame) instead of through React state. Going through
-  // state re-rendered the whole 3000-line page on every viewport event while the
-  // keyboard animated in, which is what made the form wobble. The header/footer
-  // sizes are also fixed now (no "compact when keyboard is open" switch), so
-  // nothing above or below the field being typed in changes size or position.
-  const sheetRef = useRef<HTMLDivElement | null>(null);
   // ROOT FIX for "the whole popup moves up/down when I tap a field":
   // by default Android Chrome keeps the page the same size when the keyboard
   // opens and instead PANS the visual viewport to reveal the focused field, so
@@ -298,56 +289,6 @@ export default function CheckoutPage() {
     html.style.overscrollBehavior = 'none';
     return () => {
       html.style.overscrollBehavior = prev;
-    };
-  }, [detailsSheetOpen]);
-  useEffect(() => {
-    if (!detailsSheetOpen) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let raf = 0;
-    let lastTop = -1;
-    let lastHeight = -1;
-    const apply = () => {
-      raf = 0;
-      const el = sheetRef.current;
-      if (!el) {
-        // Portal content not mounted yet — try again next frame.
-        raf = requestAnimationFrame(apply);
-        return;
-      }
-      if (window.innerWidth >= 640) {
-        el.style.removeProperty('top');
-        el.style.removeProperty('height');
-        el.style.removeProperty('bottom');
-        lastTop = lastHeight = -1;
-        return;
-      }
-      const top = Math.round(vv.offsetTop);
-      const height = Math.round(vv.height);
-      // Skip no-op writes so we never trigger needless layout.
-      if (top === lastTop && height === lastHeight) return;
-      lastTop = top;
-      lastHeight = height;
-      el.style.top = `${top}px`;
-      el.style.height = `${height}px`;
-      el.style.bottom = 'auto';
-    };
-    const schedule = () => {
-      apply();
-    };
-    schedule();
-    vv.addEventListener('resize', schedule);
-    vv.addEventListener('scroll', schedule);
-    return () => {
-      vv.removeEventListener('resize', schedule);
-      vv.removeEventListener('scroll', schedule);
-      if (raf) cancelAnimationFrame(raf);
-      const el = sheetRef.current;
-      if (el) {
-        el.style.removeProperty('top');
-        el.style.removeProperty('height');
-        el.style.removeProperty('bottom');
-      }
     };
   }, [detailsSheetOpen]);
   // Mark the offending field red (aria-invalid) while the banner is showing.
@@ -2111,7 +2052,6 @@ export default function CheckoutPage() {
                 }}
               >
                 <SheetContent
-                  ref={sheetRef}
                   side="bottom"
                   hideClose
                   // Full-screen on phones (max-sm), the familiar rounded bottom
@@ -2182,6 +2122,29 @@ export default function CheckoutPage() {
                   <div
                     onInputCapture={() => {
                       if (invalidField) hideSheetError();
+                    }}
+                    // iPhone fix: iOS Safari slides the WHOLE screen (and so the
+                    // whole popup) up/down whenever the tapped field would end up
+                    // hidden behind the keyboard. So the moment a field gets
+                    // focus we (1) add spare room at the bottom of the form and
+                    // (2) scroll the form INSTANTLY so that field sits near the
+                    // top of the popup — i.e. already above the keyboard. iOS
+                    // then sees nothing to reveal and never moves the popup.
+                    onFocusCapture={(e) => {
+                      const t = e.target as HTMLElement;
+                      if (window.innerWidth >= 640) return;
+                      if (!t.matches('input, textarea')) return;
+                      const c = e.currentTarget;
+                      c.style.paddingBottom = '60dvh';
+                      const row = (t.closest('div.grid') as HTMLElement | null) || t;
+                      const delta = row.getBoundingClientRect().top - c.getBoundingClientRect().top - 12;
+                      if (Math.abs(delta) > 1) c.scrollTop += delta;
+                    }}
+                    onBlurCapture={(e) => {
+                      const c = e.currentTarget;
+                      const next = e.relatedTarget as HTMLElement | null;
+                      if (next && c.contains(next) && next.matches('input, textarea')) return;
+                      c.style.paddingBottom = '';
                     }}
                     className="min-h-0 flex-1 scroll-py-20 overflow-y-auto overscroll-contain px-5 py-5 [overflow-anchor:none] max-sm:[&_[role=combobox]]:h-11 max-sm:[&_input]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
                   >
