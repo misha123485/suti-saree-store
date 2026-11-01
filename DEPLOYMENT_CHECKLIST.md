@@ -80,3 +80,23 @@ Stripe Dashboard > Developers > Webhooks > Add endpoint:
 
 Local test: `stripe listen --forward-to localhost:3000/api/stripe/webhook` (prints a temporary whsec_).
 Test cards: `4242 4242 4242 4242` (success), `4000 0025 0000 3155` (3D Secure), `4000 0000 0000 9995` (declined).
+
+---
+
+## International selling (Phases 1-10) - rollout
+
+Everything international sits behind Admin > Settings > International Selling > master switch (default OFF).
+Details per phase: `docs/INTERNATIONAL.md`. Security checks: `docs/INTERNATIONAL_PHASE10_VERIFY.sql`.
+
+Migrations to be applied, in order (all additive): `20261102000000_international_orders_foundation`,
+`20261103000000_stripe_disputes`, `20261104000000_international_fulfilment`, `20261105000000_international_pnl`.
+
+Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (see Stripe section above), optional `NEXT_PUBLIC_SITE_URL`
+(used for Stripe return URLs and the `?cc=` canonical header).
+
+Rollout order:
+1. Deploy with the master switch OFF. Check the India store, India checkout and the India Merchant feed are unchanged.
+2. Fill real courier rates in a zone, enable ONLY US + UAE, Stripe in TEST mode. Run the E2E test in docs/INTERNATIONAL.md.
+3. Switch Stripe to LIVE keys + live webhook secret; place one real small order yourself, ship it, refund it.
+4. Enable Wave 1 (US, UAE, Malaysia). Watch Admin > International P&L daily for 2 weeks.
+5. Enable Wave 2 (OM, BH, QA, SA, KW, AU, CA) only after the P&L shows positive margin. UK only after the VAT decision.

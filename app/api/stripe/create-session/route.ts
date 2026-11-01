@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { isStripeConfigured, normalizeStripeMinor, stripeFetch } from '@/lib/stripe';
 import { syncStripeOrderIfPending } from '@/lib/stripe-sync';
+import { normalizeInternationalSettings } from '@/lib/intl-api';
 
 // Stripe Checkout for INTERNATIONAL orders only. Same security model as /api/cashfree/create-order:
 // the amount and currency are read from the `orders` row (written by place_order_with_items()),
@@ -57,6 +58,16 @@ export async function POST(req: NextRequest) {
     const addrCountry = String(addr.country || '').trim().toLowerCase();
     if (addrCountry === 'india' || addrCountry === 'in') {
       return NextResponse.json({ error: 'Stripe cannot be used for addresses in India' }, { status: 400 });
+    }
+
+    // Kill-switch: if International Selling was turned off (or this country disabled) after the order was
+    // placed, do not open a new payment for it. Already-paid orders are unaffected (handled above/webhook).
+    const [{ data: sRow }, { data: cRow }] = await Promise.all([
+      admin.from('settings').select('value').eq('key', 'international_settings').maybeSingle(),
+      admin.from('intl_countries').select('is_enabled').eq('code', order.country_code).maybeSingle(),
+    ]);
+    if (!normalizeInternationalSettings(sRow?.value as never).international_enabled || !cRow?.is_enabled) {
+      return NextResponse.json({ error: 'International orders are currently unavailable for this country.' }, { status: 409 });
     }
 
     const currency = String(order.charge_currency || '').toUpperCase();

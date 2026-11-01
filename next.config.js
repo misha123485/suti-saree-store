@@ -54,6 +54,19 @@ const nextConfig = {
       },
     ];
   },
+  // Phase 10 (SEO): Google Shopping links carry ?cc=XX so the landing page shows the same currency.
+  // Those URLs must never compete with the clean URL in search, so every response to a ?cc= request
+  // also names the clean URL (same path, no query) as canonical via an HTTP Link header.
+  async headers() {
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com').replace(/\/$/, '');
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'query', key: 'cc' }],
+        headers: [{ key: 'Link', value: `<${site}/:path*>; rel="canonical"` }],
+      },
+    ];
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
