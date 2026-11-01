@@ -255,7 +255,12 @@ export default function Header() {
     // they bring the shopper straight back to /checkout once they're done,
     // so this recovery logic must not treat that as a "left checkout" event
     // and bounce them to wherever they were before checkout instead.
-    const nowOnAuthDetour = pathname === '/login' || pathname === '/signup';
+    // next.config has trailingSlash: true, so usePathname() returns
+    // '/login/' (not '/login') -- strip the slash before comparing, or this
+    // check never matches and the shopper gets bounced to the product page.
+    const bare = pathname.replace(/\/+$/, '');
+    const nowOnAuthDetour =
+      bare === '/login' || bare === '/signup' || bare === '/forgot-password' || bare === '/auth/callback';
     // A successful order sends the shopper from /checkout to
     // /order-confirmation/[id] — that's a real, intentional destination,
     // not an accidental "left checkout" navigation, so it must never be
