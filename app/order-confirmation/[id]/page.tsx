@@ -16,6 +16,7 @@ import CancelOrHelp from '@/components/order/cancel-or-help';
 import PaymentPendingBanner from '@/components/order/payment-pending-banner';
 import EditAddressButton from '@/components/order/edit-address-button';
 import { fetchFulfillmentSettings } from '@/lib/marketing-api';
+import { syncStripeOrderIfPending } from '@/lib/stripe-sync';
 import { DEFAULT_LOYALTY_SETTINGS, type LoyaltySettings } from '@/lib/loyalty-api';
 import { DEFAULT_REFERRAL_SETTINGS, type ReferralSettings } from '@/lib/referrals-api';
 
@@ -51,6 +52,8 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 
 export default async function OrderConfirmationPage({ params }: { params: { id: string } }) {
   const supabase = getSupabaseAdmin();
+  // Returning from Stripe: confirm the payment with Stripe now (the webhook is the backup).
+  await syncStripeOrderIfPending(params.id).catch(() => {});
   const { data: order } = await supabase.from('orders').select('*').eq('id', params.id).single();
 
   if (!order) notFound();

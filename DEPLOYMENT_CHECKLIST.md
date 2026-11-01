@@ -63,3 +63,20 @@
 **Deployment by:** [Your Name]
 **Date:** [Current Date]
 **Status:** ☐ Not Started | ☐ In Progress | ☐ Complete
+
+## International payments (Stripe) — Phase 5
+
+New env vars (Netlify > Site settings > Environment variables):
+- `STRIPE_SECRET_KEY` — `sk_test_...` while testing, `sk_live_...` for real orders
+- `STRIPE_WEBHOOK_SECRET` — `whsec_...` of the endpoint below
+- (`NEXT_PUBLIC_SITE_URL` is already used for return URLs)
+
+Run `supabase/migrations/20261103000000_stripe_disputes.sql` in the Supabase SQL editor.
+
+Stripe Dashboard > Developers > Webhooks > Add endpoint:
+- URL: `https://sutisaree.com/api/stripe/webhook`
+- Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`,
+  `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`, `charge.dispute.created`
+
+Local test: `stripe listen --forward-to localhost:3000/api/stripe/webhook` (prints a temporary whsec_).
+Test cards: `4242 4242 4242 4242` (success), `4000 0025 0000 3155` (3D Secure), `4000 0000 0000 9995` (declined).
