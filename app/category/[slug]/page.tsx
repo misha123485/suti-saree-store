@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { productInCategory } from '@/lib/category-utils';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { fetchCategoriesServer, fetchProductsServer } from '@/lib/products-api-server';
@@ -73,7 +74,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // out of it still pass equity) without submitting it to Google's index.
   // The page re-qualifies for indexing automatically the moment a product
   // is added, since this check runs fresh on every request/revalidation.
-  const hasProducts = products.some((p) => p.category === category.name || (p.category_names ?? []).includes(category.name));
+  const hasProducts = products.some((p) => productInCategory(p, category.name));
 
   return {
     title,
@@ -124,7 +125,7 @@ export default async function CategoryPage({ params }: Params) {
   const category = categories.find((c) => c.slug === params.slug);
   if (!category) notFound();
 
-  const categoryProducts = products.filter((p) => p.category === category.name || (p.category_names ?? []).includes(category.name));
+  const categoryProducts = products.filter((p) => productInCategory(p, category.name));
   // Same real per-image blur preview lookup as /shop (see app/shop/page.tsx
   // for the full explanation) — scoped to just this category's products.
   const cardImageUrls = new Set<string>();

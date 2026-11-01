@@ -194,18 +194,36 @@ export async function fetchProductsByCategoryServer(
 ): Promise<Product[]> {
   const { limit = 4, excludeSlugs = [] } = opts;
   const supabase = getServerSupabase();
-  let query = supabase
-    .from('products')
-    .select(`${CUSTOMER_SAFE_PRODUCT_COLUMNS}, product_variants(slug, images, is_default, color, product_variant_sizes(stock_quantity))`)
-    .eq('category_name', categoryName)
-    .eq('approval_status', 'live')
-    .eq('in_stock', true)
-    .order('featured', { ascending: false })
-    .order('rating', { ascending: false })
-    .limit(limit + excludeSlugs.length);
-  const { data, error } = await query;
-  if (error) throw error;
-  const products = (data as unknown as ProductRow[])
+  // A product is "in" a category if it's its primary category OR listed in
+  // category_names (multi-category). Two plain queries, merged — avoids
+  // hand-escaping category names inside a PostgREST or() filter.
+  const base = () =>
+    supabase
+      .from('products')
+      .select(`${CUSTOMER_SAFE_PRODUCT_COLUMNS}, product_variants(slug, images, is_default, color, product_variant_sizes(stock_quantity))`)
+      .eq('approval_status', 'live')
+      .eq('in_stock', true)
+      .order('featured', { ascending: false })
+      .order('rating', { ascending: false })
+      .limit(limit + excludeSlugs.length);
+  const [primary, secondary] = await Promise.all([
+    base().eq('category_name', categoryName),
+    base().contains('category_names', [categoryName]),
+  ]);
+  if (primary.error) throw primary.error;
+  if (secondary.error) throw secondary.error;
+  const seen = new Set<string>();
+  const merged = [...(primary.data ?? []), ...(secondary.data ?? [])].filter((r) => {
+    const id = (r as unknown as { id: string }).id;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  }) as unknown as ProductRow[];
+  merged.sort(
+    (a, b) =>
+      Number(!!b.featured) - Number(!!a.featured) || (Number(b.rating) || 0) - (Number(a.rating) || 0)
+  );
+  const products = merged
     .map(mapRowToProduct)
     .filter((p) => !excludeSlugs.includes(p.slug))
     .slice(0, limit);

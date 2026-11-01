@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronRight, ImageOff } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useProducts, ProductsProvider } from '@/lib/cart-context';
+import { productInCategory } from '@/lib/category-utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { THUMB_BLUR_DATA_URL, isShimmerEnabled } from '@/lib/image-placeholder';
 
@@ -70,7 +71,7 @@ function CategoriesPageContent() {
   const rows = useMemo(() => {
     return categories
       .map((c) => {
-        const inCat = products.filter((p) => p.category === c.name);
+        const inCat = products.filter((p) => productInCategory(p, c.name));
         const thumbs = inCat
           .slice()
           .sort((a, b) => Number(!!b.featured) - Number(!!a.featured))

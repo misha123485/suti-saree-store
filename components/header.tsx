@@ -7,6 +7,7 @@ import { useState, useMemo, useRef, useEffect, useCallback, FormEvent } from 're
 import { Search, ShoppingBag, Menu, User, Heart, ArrowLeft, Camera, Loader2, Clock, Sparkles, ChevronRight, ChevronDown, BookOpen, Info, Users, Phone } from 'lucide-react';
 import { useCart, useCategories, loadProductsCached } from '@/lib/cart-context';
 import { BrandLogo } from '@/lib/brand-context';
+import { productCategoryNames } from '@/lib/category-utils';
 import { useAuth } from '@/lib/auth-context';
 import { getCheckoutReturnPath, isCheckoutReturnFromBuyNow, clearCheckoutReturnBuyNowFlag } from '@/lib/checkout-return';
 import { rankProductIdsByImage, createSearchThumbnail } from '@/lib/image-search';
@@ -154,10 +155,12 @@ export default function Header() {
     const stats = new Map<string, { count: number; thumbs: string[] }>();
     const expanded = expandProductVariants(products);
     for (const p of expanded) {
-      const entry = stats.get(p.category) ?? { count: 0, thumbs: [] as string[] };
-      entry.count += 1;
-      if (entry.thumbs.length < 3 && p.images?.[0]) entry.thumbs.push(p.images[0]);
-      stats.set(p.category, entry);
+      for (const name of productCategoryNames(p)) {
+        const entry = stats.get(name) ?? { count: 0, thumbs: [] as string[] };
+        entry.count += 1;
+        if (entry.thumbs.length < 3 && p.images?.[0]) entry.thumbs.push(p.images[0]);
+        stats.set(name, entry);
+      }
     }
     return stats;
   }, [products]);

@@ -38,6 +38,7 @@ import { fireGtagEvent } from '@/lib/gtag-track';
 import { THUMB_BLUR_DATA_URL, isShimmerEnabled } from '@/lib/image-placeholder';
 import QuickNavIcons from '@/components/quick-nav-icons';
 import PriceRangeFilterBar from '@/components/shop/price-range-filter-bar';
+import { productCategoryNames, productInCategory } from '@/lib/category-utils';
 import {
   fetchCatalogVideoSettings,
   fetchCatalogListingSettings,
@@ -263,7 +264,7 @@ function ShopContentInner({
   // Only show categories that actually have at least one product,
   // so the filter panel never lists an empty category.
   const categoriesWithProducts = useMemo(() => {
-    const namesWithProducts = new Set(products.map((p) => p.category));
+    const namesWithProducts = new Set(products.flatMap((p) => productCategoryNames(p)));
     return categories.filter((c) => namesWithProducts.has(c.name));
   }, [categories, products]);
 
@@ -274,7 +275,10 @@ function ShopContentInner({
   const categoryThumbs = useMemo(() => {
     const map: Record<string, string> = {};
     for (const p of products) {
-      if (!map[p.category] && p.images?.[0]) map[p.category] = p.images[0];
+      if (!p.images?.[0]) continue;
+      for (const name of productCategoryNames(p)) {
+        if (!map[name]) map[name] = p.images[0];
+      }
     }
     return map;
   }, [products]);
@@ -328,7 +332,7 @@ function ShopContentInner({
   const filteredForPriceBuckets = useMemo(() => {
     let list = [...products];
     if (selectedCats.length > 0) {
-      list = list.filter((p) => selectedCats.includes(p.category));
+      list = list.filter((p) => productCategoryNames(p).some((n) => selectedCats.includes(n)));
     }
     if (selectedSizes.length > 0) {
       list = list.filter((p) => p.sizes.some((s) => selectedSizes.includes(s)));
@@ -754,7 +758,7 @@ function ShopContentInner({
     candidates.sort((a, b) => b.name.length - a.name.length);
     const category = candidates[0];
 
-    const inCat = products.filter((p) => p.category === category.name);
+    const inCat = products.filter((p) => productInCategory(p, category.name));
     const count = inCat.reduce((sum, p) => sum + 1 + (p.variant_list?.length ?? 0), 0);
     // Only worth showing if there's genuinely more to see than what the
     // narrower search already returned.

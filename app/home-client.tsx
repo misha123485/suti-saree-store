@@ -19,6 +19,7 @@ import HomepageGrid from '@/components/home/homepage-grid';
 import HeroBannerCarousel from '@/components/home/hero-banner-carousel';
 import { Button } from '@/components/ui/button';
 import { toPublicMediaUrl } from '@/lib/media-url';
+import { productInCategory } from '@/lib/category-utils';
 
 interface HomeClientProps {
   products: Product[];
@@ -63,7 +64,7 @@ export default function HomeClient({
   const categoryThumbs = useMemo(() => {
     const map = new Map<string, string | undefined>();
     for (const c of categories) {
-      const inCat = products.filter((p) => p.category === c.name);
+      const inCat = products.filter((p) => productInCategory(p, c.name));
       const best = inCat.find((p) => p.featured) || inCat[0];
       map.set(c.id, best?.images?.[0]);
     }
@@ -76,7 +77,7 @@ export default function HomeClient({
   const categoryCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of categories) {
-      map.set(c.id, products.filter((p) => p.category === c.name).length);
+      map.set(c.id, products.filter((p) => productInCategory(p, c.name)).length);
     }
     return map;
   }, [categories, products]);

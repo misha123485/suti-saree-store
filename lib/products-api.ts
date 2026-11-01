@@ -180,13 +180,18 @@ export async function fetchProducts(): Promise<Product[]> {
  * check needs, and this fetch runs on every product page view.
  */
 export async function fetchCategoryPrices(category: string): Promise<number[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('price')
-    .eq('category_name', category)
-    .eq('approval_status', 'live');
-  if (error) throw error;
-  return (data ?? []).map((row: { price: number }) => row.price);
+  // Primary category OR any of its category_names (multi-category products).
+  const [primary, secondary] = await Promise.all([
+    supabase.from('products').select('id, price').eq('category_name', category).eq('approval_status', 'live'),
+    supabase.from('products').select('id, price').contains('category_names', [category]).eq('approval_status', 'live'),
+  ]);
+  if (primary.error) throw primary.error;
+  if (secondary.error) throw secondary.error;
+  const byId = new Map<string, number>();
+  for (const row of [...(primary.data ?? []), ...(secondary.data ?? [])] as { id: string; price: number }[]) {
+    byId.set(row.id, row.price);
+  }
+  return Array.from(byId.values());
 }
 
 export async function fetchProductBySlug(slug: string): Promise<Product | null> {
