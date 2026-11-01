@@ -1,4 +1,5 @@
 import { formatINR } from './format';
+import { formatMinor } from './intl-api';
 import { toPublicMediaUrl } from './media-url';
 import { getSupabaseAdmin } from './supabase-admin';
 import { getOrCreateReviewToken } from './review-link-tokens';
@@ -203,6 +204,29 @@ function paymentLabel(method?: string | null): string {
   return 'Paid Online';
 }
 
+const escHtml = (v: unknown) =>
+  String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+/** Plain name/size/qty list (no INR prices) for international emails. */
+function intlItemsList(items: any[]) {
+  if (!items?.length) return '';
+  return `<ul style="padding-left:18px;font-size:14px;">${items
+    .map((it) => `<li>${escHtml(it.product_name || it.name || 'Item')}${it.size ? ` (Size: ${escHtml(it.size)})` : ''} × ${Number(it.quantity) || 1}</li>`)
+    .join('')}</ul>`;
+}
+
+/** DAP/DDP duty rule + international return rule, shown in every international customer email. */
+function intlDutyBlock(dutyMode?: string | null, returnDays?: number | null) {
+  const duty =
+    dutyMode === 'DDP'
+      ? `<p style="font-size:13px;color:#4a3d34;">Import duties and taxes are <strong>included</strong> in your order total.</p>`
+      : `<p style="font-size:13px;color:#4a3d34;background:#fff8e6;border:1px solid #f0dca8;border-radius:6px;padding:10px 12px;"><strong>Duties &amp; taxes:</strong> import duty, VAT/GST and customs fees of your country are <strong>not included</strong> and must be paid by you on delivery. They are set by your country&rsquo;s customs and we cannot control or refund them.</p>`;
+  const ret = returnDays
+    ? `<p style="font-size:13px;color:#6b5f57;">Returns: accepted within <strong>${returnDays} days</strong> of delivery for unused items with tags. Duties, taxes and original shipping are non-refundable except for wrong or defective items. Refunds go to your original card.</p>`
+    : '';
+  return duty + ret;
+}
+
 export function orderConfirmationEmail(order: {
   id: string;
   customer_name?: string;
@@ -215,6 +239,8 @@ export function orderConfirmationEmail(order: {
   // Partial Pay only: advance already paid online, balance to pay on delivery.
   advance_amount?: number;
   balance_due?: number;
+  // International orders (Phase 6): total in the charge currency + duty/return notice. Absent = India email, unchanged.
+  intl?: { currency: string; amountMinor: number; dutyMode?: string | null; returnDays?: number | null };
 }) {
   const codConfirm = order.payment_method === 'cod' && !!order.cod_confirm_url;
   const subject = codConfirm
@@ -229,11 +255,12 @@ export function orderConfirmationEmail(order: {
   const html = wrapper(`
     <h2 style="margin-top:0; color:${BRAND_COLOR};">Thank you for your order, ${order.customer_name || 'there'}!</h2>
     <p>We've received your order <strong>#${order.id.slice(0, 8)}</strong>${codConfirm ? '.' : " and it's being prepared."}</p>
-    ${itemsTable(order.items)}
-    <p style="text-align:right; font-size:16px; font-weight:bold;">Total: ${formatINR(order.total_amount)}</p>
+    ${order.intl ? intlItemsList(order.items) : itemsTable(order.items)}
+    <p style="text-align:right; font-size:16px; font-weight:bold;">Total: ${order.intl ? `${formatMinor(order.intl.amountMinor, order.intl.currency)} ${order.intl.currency}` : formatINR(order.total_amount)}</p>
     <p style="font-size:13px; color:#6b5f57;">
-      Payment method: ${paymentLabel(order.payment_method)}
+      Payment method: ${order.intl ? 'Card (Stripe)' : paymentLabel(order.payment_method)}
     </p>
+    ${order.intl ? intlDutyBlock(order.intl.dutyMode, order.intl.returnDays) : ''}
     ${
       order.payment_method === 'partial'
         ? `<div style="margin:16px 0; padding:14px 16px; border:1px solid #d5ecd8; background:#f0f9f1; border-radius:8px; font-size:14px; color:#1a4d2b; line-height:1.7;">
@@ -498,6 +525,63 @@ export function orderShippedEmail(order: {
       </a>
     </p>
     <p style="font-size:13px; color:#6b5f57; text-align:center;">No login needed — this works for guest orders too.</p>
+  `);
+  return { subject, html };
+}
+
+// ---------------------------------------------------------------------------
+// International shipments (Phase 6)
+// ---------------------------------------------------------------------------
+// Sent when an international parcel is dispatched. Always states the duty rule
+// (DAP: buyer pays import duty/VAT; DDP: already included) and the international
+// return window so there are no surprises at customs.
+export function orderShippedInternationalEmail(order: {
+  id: string;
+  customer_name?: string;
+  courier_name: string;
+  awb: string;
+  tracking_url?: string | null;
+  country_name?: string | null;
+  duty_mode?: 'DAP' | 'DDP' | string | null;
+  eta_min_days?: number | null;
+  eta_max_days?: number | null;
+  return_days?: number | null;
+  shipped_items?: any[];
+  parcel_no?: number | null;
+  is_partial?: boolean;
+}) {
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+  const shortId = order.id.slice(0, 8).toUpperCase();
+  const subject = order.is_partial
+    ? `Part of your order has shipped — #${shortId}`
+    : `Your international order has shipped — #${shortId}`;
+  const eta =
+    order.eta_min_days && order.eta_max_days
+      ? `<p>Estimated delivery: <strong>${order.eta_min_days}–${order.eta_max_days} days</strong> from dispatch${order.country_name ? ` to ${esc(order.country_name)}` : ''}.</p>`
+      : '';
+  const dutyBlock =
+    order.duty_mode === 'DDP'
+      ? `<p style="font-size:13px;color:#4a3d34;">Import duties and taxes are <strong>already included</strong> in your order — nothing more to pay on delivery.</p>`
+      : `<p style="font-size:13px;color:#4a3d34;background:#fff8e6;border:1px solid #f0dca8;border-radius:6px;padding:10px 12px;">
+          <strong>Duties &amp; taxes:</strong> import duty, VAT/GST and customs fees of your country are <strong>not included</strong> in your order total.
+          They are charged by the courier / customs authority and must be paid by you on delivery. Amounts vary by country and we cannot control or refund them.
+        </p>`;
+  const returns = order.return_days
+    ? `<p style="font-size:13px;color:#6b5f57;">Returns: international returns are accepted within <strong>${order.return_days} days</strong> of delivery for unused items with tags. See our Returns &amp; Exchange page for details; duties, taxes and original shipping are non-refundable except for wrong or defective items.</p>`
+    : '';
+  const link = order.tracking_url && /^https?:\/\//i.test(order.tracking_url) ? order.tracking_url : '';
+  const html = wrapper(`
+    <h2 style="margin-top:0; color:${BRAND_COLOR};">Good news, ${esc(order.customer_name || 'there')} — it's on the way!</h2>
+    <p>${order.is_partial ? `Parcel ${order.parcel_no ?? ''} of your order` : 'Your order'} <strong>#${shortId}</strong> has been dispatched via <strong>${esc(order.courier_name)}</strong>.</p>
+    <p style="font-size:16px;"><strong>Tracking number (AWB):</strong> ${esc(order.awb)}</p>
+    ${link ? `<p style="text-align:center;margin:16px 0;"><a href="${esc(link)}" style="background:${BRAND_COLOR}; color:#fff; padding: 12px 28px; text-decoration:none; border-radius: 4px; font-size: 14px; display:inline-block;">Track with ${esc(order.courier_name)}</a></p>` : ''}
+    ${eta}
+    ${order.shipped_items?.length ? `<ul style="padding-left:18px;font-size:14px;">${order.shipped_items.map((it: any) => `<li>${esc(it.product_name || it.name || 'Item')}${it.size ? ` (Size: ${esc(it.size)})` : ''} × ${Number(it.quantity) || 1}</li>`).join('')}</ul>` : ''}
+    ${dutyBlock}
+    ${returns}
+    <p style="text-align:center; margin-top: 16px;">
+      <a href="${process.env.NEXT_PUBLIC_SITE_URL || ''}/track/${order.id}" style="color:${BRAND_COLOR}; font-size: 13px;">Order status page</a>
+    </p>
   `);
   return { subject, html };
 }

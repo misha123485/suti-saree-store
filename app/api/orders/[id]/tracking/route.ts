@@ -10,12 +10,49 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const { data: order, error } = await supabase
     .from('orders')
-    .select('tracking_number, courier_name, status, items')
+    .select('tracking_number, courier_name, status, items, is_international, country_code, intl_courier, intl_awb, intl_tracking_url, intl_dispatched_at')
     .eq('id', params.id)
     .single();
 
   if (error || !order) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  }
+
+  // ---- International orders: external courier, no Delhivery lookup ----------------------
+  if (order.is_international) {
+    const cc = String(order.country_code || '').toUpperCase();
+    const [{ data: intlRows }, { data: zone }] = await Promise.all([
+      supabase.from('order_shipments').select('*').eq('order_id', params.id).order('shipment_no', { ascending: true }),
+      supabase.from('shipping_zones').select('eta_min_days, eta_max_days').contains('countries', [cc]).eq('is_active', true).limit(1).maybeSingle(),
+    ]);
+    const safe = (u: unknown) => (typeof u === 'string' && /^https?:\/\//i.test(u) ? u : null);
+    const parcels = (intlRows ?? []).map((row: any) => ({
+      id: row.id,
+      shipment_no: row.shipment_no,
+      waybill: row.waybill,
+      courier_name: row.courier_name,
+      tracking_url: safe(row.tracking_url),
+      dispatched_at: row.dispatched_at ?? row.created_at,
+      items: row.items,
+      is_partial: row.is_partial,
+    }));
+    const items = Array.isArray(order.items) ? order.items : [];
+    const shippedIdx = new Set<number>();
+    (intlRows ?? []).forEach((r: any) => (r.item_indexes || []).forEach((i: number) => shippedIdx.add(i)));
+    const last = (intlRows ?? [])[(intlRows ?? []).length - 1] as any;
+    return NextResponse.json({
+      international: true,
+      tracked: false,
+      orderStatus: order.status,
+      courier: order.intl_courier || order.courier_name || null,
+      waybill: order.intl_awb || order.tracking_number || null,
+      trackingUrl: safe(order.intl_tracking_url),
+      dispatchedAt: order.intl_dispatched_at ?? null,
+      eta: zone ? { minDays: zone.eta_min_days, maxDays: zone.eta_max_days } : null,
+      shipments: parcels,
+      remainingItems: items.filter((_: any, i: number) => !shippedIdx.has(i)),
+      nextLot: last?.is_partial ? { minDays: last.next_shipment_min_days, maxDays: last.next_shipment_max_days } : null,
+    });
   }
 
   // Table may not exist yet if the migration hasn't been applied -> ignore the error.

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getCurrentUser } from '@/lib/supabase-server-auth';
 import { generateInvoicePdf } from '@/lib/invoice-pdf';
+import { generateExportInvoicePdf } from '@/lib/export-invoice-pdf';
+import { normalizeExportDetails } from '@/lib/intl-api';
 import { DEFAULT_LOYALTY_SETTINGS, type LoyaltySettings } from '@/lib/loyalty-api';
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -40,6 +42,60 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       }
     }
     // else: guest order (user_id is null) -- proceed, no login required.
+
+    // International orders get the EXPORT invoice (LUT, IEC, HS codes, charge currency + INR).
+    // export_details is admin-only in the settings table, so it is read here with the service role.
+    if (order.is_international) {
+      const [{ data: storeRow }, { data: exportRow }] = await Promise.all([
+        supabase.from('settings').select('value').eq('key', 'store_info').maybeSingle(),
+        supabase.from('settings').select('value').eq('key', 'export_details').maybeSingle(),
+      ]);
+      const storeInfo = (storeRow?.value as Record<string, string>) || {};
+      const exp = normalizeExportDetails(exportRow?.value as any);
+      const bytes = await generateExportInvoicePdf(
+        {
+          id: order.id,
+          created_at: order.created_at,
+          status: order.status,
+          items: Array.isArray(order.items) ? order.items : [],
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          customer_phone: order.customer_phone,
+          shipping_address: order.shipping_address,
+          total_amount: Number(order.total_amount) || 0,
+          intl_shipping_inr: order.intl_shipping_inr,
+          coupon_discount: order.coupon_discount,
+          country_code: order.country_code,
+          charge_currency: order.charge_currency || 'USD',
+          charge_amount_minor: Number(order.charge_amount_minor) || 0,
+          fx_rate_used: order.fx_rate_used,
+          duty_mode: order.duty_mode,
+          export_hs_code: order.export_hs_code,
+          intl_courier: order.intl_courier,
+          intl_awb: order.intl_awb,
+        },
+        {
+          name: storeInfo.name,
+          address: storeInfo.address,
+          gstin: exp.gstin || storeInfo.gstin,
+          support_email: storeInfo.support_email,
+          support_phone: storeInfo.support_phone,
+          iec: exp.iec,
+          lut_number: exp.lut_number,
+          lut_date: exp.lut_date,
+          ad_code: exp.ad_code,
+          default_hs_code: exp.default_hs_code,
+        }
+      );
+      return new NextResponse(Buffer.from(bytes), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="export-invoice-${order.id.slice(0, 8)}.pdf"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
 
     const [{ data: storeSetting }, { data: loyaltySettingRow }] = await Promise.all([
       supabase.from('settings').select('value').eq('key', 'store_info').maybeSingle(),

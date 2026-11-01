@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Truck, PackageCheck, Loader2, RefreshCw, MapPin, Clock } from 'lucide-react';
+import { Truck, PackageCheck, Loader2, RefreshCw, MapPin, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { nextLotPhrase } from '@/lib/shipments';
 
@@ -32,7 +32,23 @@ interface ShipmentTracking extends ParcelTracking {
   is_partial?: boolean;
 }
 
+interface IntlParcel {
+  id: string;
+  shipment_no: number;
+  waybill: string;
+  courier_name?: string | null;
+  tracking_url?: string | null;
+  dispatched_at?: string | null;
+  items?: any[];
+  is_partial?: boolean;
+}
+
 interface TrackingResponse extends ParcelTracking {
+  // International orders (Phase 6): courier link instead of live Delhivery scans.
+  international?: boolean;
+  trackingUrl?: string | null;
+  dispatchedAt?: string | null;
+  eta?: { minDays?: number | null; maxDays?: number | null } | null;
   orderStatus?: string;
   shipments?: ShipmentTracking[];
   remainingItems?: any[];
@@ -149,6 +165,57 @@ export default function OrderTracking({
           <Truck className="h-4 w-4" />
           Your order hasn't been dispatched yet. Tracking details will appear here once it ships.
         </div>
+      </div>
+    );
+  }
+
+  // ---- International: one card per parcel with the courier's own tracking link ----
+  if (data?.international) {
+    const parcels = ((data.shipments ?? []) as unknown as IntlParcel[]).length
+      ? ((data.shipments ?? []) as unknown as IntlParcel[])
+      : [
+          {
+            id: 'main',
+            shipment_no: 1,
+            waybill: data.waybill || initialTrackingNumber,
+            courier_name: data.courier || initialCourierName,
+            tracking_url: data.trackingUrl,
+            dispatched_at: data.dispatchedAt,
+          } as IntlParcel,
+        ];
+    const eta = data.eta?.minDays && data.eta?.maxDays ? `${data.eta.minDays}–${data.eta.maxDays} days from dispatch` : null;
+    const rest = data.remainingItems ?? [];
+    return (
+      <div className="space-y-3">
+        {parcels.map((p) => (
+          <div key={p.id} className="rounded-lg border border-border/60 bg-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-medium">
+                  {parcels.length > 1 || p.is_partial ? `Parcel ${p.shipment_no} · ` : ''}Courier: {p.courier_name || 'International courier'}
+                </p>
+                <p className="text-xs text-muted-foreground">Tracking #: {p.waybill}</p>
+                {p.dispatched_at && (
+                  <p className="text-xs text-muted-foreground">Dispatched: {new Date(p.dispatched_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                )}
+              </div>
+              {p.tracking_url && (
+                <Button asChild size="sm" variant="outline" className="gap-1.5">
+                  <a href={p.tracking_url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5" /> Track on courier site
+                  </a>
+                </Button>
+              )}
+            </div>
+            <ItemChips items={p.items} />
+          </div>
+        ))}
+        {eta && <p className="text-xs text-muted-foreground">Estimated delivery: {eta}. Import duties/taxes (if any) are collected by the courier on delivery.</p>}
+        {rest.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900/90">
+            {rest.length} item{rest.length > 1 ? 's' : ''} will ship {nextLotPhrase(data.nextLot?.minDays, data.nextLot?.maxDays)} — we will email you the tracking number.
+          </div>
+        )}
       </div>
     );
   }

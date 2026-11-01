@@ -4,7 +4,7 @@ import { verifyAdminToken, ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import {
   buildReport, monthRangeIst, sellerStateCodeFromGstin, csvB2cs, csvHsn, csv3b, csvOrders,
-  estimateItc, summariseItc, DEFAULT_ITC_DEFAULTS,
+  estimateItc, summariseItc, DEFAULT_ITC_DEFAULTS, buildExportsReport, csvExports,
   type GstOrder, type GstProduct, type GstReturn, type GstConfig, type ItcDefaults, type ItcEntry,
 } from '@/lib/gst-report';
 
@@ -17,7 +17,7 @@ async function requireAdmin() {
 }
 
 const ORDER_COLS =
-  'id, created_at, status, payment_method, total_amount, gift_card_discount, shipping_charge, gst_amount, items, shipping_address, is_reseller_order, delivery_status, customer_name, razorpay_payment_id, advance_amount, tracking_number';
+  'id, created_at, status, payment_method, total_amount, gift_card_discount, shipping_charge, gst_amount, items, shipping_address, is_reseller_order, delivery_status, customer_name, razorpay_payment_id, advance_amount, tracking_number, is_international, country_code, charge_currency, charge_amount_minor, fx_rate_used, intl_awb, export_hs_code';
 
 async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
   const out: T[] = [];
@@ -64,19 +64,23 @@ export async function GET(req: Request) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return NextResponse.json({ error: 'month must be YYYY-MM' }, { status: 400 });
     const { fromIso, toIso } = monthRangeIst(month);
 
-    const orders = await fetchAll<GstOrder>((f, t) =>
+    const allOrders = await fetchAll<GstOrder>((f, t) =>
       supabase.from('orders').select(ORDER_COLS).gte('created_at', fromIso).lt('created_at', toIso).order('created_at').range(f, t)
     );
-    const returns = await fetchAll<GstReturn>((f, t) =>
+    // Export (international) orders are zero-rated under LUT: they must NOT mix into domestic GST liability.
+    const orders = allOrders.filter((o) => !o.is_international);
+    const exportsReport = buildExportsReport(allOrders);
+    const allReturns = await fetchAll<GstReturn>((f, t) =>
       supabase.from('returns').select('id, order_id, type, status, refund_amount, resolved_at, created_at')
         .in('status', ['refunded', 'completed']).gte('resolved_at', fromIso).lt('resolved_at', toIso).range(f, t)
     );
-    const returnOrderIds = Array.from(new Set(returns.map((r) => r.order_id)));
+    const returnOrderIds = Array.from(new Set(allReturns.map((r) => r.order_id)));
     const returnOrders = new Map<string, GstOrder>();
     for (let i = 0; i < returnOrderIds.length; i += 200) {
       const { data } = await supabase.from('orders').select(ORDER_COLS).in('id', returnOrderIds.slice(i, i + 200));
       (data ?? []).forEach((o: any) => returnOrders.set(o.id, o));
     }
+    const returns = allReturns.filter((r) => !returnOrders.get(r.order_id)?.is_international);
     const products = new Map<string, GstProduct>();
     (await fetchAll<GstProduct>((f, t) => supabase.from('products').select('id, name, gst_rate, hsn_code').range(f, t))).forEach((p) => products.set(p.id, p));
 
@@ -85,6 +89,15 @@ export async function GET(req: Request) {
     const fmt = url.searchParams.get('format');
     if (fmt === 'csv') {
       const type = url.searchParams.get('type');
+      if (type === 'exports') {
+        return new NextResponse('\uFEFF' + csvExports(exportsReport), {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="gst-exports-lut-${month}.csv"`,
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
       const body = type === 'hsn' ? csvHsn(report) : type === '3b' ? csv3b(report) : type === 'orders' ? csvOrders(report) : csvB2cs(report);
       return new NextResponse('\uFEFF' + body, {
         headers: {
@@ -105,7 +118,7 @@ export async function GET(req: Request) {
     const summary = summariseItc(entries, { igst: report.net.igst, cgst: report.net.cgst, sgst: report.net.sgst });
     const itc = { entries, defaults: itcDefaults, factoryDefaults: DEFAULT_ITC_DEFAULTS, estimate, summary, tableMissing: itcMissing };
 
-    return NextResponse.json({ month, gstin, storeName: store.name ?? '', sellerStateCode: cfg.sellerStateCode, report, itc }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ month, gstin, storeName: store.name ?? '', sellerStateCode: cfg.sellerStateCode, report, exports: exportsReport, itc }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('[gst-report] failed', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to build GST report' }, { status: 500 });

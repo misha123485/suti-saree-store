@@ -5,7 +5,7 @@ import { AlertTriangle, Download, Loader2, RefreshCw, Save } from 'lucide-react'
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { GstReport } from '@/lib/gst-report';
+import type { GstReport, ExportsReport } from '@/lib/gst-report';
 import GstItcSection, { type ItcPayload } from './gst-itc-section';
 
 const inr = (n: number) => '₹' + (n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -15,7 +15,7 @@ const thisMonth = () => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
-interface ReportResponse { month: string; gstin: string; storeName: string; sellerStateCode: string | null; report: GstReport; itc: ItcPayload }
+interface ReportResponse { month: string; gstin: string; storeName: string; sellerStateCode: string | null; report: GstReport; exports?: ExportsReport; itc: ItcPayload }
 interface ProductRow { id: string; name: string; gst_rate: number | null; hsn_code: string | null }
 
 const th = 'px-3 py-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap';
@@ -160,6 +160,29 @@ export default function GstReportPanel() {
             <Card label="Taxable value (net)" value={inr(r.net.taxable)} sub={`after ${inr(r.creditNotes.taxable)} returns`} />
             <Card label="GST payable (net)" value={inr(r.net.totalTax)} sub={`IGST ${inr(r.net.igst)} · CGST ${inr(r.net.cgst)} · SGST ${inr(r.net.sgst)}`} />
           </div>
+
+          {data.exports && (
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold">Exports (LUT) — zero-rated, not part of the GST above</h3>
+                  <p className="text-xs text-muted-foreground">
+                    International orders supplied this month: {data.exports.count} · Value {inr(data.exports.totalInr)} · IGST ₹0 (export under LUT). Report these in GSTR-1 export table / GSTR-3B 3.1(b) as per your CA.
+                  </p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <a href={dl('exports')}><Download className="mr-2 h-4 w-4" />Exports (CSV)</a>
+                </Button>
+              </div>
+              {data.exports.byCountry.length > 0 && (
+                <p className="mt-2 text-xs">
+                  {data.exports.byCountry.map((c) => `${c.country}: ${c.orders} order${c.orders > 1 ? 's' : ''} · ${inr(c.inr)}`).join('   |   ')}
+                  {'   —   '}
+                  {data.exports.byCurrency.map((c) => `${c.currency} ${c.display}`).join(', ')}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2">
             {[['b2cs', 'GSTR-1 B2CS (CSV)'], ['hsn', 'GSTR-1 HSN summary (CSV)'], ['3b', 'GSTR-3B figures (CSV)'], ['orders', 'Order-wise (CSV)']].map(([t, label]) => (

@@ -61,16 +61,16 @@ interface LoyaltyPreview {
 const rupee = (n: number) => `Rs. ${Math.round(n).toLocaleString('en-IN')}`;
 
 // Matches the site's brand palette (app/globals.css --primary / --secondary)
-const PRIMARY = rgb(0.45, 0.11, 0.2); // wine/maroon
-const SECONDARY = rgb(0.86, 0.67, 0.18); // gold
-const MUTED = rgb(0.45, 0.45, 0.45);
-const BLACK = rgb(0.12, 0.12, 0.12);
-const CREAM = rgb(0.98, 0.96, 0.92);
-const LINE = rgb(0.85, 0.82, 0.76);
-const WHITE = rgb(1, 1, 1);
+export const PRIMARY = rgb(0.45, 0.11, 0.2); // wine/maroon
+export const SECONDARY = rgb(0.86, 0.67, 0.18); // gold
+export const MUTED = rgb(0.45, 0.45, 0.45);
+export const BLACK = rgb(0.12, 0.12, 0.12);
+export const CREAM = rgb(0.98, 0.96, 0.92);
+export const LINE = rgb(0.85, 0.82, 0.76);
+export const WHITE = rgb(1, 1, 1);
 
 /** Greedy word-wrap using actual glyph widths, capped at maxLines (last line ellipsized). */
-function wrapText(text: string, font: PDFFont, size: number, maxWidth: number, maxLines = 2): string[] {
+export function wrapText(text: string, font: PDFFont, size: number, maxWidth: number, maxLines = 2): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = '';
@@ -103,7 +103,7 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number, m
 /** Fetches a product image and embeds it in the doc. Returns null (never
  * throws) on any network/format failure so a broken image URL can't take
  * the whole invoice down -- caller draws a placeholder swatch instead. */
-async function tryEmbedRemoteImage(doc: PDFDocument, url: string | null | undefined): Promise<PDFImage | null> {
+export async function tryEmbedRemoteImage(doc: PDFDocument, url: string | null | undefined): Promise<PDFImage | null> {
   if (!url) return null;
   try {
     const res = await fetch(url);
@@ -130,7 +130,7 @@ async function tryEmbedRemoteImage(doc: PDFDocument, url: string | null | undefi
 
 /** Draws a product image scaled/cropped to fill a square box, or a plain
  * lettered swatch as a graceful fallback when no image was embeddable. */
-function drawImageBox(
+export function drawImageBox(
   page: PDFPage,
   image: PDFImage | null,
   fallbackLetter: string,

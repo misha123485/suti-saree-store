@@ -39,7 +39,19 @@ export async function runOrderConfirmationSideEffects(orderId: string) {
       const token = await getOrCreateCodConfirmToken(order.id);
       if (token) confirmUrl = codConfirmUrl(token);
     }
+    // International orders: total in the charge currency + duty / return notice (Phase 6).
+    let intl: { currency: string; amountMinor: number; dutyMode?: string | null; returnDays?: number | null } | undefined;
+    if (order.is_international) {
+      const { data: intlSetting } = await supabase.from('settings').select('value').eq('key', 'international_settings').maybeSingle();
+      intl = {
+        currency: String(order.charge_currency || 'USD'),
+        amountMinor: Number(order.charge_amount_minor) || 0,
+        dutyMode: order.duty_mode,
+        returnDays: Number((intlSetting?.value as any)?.return_window_days_intl) || 7,
+      };
+    }
     const { subject, html } = orderConfirmationEmail({
+      intl,
       id: order.id,
       customer_name: order.customer_name,
       items: Array.isArray(order.items) ? order.items : [],

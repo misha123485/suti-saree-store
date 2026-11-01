@@ -50,6 +50,8 @@ const STATUS_BORDER_COLOR: Record<string, string> = {
 };
 import DeliveryNotificationTester from '@/components/admin/delivery-notification-tester';
 import { getUnshippedItemIndexes, nextLotPhrase, type OrderShipment } from '@/lib/shipments';
+import IntlShipmentModal, { type IntlShipmentPayload } from '@/components/admin/intl-shipment-modal';
+import { formatMinor } from '@/lib/intl-api';
 import CreateShipmentModal, {
   type CreateShipmentPayload,
 } from '@/components/admin/create-shipment-modal';
@@ -118,6 +120,17 @@ type Order = {
   // alone isn't, since it keeps moving past 'paid' for every order that
   // progresses normally.
   razorpay_payment_id?: string | null;
+  // International orders (Phase 1/5/6) -- all null/false for India orders.
+  is_international?: boolean | null;
+  country_code?: string | null;
+  charge_currency?: string | null;
+  charge_amount_minor?: number | null;
+  duty_mode?: string | null;
+  payment_gateway?: string | null;
+  export_hs_code?: string | null;
+  intl_courier?: string | null;
+  intl_tracking_url?: string | null;
+  stripe_payment_intent_id?: string | null;
   _return_status?: string | null;
   _return_refund_status?: string | null;
   shipping_address?: any;
@@ -437,8 +450,60 @@ export default function OrdersPanel() {
     }
   };
 
+  // ---- International shipments (Phase 6): no courier API, admin enters the AWB ----
+  const [intlShipOrderId, setIntlShipOrderId] = useState<string | null>(null);
+  const [intlSaving, setIntlSaving] = useState(false);
+  const [intlDefaultHs, setIntlDefaultHs] = useState('');
+
+  const openIntlShipModal = async (id: string) => {
+    setIntlShipOrderId(id);
+    try {
+      const res = await fetch('/api/admin/international', { cache: 'no-store' });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.export_details?.default_hs_code) setIntlDefaultHs(String(body.export_details.default_hs_code));
+    } catch {
+      /* default HS code is optional */
+    }
+  };
+
+  const confirmIntlShipment = async (payload: IntlShipmentPayload) => {
+    if (!intlShipOrderId) return;
+    setIntlSaving(true);
+    try {
+      const res = await fetch('/api/admin/international/ship', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: intlShipOrderId, ...payload }),
+      });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.success) {
+        toast.success(
+          body.partial
+            ? `Parcel ${body.shipment?.shipment_no ?? ''} saved — AWB ${body.waybill}. ${body.remaining_count} item(s) still to ship.`
+            : `Marked shipped — AWB ${body.waybill}. Customer emailed.`
+        );
+        setIntlShipOrderId(null);
+        setPendingStatusAfterShip(null);
+        await load();
+      } else {
+        toast.error(body?.error || `Failed to save shipment (HTTP ${res.status})`);
+      }
+    } catch {
+      toast.error('Failed to save shipment');
+    } finally {
+      setIntlSaving(false);
+    }
+  };
+
   // Opens the box/weight/mode popup instead of hitting the Delhivery API directly.
-  const openShipmentModal = (id: string) => setShipmentModalOrderId(id);
+  // International orders never touch Delhivery: they get the AWB form instead.
+  const openShipmentModal = (id: string) => {
+    if (orders.find((o) => o.id === id)?.is_international) {
+      void openIntlShipModal(id);
+      return;
+    }
+    setShipmentModalOrderId(id);
+  };
 
   const confirmShipmentFromModal = async (payload: CreateShipmentPayload) => {
     if (!shipmentModalOrderId) return;
@@ -861,6 +926,24 @@ export default function OrdersPanel() {
         })()}
         confirming={creatingShipmentFor === shipmentModalOrderId}
         onConfirm={confirmShipmentFromModal}
+      />
+
+      <IntlShipmentModal
+        open={!!intlShipOrderId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIntlShipOrderId(null);
+            setPendingStatusAfterShip(null);
+          }
+        }}
+        orderLabel={`#${(intlShipOrderId ?? '').slice(0, 8).toUpperCase()}`}
+        countryCode={orders.find((o) => o.id === intlShipOrderId)?.country_code ?? undefined}
+        dutyMode={orders.find((o) => o.id === intlShipOrderId)?.duty_mode ?? undefined}
+        items={orders.find((o) => o.id === intlShipOrderId)?.items ?? []}
+        shipments={orders.find((o) => o.id === intlShipOrderId)?._shipments ?? []}
+        defaultHsCode={orders.find((o) => o.id === intlShipOrderId)?.export_hs_code || intlDefaultHs}
+        confirming={intlSaving}
+        onConfirm={confirmIntlShipment}
       />
 
       {/* Bulk delete confirm */}
@@ -1755,6 +1838,20 @@ function OrderRow({
         </td>
         <td className={`px-4 py-3 align-top max-lg:col-span-2 max-lg:block max-lg:p-0`}>
           <div className="text-sm font-medium">{order.customer_name || 'Guest'}</div>
+          {order.is_international && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] font-semibold">
+              <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-indigo-800">INTL · {order.country_code}</span>
+              {order.payment_gateway === 'stripe' && (
+                <span className="rounded bg-violet-100 px-1.5 py-0.5 text-violet-800">Stripe</span>
+              )}
+              {order.charge_currency && order.charge_amount_minor != null && (
+                <span className="rounded bg-muted px-1.5 py-0.5">
+                  {formatMinor(Number(order.charge_amount_minor), order.charge_currency)} {order.charge_currency}
+                </span>
+              )}
+              {order.duty_mode && <span className="rounded bg-muted px-1.5 py-0.5">{order.duty_mode}</span>}
+            </div>
+          )}
           {order.customer_email && (
             <div className="text-xs text-muted-foreground">{order.customer_email}</div>
           )}
@@ -2070,7 +2167,7 @@ function OrderRow({
               className="gap-1.5"
             >
               {creatingShipment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
-              Create Shipment
+              {order.is_international ? 'Add International AWB' : 'Create Shipment'}
             </Button>
           )}
         </td>

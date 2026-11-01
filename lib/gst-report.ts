@@ -59,6 +59,9 @@ export interface GstOrder {
   gst_amount: number | null; items: GstOrderItem[] | null; shipping_address: { state?: string } | null;
   is_reseller_order?: boolean | null; delivery_status?: string | null; customer_name?: string | null;
   razorpay_payment_id?: string | null; advance_amount?: number | null; tracking_number?: string | null;
+  // Phase 6: export orders are reported separately (see buildExportsReport) and never enter buildReport().
+  is_international?: boolean | null; country_code?: string | null; charge_currency?: string | null;
+  charge_amount_minor?: number | null; fx_rate_used?: number | null; intl_awb?: string | null; export_hs_code?: string | null;
 }
 export interface GstProduct { id: string; name?: string; gst_rate: number | null; hsn_code: string | null }
 export interface GstReturn { id: string; order_id: string; type: string; status: string; refund_amount: number | null; resolved_at: string | null; created_at: string }
@@ -340,4 +343,68 @@ export function summariseItc(entries: ItcEntry[], output: Head): ItcSummary {
   use('sgst', 'sgst'); use('sgst', 'igst');
   const tot = (h: Head) => r2(h.igst + h.cgst + h.sgst);
   return { eligible, waiting, eligibleTotal: tot(eligible), waitingTotal: tot(waiting), output, cashToPay: L, carryForward: C, cashTotal: tot(L) };
+}
+
+// ---------- Exports (LUT) -- zero-rated supplies, kept OUT of the domestic GST liability ----------
+export interface ExportRow {
+  invoiceNo: string; orderId: string; date: string; country: string; currency: string;
+  amountMinor: number; amountDisplay: string; inrValue: number; fxRate: number | null; awb: string; hsCode: string;
+}
+export interface ExportsReport {
+  rows: ExportRow[];
+  count: number;
+  totalInr: number; // zero-rated taxable value (shipping included, no IGST)
+  byCountry: Array<{ country: string; orders: number; inr: number }>;
+  byCurrency: Array<{ currency: string; orders: number; display: string }>;
+}
+
+const exportDigits = (cur: string) => (['OMR', 'BHD', 'KWD'].includes(cur.toUpperCase()) ? 3 : 2);
+const istDate = (iso: string) => new Date(new Date(iso).getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+
+/** Export orders = is_international orders that were actually supplied (paid / shipped / delivered). */
+export function buildExportsReport(orders: GstOrder[]): ExportsReport {
+  const rows: ExportRow[] = [];
+  for (const o of orders) {
+    if (!o.is_international || !SUPPLY_STATUSES.includes(o.status)) continue;
+    const cur = String(o.charge_currency || 'USD').toUpperCase();
+    const minor = Math.max(0, Math.round(Number(o.charge_amount_minor) || 0));
+    const d = exportDigits(cur);
+    const hs = o.export_hs_code || (Array.isArray(o.items) ? o.items.find((i) => i?.hsn_code)?.hsn_code : '') || '';
+    rows.push({
+      invoiceNo: `EXP-${o.id.slice(0, 8).toUpperCase()}`,
+      orderId: o.id,
+      date: istDate(o.created_at),
+      country: String(o.country_code || '').toUpperCase(),
+      currency: cur,
+      amountMinor: minor,
+      amountDisplay: (minor / Math.pow(10, d)).toFixed(d),
+      inrValue: r2(Number(o.total_amount) || 0),
+      fxRate: o.fx_rate_used == null ? null : Number(o.fx_rate_used),
+      awb: o.intl_awb || o.tracking_number || '',
+      hsCode: String(hs || ''),
+    });
+  }
+  const c = new Map<string, { orders: number; inr: number }>();
+  const k = new Map<string, { orders: number; minor: number }>();
+  for (const r of rows) {
+    const a = c.get(r.country) ?? { orders: 0, inr: 0 };
+    a.orders += 1; a.inr = r2(a.inr + r.inrValue); c.set(r.country, a);
+    const b = k.get(r.currency) ?? { orders: 0, minor: 0 };
+    b.orders += 1; b.minor += r.amountMinor; k.set(r.currency, b);
+  }
+  return {
+    rows,
+    count: rows.length,
+    totalInr: r2(rows.reduce((t, r) => t + r.inrValue, 0)),
+    byCountry: Array.from(c, ([country, v]) => ({ country, ...v })).sort((a, b) => b.inr - a.inr),
+    byCurrency: Array.from(k, ([currency, v]) => ({ currency, orders: v.orders, display: (v.minor / Math.pow(10, exportDigits(currency))).toFixed(exportDigits(currency)) })),
+  };
+}
+
+export function csvExports(rep: ExportsReport) {
+  return toCsv([
+    ['Invoice No', 'Order ID', 'Date (IST)', 'Country', 'Currency', 'Amount (currency)', 'INR Value', 'FX Rate (INR per 1)', 'AWB', 'HS Code', 'Supply type', 'IGST'],
+    ...rep.rows.map((r) => [r.invoiceNo, r.orderId, r.date, r.country, r.currency, r.amountDisplay, r.inrValue.toFixed(2), r.fxRate == null ? '' : r.fxRate.toFixed(4), r.awb, r.hsCode, 'Export under LUT (zero-rated)', '0.00']),
+    ['TOTAL', '', '', '', '', '', rep.totalInr.toFixed(2), '', '', '', '', '0.00'],
+  ]);
 }
