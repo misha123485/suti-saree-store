@@ -30,8 +30,14 @@ export function useAdminFocus(ready: boolean): string | null {
       router.replace(`/admin?${params.toString()}`, { scroll: false });
     };
 
-    const find = () =>
-      document.querySelector<HTMLElement>(`[data-focus-id="${focusId.replace(/"/g, '')}"]`);
+    // A panel may render both a desktop table row and a mobile card for the
+    // same id (one is display:none) -- pick the one that's actually visible.
+    const find = () => {
+      const all = Array.from(
+        document.querySelectorAll<HTMLElement>(`[data-focus-id="${focusId.replace(/"/g, '')}"]`)
+      );
+      return all.find((el) => el.getClientRects().length > 0) ?? all[0] ?? null;
+    };
 
     const highlight = (el: HTMLElement) => {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });

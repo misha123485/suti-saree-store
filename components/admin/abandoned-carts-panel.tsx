@@ -925,148 +925,12 @@ function CartsList() {
     });
   }, [carts, searchQuery, statusFilter]);
 
-  return (
-    <div className="grid gap-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-border/60 bg-card p-4">
-          <p className="text-xs text-muted-foreground">Active Abandoned Carts</p>
-          <p className="mt-2 text-2xl font-semibold">{activeCount}</p>
-        </div>
-        <div className="rounded-lg border border-border/60 bg-card p-4">
-          <p className="text-xs text-muted-foreground">Recovered</p>
-          <p className="mt-2 text-2xl font-semibold">{recoveredCount}</p>
-        </div>
-        <div className="rounded-lg border border-border/60 bg-card p-4">
-          <p className="text-xs text-muted-foreground">Potential Value</p>
-          <p className="mt-2 text-2xl font-semibold">{formatINR(potentialValue)}</p>
-        </div>
-      </div>
-
-      {!loading && carts.length > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by email…"
-              className="pl-9 pr-8"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-              <SelectTrigger className="w-[170px]">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="recovered">Recovered</SelectItem>
-                <SelectItem value="sent">Email Sent</SelectItem>
-                <SelectItem value="not_contacted">Not Contacted</SelectItem>
-              </SelectContent>
-            </Select>
-            {(searchQuery || statusFilter !== 'all') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                }}
-              >
-                Reset
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-        </div>
-      ) : carts.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center text-muted-foreground">
-          <ShoppingCart className="h-10 w-10" />
-          <p>No abandoned carts yet.</p>
-          <p className="text-sm">
-            Carts show up here once a shopper enters their email at checkout but doesn't complete the order.
-          </p>
-        </div>
-      ) : filteredCarts.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border/60 bg-card px-4 py-12 text-center text-sm text-muted-foreground">
-          No abandoned carts match your search or filter.
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-border/60 bg-card">
-          <table className="w-full table-auto">
-            <thead className="bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3"></th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3">Value</th>
-                <th className="px-4 py-3">Last Activity</th>
-                <th className="px-4 py-3">Recovery</th>
-                <th className="px-4 py-3">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCarts.map((c) => {
-                const stage = c.recovery_stage || 0;
-                const isExpanded = expandedId === c.id;
-                return (
-                  <Fragment key={c.id}>
-                    <tr data-focus-id={c.id} className="border-t">
-                      <td className="px-2 py-3 align-top">
-                        {stage > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setExpandedId(isExpanded ? null : c.id)}
-                            className="text-muted-foreground hover:text-foreground"
-                            aria-label="Toggle email history"
-                          >
-                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 align-top text-sm">
-                        <div>{c.email || '—'}</div>
-                        {c.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
-                        {!!c.prior_order_count && (
-                          <span
-                            className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200"
-                            title={
-                              c.prior_order_last_item
-                                ? `Most recent earlier order: ${c.prior_order_last_item}`
-                                : undefined
-                            }
-                          >
-                            Repeat customer · {c.prior_order_count + 1}
-                            {c.prior_order_count + 1 === 2 ? 'nd' : c.prior_order_count + 1 === 3 ? 'rd' : 'th'} order
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 align-top text-sm text-muted-foreground">
-                        <CartItemsPreview items={c.items} />
-                      </td>
-                      <td className="px-4 py-3 align-top text-sm font-medium">{formatINR(c.cart_value || 0)}</td>
-                      <td className="px-4 py-3 align-top text-sm">
-                        {new Date(c.last_activity_at).toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-4 py-3 align-top text-sm">
-                        <div className="flex flex-col items-start gap-1.5">
+  // Shared by the desktop table and the mobile card list below, so both
+  // always show identical status badges and actions.
+  const renderRecovery = (c: AbandonedCart) => {
+    const stage = c.recovery_stage || 0;
+    return (
+      <div className="flex flex-col items-start gap-1.5">
                           {c.recovered ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
                               <CheckCircle2 className="h-3 w-3" /> Recovered
@@ -1091,9 +955,14 @@ function CartsList() {
                             </span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 align-top text-sm">
-                        {!c.recovered && c.existing_order && !forceContactIds.has(c.id) ? (
+    );
+  };
+
+  const renderActions = (c: AbandonedCart) => {
+    const stage = c.recovery_stage || 0;
+    return (
+      <>
+        {!c.recovered && c.existing_order && !forceContactIds.has(c.id) ? (
                           <div className="max-w-[220px] text-xs text-muted-foreground">
                             <p>
                               Looks like they already placed order{' '}
@@ -1179,6 +1048,155 @@ function CartsList() {
                             })()}
                         </div>
                         )}
+      </>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="rounded-lg border border-border/60 bg-card p-4">
+          <p className="text-xs text-muted-foreground">Active Abandoned Carts</p>
+          <p className="mt-2 text-2xl font-semibold">{activeCount}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-card p-4">
+          <p className="text-xs text-muted-foreground">Recovered</p>
+          <p className="mt-2 text-2xl font-semibold">{recoveredCount}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-card p-4">
+          <p className="text-xs text-muted-foreground">Potential Value</p>
+          <p className="mt-2 text-2xl font-semibold">{formatINR(potentialValue)}</p>
+        </div>
+      </div>
+
+      {!loading && carts.length > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by email…"
+              className="pl-9 pr-8"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 [&>button:first-child]:flex-1 sm:[&>button:first-child]:flex-none">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="recovered">Recovered</SelectItem>
+                <SelectItem value="sent">Email Sent</SelectItem>
+                <SelectItem value="not_contacted">Not Contacted</SelectItem>
+              </SelectContent>
+            </Select>
+            {(searchQuery || statusFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                }}
+              >
+                Reset
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+        </div>
+      ) : carts.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center text-muted-foreground">
+          <ShoppingCart className="h-10 w-10" />
+          <p>No abandoned carts yet.</p>
+          <p className="text-sm">
+            Carts show up here once a shopper enters their email at checkout but doesn't complete the order.
+          </p>
+        </div>
+      ) : filteredCarts.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border/60 bg-card px-4 py-12 text-center text-sm text-muted-foreground">
+          No abandoned carts match your search or filter.
+        </div>
+      ) : (
+        <div className="hidden overflow-hidden rounded-lg border border-border/60 bg-card md:block">
+          <table className="w-full table-auto">
+            <thead className="bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Items</th>
+                <th className="px-4 py-3">Value</th>
+                <th className="px-4 py-3">Last Activity</th>
+                <th className="px-4 py-3">Recovery</th>
+                <th className="px-4 py-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCarts.map((c) => {
+                const stage = c.recovery_stage || 0;
+                const isExpanded = expandedId === c.id;
+                return (
+                  <Fragment key={c.id}>
+                    <tr data-focus-id={c.id} className="border-t">
+                      <td className="px-2 py-3 align-top">
+                        {stage > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="Toggle email history"
+                          >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top text-sm">
+                        <div>{c.email || '—'}</div>
+                        {c.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
+                        {!!c.prior_order_count && (
+                          <span
+                            className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200"
+                            title={
+                              c.prior_order_last_item
+                                ? `Most recent earlier order: ${c.prior_order_last_item}`
+                                : undefined
+                            }
+                          >
+                            Repeat customer · {c.prior_order_count + 1}
+                            {c.prior_order_count + 1 === 2 ? 'nd' : c.prior_order_count + 1 === 3 ? 'rd' : 'th'} order
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-top text-sm text-muted-foreground">
+                        <CartItemsPreview items={c.items} />
+                      </td>
+                      <td className="px-4 py-3 align-top text-sm font-medium">{formatINR(c.cart_value || 0)}</td>
+                      <td className="px-4 py-3 align-top text-sm">
+                        {new Date(c.last_activity_at).toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-4 py-3 align-top text-sm">
+                        {renderRecovery(c)}
+                        </td>
+                      <td className="px-4 py-3 align-top text-sm">
+                        {renderActions(c)}
                       </td>
                     </tr>
                     {isExpanded && (
@@ -1194,6 +1212,63 @@ function CartsList() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Mobile: one card per cart instead of a 7-column table */}
+      {!loading && filteredCarts.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:hidden [&>*]:min-w-0">
+          {filteredCarts.map((c) => {
+            const stage = c.recovery_stage || 0;
+            const isExpanded = expandedId === c.id;
+            return (
+              <div key={c.id} data-focus-id={c.id} className="rounded-lg border border-border/60 bg-card p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="break-all text-sm font-medium">{c.email || '—'}</div>
+                    {c.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
+                    {!!c.prior_order_count && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-200">
+                        Repeat customer · {c.prior_order_count + 1}
+                        {c.prior_order_count + 1 === 2 ? 'nd' : c.prior_order_count + 1 === 3 ? 'rd' : 'th'} order
+                      </span>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-base font-semibold">{formatINR(c.cart_value || 0)}</div>
+                </div>
+
+                <div className="mt-3 text-sm text-muted-foreground">
+                  <CartItemsPreview items={c.items} />
+                </div>
+
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Last activity: {new Date(c.last_activity_at).toLocaleString('en-IN')}
+                </p>
+
+                <div className="mt-3">{renderRecovery(c)}</div>
+
+                <div className="mt-3 border-t pt-3 [&_a]:w-full [&_button]:w-full sm:[&_a]:w-auto sm:[&_button]:w-auto [&>div]:flex-col [&>div]:items-stretch">
+                  {renderActions(c)}
+                </div>
+
+                {stage > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isExpanded ? null : c.id)}
+                    className="mt-3 flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    {isExpanded ? 'Hide email history' : 'Show email history'}
+                  </button>
+                )}
+                {isExpanded && (
+                  <div className="mt-2">
+                    <CartEmailHistory cartId={c.id} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
