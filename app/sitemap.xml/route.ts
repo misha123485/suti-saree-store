@@ -189,10 +189,11 @@ async function buildSitemapEntries(): Promise<SitemapEntry[]> {
     fetchAllRows<
       Pick<ProductRow, 'slug' | 'updated_at' | 'images' | 'name' | 'description' | 'video_url'> & {
         category_name: string;
+        category_names: string[] | null;
       }
     >(
       'products',
-      'slug, updated_at, images, category_name, name, description, video_url',
+      'slug, updated_at, images, category_name, category_names, name, description, video_url',
       (q) => q.eq('approval_status', 'live')
     ),
     fetchAllRows<Pick<CategoryRow, 'slug' | 'name'>>('categories', 'slug, name'),
@@ -249,7 +250,7 @@ async function buildSitemapEntries(): Promise<SitemapEntry[]> {
   // "Submitted URL marked noindex" warning in Search Console. A category
   // rejoins the sitemap automatically on the next build/revalidation once
   // it has a product.
-  const namesWithProducts = new Set(products.map((p) => p.category_name));
+  const namesWithProducts = new Set(products.flatMap((p) => [p.category_name, ...(p.category_names ?? [])]));
   const categoryPages: SitemapEntry[] = categories
     .filter((c) => namesWithProducts.has(c.name))
     .map((c) => ({

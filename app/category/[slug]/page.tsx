@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // out of it still pass equity) without submitting it to Google's index.
   // The page re-qualifies for indexing automatically the moment a product
   // is added, since this check runs fresh on every request/revalidation.
-  const hasProducts = products.some((p) => p.category === category.name);
+  const hasProducts = products.some((p) => p.category === category.name || (p.category_names ?? []).includes(category.name));
 
   return {
     title,
