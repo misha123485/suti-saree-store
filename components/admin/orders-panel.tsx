@@ -27,6 +27,8 @@ import { toast } from 'sonner';
 import { useAdminFocus } from './use-admin-focus';
 import OrderTracking from '@/components/order/order-tracking';
 import OrderStatusHistory from '@/components/admin/order-status-history';
+import { OrderDateTimeline, SupplierOrderControl, SupplierQueue } from '@/components/admin/supplier-order-ui';
+import type { SupplierOrder } from '@/lib/supplier-order';
 
 // Per-status left-border accent so an order's state is readable at a glance
 // while scanning the table, without having to read the dropdown text.
@@ -126,6 +128,9 @@ type Order = {
   // Traffic source + device captured at checkout (lib/attribution.ts,
   // orders.attribution). null/undefined for orders placed before this existed.
   attribution?: OrderAttributionData;
+  // Admin-only: "ordered from supplier (WhatsApp / Meesho)" tracking. See
+  // supabase/migrations/20261101000000_orders_supplier_order.sql.
+  supplier_order?: SupplierOrder | null;
   is_reseller_order?: boolean;
   reseller_base_cost?: number | null;
   reseller_profit?: number | null;
@@ -659,6 +664,7 @@ export default function OrdersPanel() {
 
   return (
     <div className="grid gap-6">
+      <SupplierQueue orders={orders as any} onOpen={(id) => setSearchQuery(id)} />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <div className="rounded-lg border border-border/60 bg-card p-3 sm:p-4">
           <p className="text-xs text-muted-foreground">Total Orders</p>
@@ -1807,11 +1813,12 @@ function OrderRow({
                     : ''}
                 </div>
               )}
+              <SupplierOrderControl order={order as any} onSaved={onReload} />
             </div>
           </div>
         </td>
         <td data-label="Date" className={`px-4 py-3 align-top text-sm ${M_LABEL} max-lg:block max-lg:p-0`}>
-          <div>{order.created_at ? new Date(order.created_at).toLocaleString() : ''}</div>
+          <OrderDateTimeline order={order as any} />
           <SourceChip attribution={order.attribution} />
         </td>
         <td data-label="Total" className={`px-4 py-3 align-top text-sm font-medium ${M_LABEL} max-lg:block max-lg:p-0`}>
