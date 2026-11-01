@@ -47,8 +47,8 @@ function TabBar({
   right?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
+      <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl sm:w-fit border border-border/60 bg-muted/40 p-1">
         <TabButton value="sales" active={active} onChange={onChange} icon={<BarChart3 className="h-4 w-4" />}>
           Sales Analytics
         </TabButton>
@@ -261,7 +261,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
 
   if (loading) {
     return (
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-lg" />
@@ -313,7 +313,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
   };
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 xl:grid-cols-8">
         <SummaryCard
@@ -375,7 +375,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
       </div>
 
       {/* Sales trend + exact order time & price */}
-      <div id="analytics-sales-trend" className="scroll-mt-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+      <div id="analytics-sales-trend" className="min-w-0 scroll-mt-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-serif text-lg font-bold text-primary">Sales Trend & Orders — {rangeLabel}</h3>
         </div>
@@ -403,7 +403,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
               tickFormatter={(d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
               minTickGap={20}
             />
-            <YAxis tick={{ fontSize: 11 }} width={70} tickFormatter={(v) => formatINR(v)} />
+            <YAxis tick={{ fontSize: 10 }} width={56} tickFormatter={(v) => formatINR(v)} />
             <Tooltip content={<SalesTooltip />} />
             <Bar dataKey="revenue" data={dayData as any} fill={BAR_COLOR} radius={[3, 3, 0, 0]} barSize={18} />
             <Scatter dataKey="amount" data={orderScatterData as any} fill={ORDER_DOT_COLOR} />
@@ -411,7 +411,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
         </ResponsiveContainer>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         {/* Top products */}
         <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
           <h3 className="mb-3 font-serif text-lg font-bold text-primary">Top Products — by revenue</h3>
@@ -437,7 +437,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
         </div>
 
         {/* Conversion funnel */}
-        <div id="analytics-conversion-funnel" className="scroll-mt-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+        <div id="analytics-conversion-funnel" className="min-w-0 scroll-mt-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
           <h3 className="mb-3 font-serif text-lg font-bold text-primary">Conversion Funnel — {rangeLabel}</h3>
           <ResponsiveContainer width="100%" height={280}>
             <FunnelChart>
@@ -454,7 +454,7 @@ function SalesPanel({ range, onRangeChange }: { range: SimpleRange; onRangeChang
       </div>
 
       {/* Product performance: Impressions vs Conversion */}
-      <div id="analytics-product-performance" className="scroll-mt-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+      <div id="analytics-product-performance" className="min-w-0 scroll-mt-4 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-serif text-lg font-bold text-primary">Product Performance</h3>
           <div className="flex items-center gap-2">

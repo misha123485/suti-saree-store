@@ -52,7 +52,7 @@ export default function VariantSwitchesPanel() {
 
   if (loading) {
     return (
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-lg" />
@@ -70,7 +70,7 @@ export default function VariantSwitchesPanel() {
   const { topProducts, totalSwitches, rangeDays } = data;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Which colour shoppers switch to on each product page — last {rangeDays} days.
@@ -102,7 +102,7 @@ export default function VariantSwitchesPanel() {
         {topProducts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No colour switches recorded in this period yet.</p>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 gap-4 [&>*]:min-w-0">
             {topProducts.map((p) => (
               <div key={p.productId} className="rounded-lg border border-border/40 p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

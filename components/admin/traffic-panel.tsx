@@ -158,7 +158,7 @@ function RealtimeWidget() {
       ) : !data ? (
         <p className="text-sm text-muted-foreground">Could not load realtime data.</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
           {/* Active count */}
           <div>
             <div className="mb-3 flex items-end gap-2">
@@ -242,14 +242,14 @@ export default function TrafficPanel() {
 
   if (loading) {
     return (
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-lg" />
           ))}
         </div>
         <Skeleton className="h-64 rounded-lg" />
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           <Skeleton className="h-72 rounded-lg" />
           <Skeleton className="h-72 rounded-lg" />
         </div>
@@ -291,7 +291,7 @@ export default function TrafficPanel() {
   const returningUsers = summary.totalUsers - summary.newUsers;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
@@ -404,7 +404,7 @@ export default function TrafficPanel() {
       )}
 
       {tab === 'country' && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           {/* Countries */}
           <div className="rounded-lg border border-border/60 bg-card p-4">
             <div className="mb-3 flex items-center gap-2">

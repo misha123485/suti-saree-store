@@ -60,7 +60,7 @@ export default function SearchInsightsPanel() {
 
   if (loading) {
     return (
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-lg" />
@@ -82,7 +82,7 @@ export default function SearchInsightsPanel() {
   );
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           What shoppers are actually typing into the search box — last {rangeDays} days.
