@@ -61,14 +61,14 @@ export function getTrackingConfig(): TrackingConfig {
 }
 
 /** Fires the Google Ads conversion event for `label`, if an Ads ID + label are configured. */
-export function fireAdsConversion(label: string | undefined, payload: { value?: number; transactionId?: string }): void {
+export function fireAdsConversion(label: string | undefined, payload: { value?: number; transactionId?: string; currency?: string }): void {
   const cfg = getTrackingConfig();
   const gtag = (window as any).gtag;
   if (!cfg.adsId || !label || typeof gtag !== 'function') return;
   gtag('event', 'conversion', {
     send_to: `${cfg.adsId}/${label}`,
     value: payload.value ?? 0,
-    currency: 'INR',
+    currency: payload.currency || 'INR',
     ...(payload.transactionId ? { transaction_id: payload.transactionId } : {}),
   });
 }

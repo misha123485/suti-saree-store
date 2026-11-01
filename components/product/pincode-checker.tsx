@@ -135,7 +135,11 @@ function DeliveryCountdown() {
   );
 }
 
+import { useCountry } from '@/components/country-provider';
+import IntlShipsTo from './intl-ships-to';
+
 export default function PincodeChecker() {
+  const { countryCode } = useCountry();
   const [saved, setSaved] = useState<SavedLocation | null>(null);
   const [editing, setEditing] = useState(false);
   const [pincode, setPincode] = useState('');
@@ -187,6 +191,8 @@ export default function PincodeChecker() {
         return { minDate, maxDate };
       })()
     : null;
+
+  if (countryCode !== 'IN') return <IntlShipsTo />;
 
   return (
     <div className="rounded-lg border border-border/60 bg-card p-4">

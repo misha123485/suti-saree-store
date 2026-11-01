@@ -20,8 +20,13 @@ const ORDER_CUTOFF_LABEL = '2:00 PM';
 const HANDLING_LABEL = '2–3 business days';
 const TRANSIT_LABEL = '3–12 business days';
 
+import { useCountry } from '@/components/country-provider';
+import IntlShipsTo from './intl-ships-to';
+
 export default function DeliveryInfo() {
   const [isOpen, setIsOpen] = useState(false);
+  const { countryCode } = useCountry();
+  if (countryCode !== 'IN') return <IntlShipsTo />;
 
   return (
     <div className="rounded-lg border border-border/60 bg-card p-4">

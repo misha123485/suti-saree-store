@@ -99,6 +99,7 @@ import { computeCheckoutGst } from '@/lib/gst-report';
 import { useIntlConfig } from '@/hooks/use-intl-config';
 import { isValidIntlPhone, isValidIntlPostal, estimateIntlShipping, formatEta } from '@/lib/intl-checkout';
 import { previewInrToMinor, formatMinor } from '@/lib/intl-api';
+import { setDisplayCurrency, getProviderDisplay, restoreProviderDisplay } from '@/lib/intl-pricing';
 
 // All Indian states & union territories, for the Shipping Address "State"
 // dropdown. Pincode auto-fill (via India Post's API) sets this field to
@@ -318,6 +319,25 @@ export default function CheckoutPage() {
   const intlStateOptional = !!selectedIntlCountry && !selectedIntlCountry.requires_state;
   const intlPostalOptional = !!selectedIntlCountry && !selectedIntlCountry.postal_regex;
   const intlDutyMode = intl.settings.default_duty_mode;
+  // Prices on this page follow the country picked HERE (formatINR reads it). Set during render on purpose,
+  // so every price in this same render already uses the right currency; restored when leaving checkout.
+  if (intl.loaded) {
+    setDisplayCurrency(
+      selectedIntlCountry
+        ? { countryCode: selectedIntlCountry.code, countryName: selectedIntlCountry.name, currency: selectedIntlCountry.currency, settings: intl.settings }
+        : null,
+      'checkout',
+    );
+  }
+  useEffect(() => () => restoreProviderDisplay(), []);
+  // A visitor who browsed in e.g. USD (country switcher / Google Shopping ?cc=US) starts checkout in that country.
+  const preselectedCountryRef = useRef(false);
+  useEffect(() => {
+    if (preselectedCountryRef.current || !intl.loaded || !intl.active) return;
+    preselectedCountryRef.current = true;
+    const d = getProviderDisplay();
+    if (d && intl.countries.some((c) => c.name === d.countryName)) setCountry((cur) => (cur === 'India' ? d.countryName : cur));
+  }, [intl.loaded, intl.active, intl.countries]);
   // A restored draft / old session may hold a country that is no longer enabled -> fall back to India.
   useEffect(() => {
     if (intl.loaded && country !== 'India' && !selectedIntlCountry) setCountry('India');

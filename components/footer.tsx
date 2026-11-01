@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Instagram, Facebook, Youtube, Twitter, Linkedin, MessageCircle, Mail, Phone } from 'lucide-react';
 import NewsletterSignup from './newsletter-signup';
+import CountrySwitcher from '@/components/country-switcher';
 import { useCart } from '@/lib/cart-context';
 import { BrandLogo } from '@/lib/brand-context';
 import { markCheckoutEntry } from '@/lib/checkout-return';
@@ -154,6 +155,7 @@ export default function Footer() {
       <div className="border-t border-primary-foreground/10 py-4">
         <div className="container-boutique flex flex-col items-center justify-between gap-2 text-xs text-primary-foreground/60 sm:flex-row">
           <p>© {new Date().getFullYear()} Sutisaree. All rights reserved.</p>
+          <CountrySwitcher />
           <p>Crafted in India · Handloom certified</p>
         </div>
       </div>

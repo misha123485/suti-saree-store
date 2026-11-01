@@ -30,6 +30,10 @@ interface PurchaseTrackerProps {
   shippingCity?: string | null;
   shippingState?: string | null;
   shippingPostalCode?: string | null;
+  /** ISO-4217 code the customer was charged in. Omitted = INR (India orders, unchanged). */
+  currency?: string;
+  /** ISO-2 country of delivery (sent as a GA4 custom param for international orders). */
+  country?: string | null;
 }
 
 /**
@@ -58,6 +62,8 @@ export default function PurchaseTracker({
   shippingCity,
   shippingState,
   shippingPostalCode,
+  currency = 'INR',
+  country,
 }: PurchaseTrackerProps) {
   useEffect(() => {
     const dedupeKey = `ga4_purchase_${orderId}`;
@@ -92,7 +98,8 @@ export default function PurchaseTracker({
         gtag('event', 'purchase', {
           transaction_id: orderId,
           value,
-          currency: 'INR',
+          currency,
+          ...(currency !== 'INR' && country ? { shipping_country: country } : {}),
           shipping: shipping ?? 0,
           tax: tax ?? 0,
           coupon: couponCode ?? undefined,
@@ -111,7 +118,7 @@ export default function PurchaseTracker({
         // Google Ads "Purchase" conversion (Admin > Integrations). Enhanced
         // Conversions data was set just above, so it rides along with this.
         // transaction_id = order id => Google de-duplicates repeat reports.
-        fireAdsConversion(getTrackingConfig().purchaseLabel, { value, transactionId: orderId });
+        fireAdsConversion(getTrackingConfig().purchaseLabel, { value, transactionId: orderId, currency });
 
         // Meta Pixel Purchase. eventID = order id lets Meta de-duplicate it
         // against a server-side (Conversions API) event later.
@@ -119,7 +126,7 @@ export default function PurchaseTracker({
           'Purchase',
           {
             value,
-            currency: 'INR',
+            currency,
             content_type: 'product',
             content_ids: items.map((i) => String(i.feed_item_id ?? i.product_id ?? i.product_name)),
             num_items: items.reduce((n, i) => n + i.quantity, 0),
@@ -156,6 +163,8 @@ export default function PurchaseTracker({
     shippingCity,
     shippingState,
     shippingPostalCode,
+    currency,
+    country,
   ]);
 
   return null;

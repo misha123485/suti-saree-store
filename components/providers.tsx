@@ -7,6 +7,7 @@ import { CartProvider, CategoriesProvider, PaymentDiscountProvider } from '@/lib
 import type { PaymentDiscountSettings, SiteBanner as SiteBannerSettings } from '@/lib/settings-api';
 import type { GrowthSettings } from '@/lib/growth-api';
 import { AuthProvider } from '@/lib/auth-context';
+import { CountryProvider, CountryRemount } from './country-provider';
 import { Toaster } from 'sonner';
 import CartDrawer from './cart-drawer';
 import Header from './header';
@@ -97,6 +98,8 @@ export default function Providers({
             <ActivityTracker />
             <AffiliateTracker />
             <AttributionTracker />
+            <CountryProvider>
+            <CountryRemount>
             <div className="flex min-h-screen flex-col bg-background">
               <UrgencyBanner initialSettings={initialGrowth} />
               <SaleCountdownBar initialSettings={initialGrowth} />
@@ -112,6 +115,8 @@ export default function Providers({
               <SocialProofToast />
               {isHome && <MobileBottomNav />}
             </div>
+            </CountryRemount>
+            </CountryProvider>
             <Toaster position="top-center" richColors closeButton offset="68px" />
           </CartProvider>
         </PaymentDiscountProvider>

@@ -12,6 +12,7 @@ import { toPublicMediaUrl } from '@/lib/media-url';
 import TrustpilotInvitation from '@/components/analytics/trustpilot-invitation';
 import GoogleCustomerReviewsOptIn from '@/components/analytics/google-customer-reviews-optin';
 import { estimateDeliveryDate, toCountryCode } from '@/lib/google-customer-reviews';
+import { minorToMajor } from '@/lib/intl-pricing';
 import CancelOrHelp from '@/components/order/cancel-or-help';
 import PaymentPendingBanner from '@/components/order/payment-pending-banner';
 import EditAddressButton from '@/components/order/edit-address-button';
@@ -175,18 +176,30 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
     );
   }
 
+  // Analytics: international orders report what the customer really paid (currency + amount), scaled
+  // from the INR figures so line items still add up. India orders: unchanged (INR, same numbers).
+  const isIntlTracked =
+    !!order.is_international && order.charge_currency && order.charge_currency !== 'INR' && Number(order.charge_amount_minor) > 0 && Number(order.total_amount) > 0;
+  const trackCurrency: string = isIntlTracked ? order.charge_currency : 'INR';
+  const trackValue: number = isIntlTracked ? minorToMajor(Number(order.charge_amount_minor), order.charge_currency) : order.total_amount;
+  const trackFactor: number = isIntlTracked ? trackValue / Number(order.total_amount) : 1;
+  const trackShipping: number = Math.round((order.shipping_charge ?? 0) * trackFactor * 100) / 100;
+  const trackTax: number = isIntlTracked ? 0 : order.gst_amount ?? 0;
+
   return (
     <div className="container-boutique max-w-3xl py-10">
       <PurchaseTracker
         orderId={order.id}
-        value={order.total_amount}
-        shipping={order.shipping_charge ?? 0}
-        tax={order.gst_amount ?? 0}
+        value={trackValue}
+        shipping={trackShipping}
+        tax={trackTax}
+        currency={trackCurrency}
+        country={order.is_international ? order.country_code : null}
         couponCode={order.coupon_code}
         items={items.map((item: any) => ({
           product_id: item.product_id ?? null,
           product_name: item.product_name,
-          price: item.price,
+          price: Math.round(item.price * trackFactor * 100) / 100,
           quantity: item.quantity,
           feed_item_id: item.feed_item_id ?? null,
         }))}
@@ -209,7 +222,7 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
         <GoogleCustomerReviewsOptIn
           orderId={order.id}
           email={order.customer_email}
-          deliveryCountry={toCountryCode((addr as { country?: string } | null)?.country)}
+          deliveryCountry={toCountryCode(order.country_code || (addr as { country?: string } | null)?.country)}
           estimatedDeliveryDate={estimateDeliveryDate(
             order.created_at,
             fulfillmentSettings.dispatch_days_max,

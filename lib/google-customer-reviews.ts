@@ -31,9 +31,27 @@ export function estimateDeliveryDate(
   return toIstDateString(Math.max(estimated, tomorrow));
 }
 
-/** Google wants a 2-letter ISO country code. Store is India-only today. */
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  india: 'IN',
+  'united states': 'US',
+  usa: 'US',
+  'united arab emirates': 'AE',
+  uae: 'AE',
+  malaysia: 'MY',
+  'united kingdom': 'GB',
+  uk: 'GB',
+  oman: 'OM',
+  bahrain: 'BH',
+  qatar: 'QA',
+  'saudi arabia': 'SA',
+  kuwait: 'KW',
+  australia: 'AU',
+  canada: 'CA',
+};
+
+/** Google wants a 2-letter ISO country code (accepts a code or an English country name). */
 export function toCountryCode(country?: string | null): string {
   const c = (country ?? '').trim();
   if (/^[A-Za-z]{2}$/.test(c)) return c.toUpperCase();
-  return 'IN';
+  return COUNTRY_NAME_TO_CODE[c.toLowerCase()] ?? 'IN';
 }

@@ -54,6 +54,7 @@ function bumpTokenPrefs(text: string) {
 import { expandProductVariants } from '@/lib/expand-product-variants';
 import { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import CountrySwitcher from '@/components/country-switcher';
 import { Input } from '@/components/ui/input';
 import {
   Sheet,
@@ -951,6 +952,8 @@ export default function Header() {
           >
             <Search className="h-5 w-5" />
           </Button>
+
+          <CountrySwitcher compact className="hidden md:inline-flex" />
 
           <Button variant="ghost" size="icon" asChild aria-label="Wishlist" className="rounded-full transition-colors hover:bg-accent">
             <Link href="/account/wishlist">
