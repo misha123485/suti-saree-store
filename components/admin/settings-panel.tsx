@@ -86,6 +86,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
 import {
   Select,
   SelectTrigger,
@@ -1658,6 +1659,15 @@ export default function SettingsPanel() {
           </Button>
         </form>
       )}
+
+      <div className="mt-8">
+        <h2 className="font-serif text-2xl font-bold text-primary">International Selling</h2>
+        <p className="mt-1 mb-4 text-sm text-muted-foreground">
+          Countries, shipping zones, currency rates and export details for prepaid international orders (Stripe).
+          Off by default — India checkout is unaffected.
+        </p>
+        <InternationalSettingsPanel />
+      </div>
 
       <div className="mt-8">
         <h2 className="font-serif text-2xl font-bold text-primary">Online Payment Discount</h2>
