@@ -4,6 +4,8 @@ import type { Metadata } from 'next';
 import { getServerSupabase } from '@/lib/supabase-server';
 import { LEGAL_PAGE_TITLES, LegalPages, LegalSlug, applyFulfillmentTokens, fetchFulfillmentSettings } from '@/lib/marketing-api';
 import { fetchShippingSettings } from '@/lib/pincode-api';
+import { composeLegalText } from '@/lib/legal-intl';
+import { fetchIntlLegalContext } from '@/lib/legal-intl-context';
 
 const VALID_SLUGS = Object.keys(LEGAL_PAGE_TITLES) as LegalSlug[];
 
@@ -47,17 +49,20 @@ export default async function LegalPage({ params }: { params: { slug: string } }
   const slug = params.slug as LegalSlug;
   if (!VALID_SLUGS.includes(slug)) notFound();
 
-  const [pages, fulfillment, shipping] = await Promise.all([
+  const [pages, fulfillment, shipping, intl] = await Promise.all([
     getLegalPages(),
     fetchFulfillmentSettings(),
     fetchShippingSettings(),
+    fetchIntlLegalContext(),
   ]);
   const title = LEGAL_PAGE_TITLES[slug];
   const rawContent = pages[slug] || 'This page is being updated. Please check back soon.';
   // {{dispatch_days}}, {{return_days}}, {{shipping_fee}}, etc. always
   // reflect the live numbers from Admin > Marketing > Shipping & Returns
   // Timing and Admin > Settings > GST & Shipping.
-  const content = applyFulfillmentTokens(rawContent, fulfillment, shipping);
+  // Phase 7: when international selling is ON the "International Orders" section is shown (and the old
+  // "we ship only within India" line is dropped); when OFF the page is exactly as before.
+  const content = applyFulfillmentTokens(composeLegalText(slug, rawContent, intl), fulfillment, shipping);
 
   return (
     <div className="container-boutique max-w-3xl py-10 sm:py-14">

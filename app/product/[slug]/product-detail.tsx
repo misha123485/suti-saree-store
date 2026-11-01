@@ -37,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCountry } from '@/components/country-provider';
 import ReviewsSection from '@/components/product/reviews-section';
 import { fetchApprovedReviews, summarizeReviews, RatingSummary } from '@/lib/reviews-api';
 import DeliveryInfo from '@/components/product/delivery-info';
@@ -128,6 +129,8 @@ export default function ProductDetail({
   // Reviews now render as their own always-open section (not a tab), so
   // there's no tab-selection state to track anymore.
   const [fulfillment, setFulfillment] = useState<FulfillmentSettings>(DEFAULT_FULFILLMENT_SETTINGS);
+  // Phase 7: the international shipping & duties accordion only shows for international shoppers.
+  const { countryCode: shopCountryCode } = useCountry();
   const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | undefined>(undefined);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -889,6 +892,7 @@ export default function ProductDetail({
               <ul className="grid gap-2 sm:grid-cols-2">
                 <li><strong className="text-foreground">Fabric:</strong> {product.fabric}</li>
                 <li><strong className="text-foreground">Origin:</strong> {product.origin}</li>
+                <li><strong className="text-foreground">Country of origin:</strong> {product.highlights?.country_of_origin || 'India'}</li>
                 <li><strong className="text-foreground">Category:</strong> {product.category}</li>
                 <li><strong className="text-foreground">Colors:</strong> {product.colors.join(', ')}</li>
                 <li><strong className="text-foreground">Sizes:</strong> {product.sizes.join(', ')}</li>
@@ -906,6 +910,22 @@ export default function ProductDetail({
               <p>{shippingReturnsSummary(fulfillment, freeShippingThreshold)}</p>
             </AccordionContent>
           </AccordionItem>
+
+          {shopCountryCode !== 'IN' && (
+            <AccordionItem value="international-shipping">
+              <AccordionTrigger className="text-sm font-semibold">International shipping &amp; duties</AccordionTrigger>
+              <AccordionContent className="max-w-3xl text-sm leading-relaxed text-foreground/80">
+                <p>
+                  Shipped from India, prepaid by card. Import duties, VAT/GST and customs fees of your country are
+                  set by your customs authority and are not included in the price unless checkout says so.
+                  International returns have their own window and rules.{' '}
+                  <a href="/shipping-delivery-information/" className="underline hover:text-primary">Read the Shipping Policy</a>
+                  {' · '}
+                  <a href="/returns-exchange/" className="underline hover:text-primary">Returns</a>
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          )}
 
           <AccordionItem value="care-guide" className="border-b-0">
             <AccordionTrigger className="text-sm font-semibold">Care Guide</AccordionTrigger>

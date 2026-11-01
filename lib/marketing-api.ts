@@ -1,6 +1,8 @@
 import { getServerSupabase } from './supabase-server';
 import { purgeSiteLayoutCache } from './purge-site-cache';
 import { fetchShippingSettings, type ShippingSettings } from './pincode-api';
+import { composeLegalText } from './legal-intl';
+import { fetchIntlLegalContext } from './legal-intl-context';
 
 // NOTE: this file is imported from BOTH client components (admin panels,
 // WhatsApp/trust-badge widgets, live chat) and server-only code (the
@@ -408,16 +410,21 @@ export async function saveLegalPages(pages: LegalPages) {
 // editor — it needs the raw, unresolved text so saving it back doesn't
 // bake today's numbers in and destroy the tokens.
 export async function fetchLegalPagesResolved(): Promise<LegalPages> {
-  const [pages, fulfillment, shipping] = await Promise.all([
+  const [pages, fulfillment, shipping, intl] = await Promise.all([
     fetchLegalPages(),
     fetchFulfillmentSettings(),
     fetchShippingSettings(),
+    fetchIntlLegalContext(),
   ]);
+  // composeLegalText adds/removes the "International Orders" block depending on whether international
+  // selling is switched on (identical output to before when it is off).
+  const resolve = (slug: LegalSlug) =>
+    applyFulfillmentTokens(composeLegalText(slug, pages[slug], intl), fulfillment, shipping);
   return {
-    'privacy-policy': applyFulfillmentTokens(pages['privacy-policy'], fulfillment, shipping),
-    'terms-conditions': applyFulfillmentTokens(pages['terms-conditions'], fulfillment, shipping),
-    'shipping-policy': applyFulfillmentTokens(pages['shipping-policy'], fulfillment, shipping),
-    'refund-policy': applyFulfillmentTokens(pages['refund-policy'], fulfillment, shipping),
+    'privacy-policy': resolve('privacy-policy'),
+    'terms-conditions': resolve('terms-conditions'),
+    'shipping-policy': resolve('shipping-policy'),
+    'refund-policy': resolve('refund-policy'),
   };
 }
 

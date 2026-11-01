@@ -6,6 +6,7 @@ import Providers from '@/components/providers';
 import { BrandProvider } from '@/lib/brand-context';
 import { getBrandSettings } from '@/lib/brand-server';
 import AnalyticsScripts from '@/components/analytics-scripts';
+import CookieConsent from '@/components/cookie-consent';
 import BlurPlaceholderSync from '@/components/blur-placeholder-sync';
 import GoogleCustomerReviewsBadge from '@/components/analytics/google-customer-reviews-badge';
 import { getServerSupabase } from '@/lib/supabase-server';
@@ -296,6 +297,8 @@ export default async function RootLayout({
           {children}
         </Providers>
         </BrandProvider>
+        {/* UK/Europe visitors only; renders nothing elsewhere. */}
+        <CookieConsent />
       </body>
     </html>
   );

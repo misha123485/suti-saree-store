@@ -106,6 +106,18 @@ export default function AnalyticsScripts({
           {`
             window.dataLayer = window.dataLayer || [];
             window.gtag = window.gtag || function(){dataLayer.push(arguments);};
+            try {
+              var __tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+              var __cc = (document.cookie.match(/(?:^|; )sutisaree_cc=([^;]*)/) || [])[1];
+              var __ck = (document.cookie.match(/(?:^|; )sutisaree_consent=(granted|denied)/) || [])[1];
+              if (__tz.indexOf('Europe/') === 0 || __cc === 'GB') {
+                var __v = __ck === 'granted' ? 'granted' : 'denied';
+                window.gtag('consent', 'default', {
+                  ad_storage: __v, analytics_storage: __v, ad_user_data: __v, ad_personalization: __v,
+                  wait_for_update: 500
+                });
+              }
+            } catch (e) {}
             window.__TRACKING__ = ${JSON.stringify({
               adsId: googleAdsId,
               purchaseLabel: adsPurchaseLabel,

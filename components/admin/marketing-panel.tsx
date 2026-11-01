@@ -1,5 +1,6 @@
 'use client';
 
+import { appendIntlSection, hasIntlSection, removeIntlSection, INTL_TOKEN_NAMES } from '@/lib/legal-intl';
 import { useEffect, useState, FormEvent } from 'react';
 import { Save, Download, Trash2, ExternalLink, Copy, Upload, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -306,6 +307,40 @@ function LegalPagesTab() {
           </button>
         </div>
       )}
+
+
+      <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+        <p className="font-medium text-foreground">International orders section</p>
+        <p className="mt-1 text-muted-foreground">
+          Adds an &quot;International Orders (outside India)&quot; section (duties &amp; taxes, returns, GDPR/CCPA, etc.)
+          to the <strong>bottom</strong> of this page. Your existing text is not changed. The section is wrapped in{' '}
+          <code>[[INTL_START]]</code> / <code>[[INTL_END]]</code>: customers see it only while{' '}
+          <em>International Selling</em> is switched on (the markers themselves are never shown). If you do not add it
+          here, the same section is still shown automatically on the live page once International Selling is on.
+          Tokens inside it (<code>{INTL_TOKEN_NAMES.map((t) => `{{${t}}}`).join(' ')}</code>) fill in from your
+          International and Store Info settings. Review the wording with your CA/lawyer before going live.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={hasIntlSection(pages[activeSlug])}
+            onClick={() => setPages({ ...pages, [activeSlug]: appendIntlSection(activeSlug, pages[activeSlug]) })}
+            className="rounded border border-primary/40 px-2 py-1 font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {hasIntlSection(pages[activeSlug]) ? 'International section already added' : 'Load international template (append)'}
+          </button>
+          {pages[activeSlug].includes('[[INTL_START]]') && (
+            <button
+              type="button"
+              onClick={() => setPages({ ...pages, [activeSlug]: removeIntlSection(pages[activeSlug]) })}
+              className="rounded border border-destructive/40 px-2 py-1 font-medium text-destructive hover:bg-destructive/10"
+            >
+              Remove international section
+            </button>
+          )}
+        </div>
+        <p className="mt-2 text-muted-foreground">Nothing is saved until you press &quot;Save Legal Pages&quot;.</p>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="legal-content">{LEGAL_PAGE_TITLES[activeSlug]} content</Label>
