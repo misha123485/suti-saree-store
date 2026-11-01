@@ -11,6 +11,9 @@ export async function GET() {
     return NextResponse.json(
       {
         enabled: cfg.settings.international_enabled,
+        // Checkout only offers international countries once card payments (Stripe) are configured,
+        // so a customer can never create an order that has no way to be paid.
+        payments_ready: Boolean(process.env.STRIPE_SECRET_KEY),
         settings: cfg.settings,
         countries: cfg.countries.map(({ notes: _n, ...c }) => c),
         zones: cfg.zones.map((z) => ({
@@ -28,6 +31,6 @@ export async function GET() {
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
     );
   } catch {
-    return NextResponse.json({ enabled: false, settings: null, countries: [], zones: [] });
+    return NextResponse.json({ enabled: false, payments_ready: false, settings: null, countries: [], zones: [] });
   }
 }

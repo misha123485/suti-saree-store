@@ -96,6 +96,9 @@ import { usePaymentGateway } from '@/hooks/use-payment-gateway';
 import { payWithCashfree } from '@/lib/cashfree-client';
 import { toast } from 'sonner';
 import { computeCheckoutGst } from '@/lib/gst-report';
+import { useIntlConfig } from '@/hooks/use-intl-config';
+import { isValidIntlPhone, isValidIntlPostal, estimateIntlShipping, formatEta } from '@/lib/intl-checkout';
+import { previewInrToMinor, formatMinor } from '@/lib/intl-api';
 
 // All Indian states & union territories, for the Shipping Address "State"
 // dropdown. Pincode auto-fill (via India Post's API) sets this field to
@@ -305,6 +308,20 @@ export default function CheckoutPage() {
   const [stateName, setStateName] = useState('');
   const [pincode, setPincode] = useState('');
   const [country, setCountry] = useState('India');
+  // International selling (Admin > Settings > International Selling). While the master switch is off,
+  // or card payments are not configured, `intl.active` is false and checkout is India-only as before.
+  const intl = useIntlConfig();
+  const [dutyAccepted, setDutyAccepted] = useState(false);
+  const selectedIntlCountry = intl.active ? intl.countries.find((c) => c.name === country) ?? null : null;
+  const isIntl = !!selectedIntlCountry;
+  const intlZone = selectedIntlCountry ? intl.zones.find((z) => z.countries.includes(selectedIntlCountry.code)) ?? null : null;
+  const intlStateOptional = !!selectedIntlCountry && !selectedIntlCountry.requires_state;
+  const intlPostalOptional = !!selectedIntlCountry && !selectedIntlCountry.postal_regex;
+  const intlDutyMode = intl.settings.default_duty_mode;
+  // A restored draft / old session may hold a country that is no longer enabled -> fall back to India.
+  useEffect(() => {
+    if (intl.loaded && country !== 'India' && !selectedIntlCountry) setCountry('India');
+  }, [intl.loaded, country, selectedIntlCountry]);
   const [deliveryEstimate, setDeliveryEstimate] = useState<PincodeResult | null>(null);
   const [verifyingPincode, setVerifyingPincode] = useState(false);
   // Tracks whether the current city/state values were filled in by us (from
@@ -463,6 +480,7 @@ export default function CheckoutPage() {
     setCity(addr.city || '');
     setStateName(addr.state || '');
     setPincode(addr.pincode || '');
+    setCountry('India'); // saved addresses are Indian addresses
     // A real saved address is now in place — any leftover guest draft from
     // earlier in this tab's session (e.g. typed before logging in) is now
     // stale and must not survive to confuse a later reload/remount.
@@ -673,7 +691,7 @@ export default function CheckoutPage() {
   // right on the checkout page, so shipping timing isn't a surprise after
   // they've already placed the order.
   useEffect(() => {
-    if (!/^[1-9][0-9]{5}$/.test(pincode.trim())) {
+    if (isIntl || !/^[1-9][0-9]{5}$/.test(pincode.trim())) {
       setDeliveryEstimate(null);
       setVerifyingPincode(false);
       return;
@@ -702,7 +720,7 @@ export default function CheckoutPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pincode]);
+  }, [pincode, isIntl]);
 
   useEffect(() => {
     fetchLoyaltySettings().then(setLoyaltySettings).catch(() => {
@@ -862,7 +880,7 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]);
 
-  const shipping =
+  const indiaShipping =
     shippingSettings.free_shipping_threshold > 0 &&
     subtotal >= shippingSettings.free_shipping_threshold
       ? 0
@@ -891,18 +909,28 @@ export default function CheckoutPage() {
       : 0;
 
   const discountedSubtotal = Math.max(0, afterGiftCardSubtotal - loyaltyDiscount);
+  // International: shipping comes from the admin's shipping zone (the server recomputes the same
+  // amount and ignores anything sent from here). India keeps the flat-rate / free-threshold logic.
+  const shipping = isIntl
+    ? estimateIntlShipping(
+        intlZone,
+        items.reduce((n, i) => n + i.quantity, 0),
+        intl.settings.default_item_weight_grams,
+        discountedSubtotal,
+      )
+    : indiaShipping;
   // Extra incentive discount, only applied once the customer actually
   // chooses to pay online (never for COD) — computed on the merchandise
   // subtotal after coupon/gift card/loyalty, before shipping/tax.
   const onlinePaymentDiscount =
-    paymentMethod === 'online' && paymentDiscount.enabled && paymentDiscount.percent > 0
+    paymentMethod === 'online' && !isIntl && paymentDiscount.enabled && paymentDiscount.percent > 0
       ? Math.round((discountedSubtotal * paymentDiscount.percent) / 100)
       : 0;
   // Same discount, computed regardless of which payment method is currently
   // selected — used to show the customer the actual rupee amount (not just
   // the percent) next to "Pay Online", even before they've picked it.
   const potentialOnlinePaymentDiscount =
-    paymentDiscount.enabled && paymentDiscount.percent > 0
+    !isIntl && paymentDiscount.enabled && paymentDiscount.percent > 0
       ? Math.round((discountedSubtotal * paymentDiscount.percent) / 100)
       : 0;
   const subtotalAfterPaymentDiscount = Math.max(0, discountedSubtotal - onlinePaymentDiscount);
@@ -912,7 +940,8 @@ export default function CheckoutPage() {
   // Each product carries its own GST rate (e.g. sarees 5%, garments above Rs 2,500 18%).
   // The server recomputes the same split on the order (orders_set_gst trigger), so this is
   // only the preview; items without a known rate fall back to the flat store rate.
-  const tax = computeCheckoutGst(
+  // Exports are supplied under LUT: no GST is charged on international orders.
+  const tax = isIntl ? 0 : computeCheckoutGst(
     items.map((i) => ({ price: i.product.price, quantity: i.quantity, gstRate: i.product.gstRate })),
     subtotalAfterPaymentDiscount + clampedGiftCardDiscount + shipping,
     shippingSettings.gst_rate_percent
@@ -926,6 +955,23 @@ export default function CheckoutPage() {
   // haven't set a price yet (shouldn't normally happen — see validation below).
   const payableTotal = isResale && resaleSellingPriceNum > 0 ? resaleSellingPriceNum : total;
   const resaleProfit = payableTotal - total;
+  // What the international customer will be charged in their own currency (preview of the server maths).
+  const intlChargeEstimate = selectedIntlCountry
+    ? formatMinor(
+        previewInrToMinor(
+          payableTotal * (1 + intl.settings.intl_price_markup_percent / 100),
+          selectedIntlCountry.currency,
+          intl.settings,
+        ),
+        selectedIntlCountry.currency,
+      )
+    : null;
+  const intlEta = formatEta(intlZone);
+  const intlBlocked =
+    isIntl &&
+    (!intlZone ||
+      (intlZone.min_order_inr > 0 && discountedSubtotal < intlZone.min_order_inr) ||
+      (intlDutyMode === 'DAP' && !dutyAccepted));
 
   // What the customer would pay under each payment option — shown side by
   // side in the Payment card so the price is never a surprise. For resale
@@ -939,7 +985,7 @@ export default function CheckoutPage() {
   // Partial Pay is priced like COD (no online-payment discount) and never offered for resale orders.
   // The advance shown here is display-only: the server (orders_apply_partial_pay trigger) recomputes
   // it from the stored total and the admin setting, and Razorpay is charged that amount.
-  const partialEligible = !isResale && onlineAvailable && isPartialPayEligible(partialPaySettings, codTotalDisplay);
+  const partialEligible = !isResale && !isIntl && onlineAvailable && isPartialPayEligible(partialPaySettings, codTotalDisplay);
   const partialAmounts = computeAdvance(codTotalDisplay, partialPaySettings.percent);
   const partialOption = partialEligible
     ? {
@@ -955,8 +1001,15 @@ export default function CheckoutPage() {
   }, [paymentMethod, partialEligible]);
   // All online gateways switched off by the admin -> only Cash on Delivery is possible.
   useEffect(() => {
-    if (!onlineAvailable && paymentMethod !== 'cod') setPaymentMethod('cod');
-  }, [onlineAvailable, paymentMethod]);
+    if (!isIntl && !onlineAvailable && paymentMethod !== 'cod') setPaymentMethod('cod');
+  }, [onlineAvailable, paymentMethod, isIntl]);
+  // International orders are prepaid by card only (no COD, no partial pay, no resale).
+  useEffect(() => {
+    if (!isIntl) return;
+    if (paymentMethod !== 'online') setPaymentMethod('online');
+    if (isResale) setIsResale(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIntl, paymentMethod, isResale]);
 
   // Repaint fix (see hooks/use-force-mobile-repaint.ts) — must sit here,
   // after payableTotal/total/onlinePaymentDiscount exist, not up near the
@@ -1221,8 +1274,8 @@ export default function CheckoutPage() {
         return;
       }
     }
-    if (!stateName.trim()) {
-      toast.error('Please select your state');
+    if (!stateName.trim() && !intlStateOptional) {
+      toast.error(isIntl ? 'Please enter your state / province' : 'Please select your state');
       return;
     }
 
@@ -1235,14 +1288,36 @@ export default function CheckoutPage() {
     // means the courier/admin can't reach the customer, and a bad PIN
     // code means Delhivery will reject the shipment later at dispatch
     // time instead of catching it here where the shopper can still fix it.
+    if (isIntl) {
+      if (!isValidIntlPhone(shipPhone)) {
+        toast.error('Please enter your phone number with country code, e.g. +1 202 555 0100');
+        return;
+      }
+      if (!isValidIntlPostal(selectedIntlCountry?.postal_regex, pincode)) {
+        toast.error(`Please enter a valid postal code for ${country}`);
+        return;
+      }
+      if (!intlZone) {
+        toast.error('Shipping is not available to this country right now.');
+        return;
+      }
+      if (intlZone.min_order_inr > 0 && discountedSubtotal < intlZone.min_order_inr) {
+        toast.error(`Minimum order value for ${country} is ${formatINR(intlZone.min_order_inr)}.`);
+        return;
+      }
+      if (intlDutyMode === 'DAP' && !dutyAccepted) {
+        toast.error('Please accept the import duty & tax notice to continue');
+        return;
+      }
+    }
     let phoneDigits = shipPhone.replace(/[^0-9]/g, '');
     if (phoneDigits.startsWith('91') && phoneDigits.length === 12) phoneDigits = phoneDigits.slice(2);
     if (phoneDigits.startsWith('0') && phoneDigits.length === 11) phoneDigits = phoneDigits.slice(1);
-    if (!/^[6-9][0-9]{9}$/.test(phoneDigits)) {
+    if (!isIntl && !/^[6-9][0-9]{9}$/.test(phoneDigits)) {
       toast.error('Please enter a valid 10-digit phone number');
       return;
     }
-    if (!isValidPincode(pincode)) {
+    if (!isIntl && !isValidPincode(pincode)) {
       toast.error('Please enter a valid 6-digit PIN code');
       return;
     }
@@ -1254,13 +1329,13 @@ export default function CheckoutPage() {
     // already fetched by the effect above when it matches the current
     // pincode, so this is usually instant with no extra network call).
     let pincodeCheck = deliveryEstimate;
-    if (!pincodeCheck || pincodeCheck.pincode !== pincode.trim()) {
+    if (!isIntl && (!pincodeCheck || pincodeCheck.pincode !== pincode.trim())) {
       setVerifyingPincode(true);
       pincodeCheck = await checkPincodeServiceability(pincode);
       setDeliveryEstimate(pincodeCheck);
       setVerifyingPincode(false);
     }
-    if (pincodeCheck.verified === 'no') {
+    if (!isIntl && pincodeCheck?.verified === 'no') {
       toast.error("This PIN code doesn't exist. Please double-check it and try again.");
       return;
     }
@@ -1288,7 +1363,7 @@ export default function CheckoutPage() {
     // Re-check the admin's gateway choice right now (the page may have been open for a while),
     // BEFORE an order row is created, so a switched-off gateway never leaves an orphan order.
     let activeGateway = gateway.active;
-    if (paymentMethod === 'online' || paymentMethod === 'partial') {
+    if (!isIntl && (paymentMethod === 'online' || paymentMethod === 'partial')) {
       try {
         const gw = await fetch('/api/payment-gateways', { cache: 'no-store' }).then((r) => r.json());
         activeGateway = gw?.active ?? null;
@@ -1449,6 +1524,10 @@ export default function CheckoutPage() {
             // supabase/migrations/20260913000000_affiliate_program.sql);
             // we never trust or compute a commission amount here.
             affiliate_code: getStoredAffiliateCode(),
+            // International: the server re-checks the country, computes shipping from the zone and
+            // converts to the charge currency itself (see migration 20261102000000).
+            country_code: isIntl ? selectedIntlCountry?.code ?? 'IN' : 'IN',
+            duty_notice_accepted: isIntl && (dutyAccepted || intlDutyMode === 'DDP'),
           },
           p_items: orderItems,
         });
@@ -1469,6 +1548,11 @@ export default function CheckoutPage() {
           if (orderError.message?.includes('PARTIAL_PAY_DISABLED') || orderError.message?.includes('PARTIAL_PAY_NOT_ELIGIBLE')) {
             toast.error('Partial payment is not available for this order. Please choose another payment method.');
             setPaymentMethod('online');
+            setPlacing(false);
+            return;
+          }
+          if (orderError.message?.includes('INTL_')) {
+            toast.error(orderError.message.replace(/^.*?INTL_[A-Z_]+:\s*/, ''), { duration: 8000 });
             setPlacing(false);
             return;
           }
@@ -1529,6 +1613,22 @@ export default function CheckoutPage() {
           body: JSON.stringify({ orderId: internalOrderId }),
         }).catch(() => {});
         router.push(`/order-confirmation/${internalOrderId}`);
+        return;
+      }
+
+      // International: card payment through Stripe Checkout (route added in the Stripe phase).
+      // The amount is read from the order row on the server, never from here.
+      if (isIntl) {
+        const res = await fetch('/api/stripe/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ internalOrderId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || 'Could not start the card payment. Please try again.');
+        }
+        window.location.href = data.url as string;
         return;
       }
 
@@ -1664,7 +1764,7 @@ export default function CheckoutPage() {
   }
 
   const detailsComplete = !!(
-    firstName.trim() && email.trim() && shipPhone.trim() && addressLine1.trim() && city.trim() && stateName.trim() && pincode.trim()
+    firstName.trim() && email.trim() && shipPhone.trim() && addressLine1.trim() && city.trim() && (stateName.trim() || intlStateOptional) && (pincode.trim() || intlPostalOptional)
   );
 
   // Native `required` can't see fields inside the bottom sheet (it renders in
@@ -1676,11 +1776,15 @@ export default function CheckoutPage() {
     let d = shipPhone.replace(/[^0-9]/g, '');
     if (d.startsWith('91') && d.length === 12) d = d.slice(2);
     if (d.startsWith('0') && d.length === 11) d = d.slice(1);
-    if (!/^[6-9][0-9]{9}$/.test(d)) return 'Please enter a valid 10-digit phone number';
+    if (isIntl) {
+      if (!isValidIntlPhone(shipPhone)) return 'Please enter a valid phone number with country code';
+    } else if (!/^[6-9][0-9]{9}$/.test(d)) return 'Please enter a valid 10-digit phone number';
     if (!addressLine1.trim()) return 'Please enter your street address';
-    if (!isValidPincode(pincode)) return 'Please enter a valid 6-digit PIN code';
+    if (isIntl) {
+      if (!isValidIntlPostal(selectedIntlCountry?.postal_regex, pincode)) return 'Please enter a valid postal code';
+    } else if (!isValidPincode(pincode)) return 'Please enter a valid 6-digit PIN code';
     if (!city.trim()) return 'Please enter your city';
-    if (!stateName.trim()) return 'Please select your state';
+    if (!stateName.trim() && !intlStateOptional) return isIntl ? 'Please enter your state / province' : 'Please select your state';
     return null;
   };
 
@@ -1693,6 +1797,9 @@ export default function CheckoutPage() {
     'Please enter a valid 6-digit PIN code': 'pincode',
     'Please enter your city': 'city',
     'Please select your state': 'state',
+    'Please enter your state / province': 'state',
+    'Please enter a valid phone number with country code': 'phone',
+    'Please enter a valid postal code': 'pincode',
   };
 
   // Show the message in the sheet's top banner, mark + focus the field that
@@ -1800,6 +1907,30 @@ export default function CheckoutPage() {
               <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
             </div>
             <div className="grid gap-4">
+              {intl.active && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="country">Country *</Label>
+                  <Select
+                    value={country || 'India'}
+                    onValueChange={(v) => {
+                      setCountry(v);
+                      setDutyAccepted(false);
+                    }}
+                  >
+                    <SelectTrigger id="country">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="India">India</SelectItem>
+                      {intl.countries.map((c) => (
+                        <SelectItem key={c.code} value={c.name}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-1.5">
                 <Label htmlFor="address">Street address *</Label>
                 <Input
@@ -1837,14 +1968,14 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="pincode">PIN code *</Label>
+                <Label htmlFor="pincode">{isIntl ? `Postal code${intlPostalOptional ? ' (optional)' : ' *'}` : 'PIN code *'}</Label>
                 <Input
                   id="pincode"
                   name="pincode"
                   autoComplete="postal-code"
-                  required
-                  placeholder="400050"
-                  inputMode="numeric"
+                  required={!isIntl || !intlPostalOptional}
+                  placeholder={isIntl ? '' : '400050'}
+                  inputMode={isIntl ? 'text' : 'numeric'}
                   value={pincode}
                   className={
                     deliveryEstimate?.pincode === pincode.trim() && deliveryEstimate.verified === 'no'
@@ -1904,7 +2035,19 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="state">State *</Label>
+                  <Label htmlFor="state">{isIntl ? `State / Province${intlStateOptional ? ' (optional)' : ' *'}` : 'State *'}</Label>
+                  {isIntl ? (
+                    <Input
+                      id="state"
+                      name="state"
+                      autoComplete="address-level1"
+                      value={stateName}
+                      onChange={(e) => {
+                        stateAutoFilledRef.current = false;
+                        setStateName(e.target.value);
+                      }}
+                    />
+                  ) : (
                   <Select
                     value={stateName || undefined}
                     onValueChange={(v) => {
@@ -1929,21 +2072,23 @@ export default function CheckoutPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  )}
                 </div>
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="country">Country *</Label>
-                <Select value={country || 'India'} onValueChange={setCountry}>
-                  <SelectTrigger id="country">
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Only India for now — more countries can be added here
-                        later without changing how this field works. */}
-                    <SelectItem value="India">India</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Country sits at the top of this section when international selling is active. */}
+              {!intl.active && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="country">Country *</Label>
+                  <Select value={country || 'India'} onValueChange={setCountry}>
+                    <SelectTrigger id="country">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="India">India</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </section>
     </>
@@ -2430,6 +2575,50 @@ export default function CheckoutPage() {
               <Lock className="h-3 w-3" /> Choose how you'd like to pay
             </p>
 
+            {isIntl && selectedIntlCountry ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2 rounded-lg border border-primary bg-primary/5 p-3">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="font-medium text-primary">Pay by card (Stripe)</p>
+                    <p className="text-xs text-muted-foreground">
+                      You will be charged in {selectedIntlCountry.currency}
+                      {intlChargeEstimate ? ` — about ${intlChargeEstimate}` : ''}. Please use a card issued outside India.
+                    </p>
+                  </div>
+                </div>
+                {intlEta && (
+                  <p className="text-xs text-muted-foreground">📦 Estimated delivery: {intlEta} after dispatch.</p>
+                )}
+                {!intlZone && (
+                  <p className="text-xs font-medium text-red-600">Shipping is not available to this country right now.</p>
+                )}
+                {intlZone && intlZone.min_order_inr > 0 && discountedSubtotal < intlZone.min_order_inr && (
+                  <p className="text-xs font-medium text-red-600">
+                    Minimum order value for {country} is {formatINR(intlZone.min_order_inr)}.
+                  </p>
+                )}
+                {intlDutyMode === 'DAP' ? (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-300/70 bg-amber-50 p-3">
+                    <Checkbox
+                      className="mt-0.5"
+                      checked={dutyAccepted}
+                      onCheckedChange={(v) => setDutyAccepted(v === true)}
+                    />
+                    <span className="text-xs text-amber-900">
+                      <span className="block font-semibold">Duties &amp; taxes notice</span>
+                      I understand that import duties, VAT/GST and customs fees of my country are NOT included and
+                      must be paid by me on delivery.
+                      {selectedIntlCountry.vat_note ? ` ${selectedIntlCountry.vat_note}` : ''}
+                    </span>
+                  </label>
+                ) : (
+                  <p className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Import duties and taxes are included in your price.
+                  </p>
+                )}
+              </div>
+            ) : (
             <PaymentMethodSelector
               value={paymentMethod}
               onChange={setPaymentMethod}
@@ -2439,6 +2628,7 @@ export default function CheckoutPage() {
               onlineTotal={onlineTotalDisplay}
               codTotal={codTotalDisplay}
             />
+            )}
           </section>
         </div>
 
@@ -2903,6 +3093,7 @@ export default function CheckoutPage() {
               </div>
             )}
 
+            {!isIntl && (
             <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
               <label className="flex cursor-pointer items-start gap-3">
                 <Checkbox
@@ -2966,6 +3157,7 @@ export default function CheckoutPage() {
                 </div>
               )}
             </div>
+            )}
 
             <AlertDialog open={showResaleLoginPrompt} onOpenChange={setShowResaleLoginPrompt}>
               <AlertDialogContent>
@@ -3042,10 +3234,16 @@ export default function CheckoutPage() {
                 {formatINR(payableTotal)}
               </span>
             </div>
+            {isIntl && intlChargeEstimate && selectedIntlCountry && (
+              <p className="mt-1 text-right text-xs text-muted-foreground">
+                You will be charged in {selectedIntlCountry.currency}: about {intlChargeEstimate}. The exact amount is
+                confirmed on the next step.
+              </p>
+            )}
             <Button
               type="submit"
               size="lg"
-              disabled={placing || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
+              disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
               className="mt-5 w-full bg-primary"
             >
               {placing ? (
@@ -3066,7 +3264,7 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <Lock className="mr-2 h-4 w-4" />
-                  Pay securely — {formatINR(payableTotal)}
+                  Pay securely — {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
                 </>
               )}
             </Button>
