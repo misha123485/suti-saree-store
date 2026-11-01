@@ -40,6 +40,7 @@ import {
   Download,
   Flame,
   IndianRupee,
+  Globe2,
   Sparkles,
   Award,
   FolderOpen,
@@ -88,6 +89,7 @@ export type AdminSection =
   | 'cache-warm'
   | 'integrations'
   | 'gst-report'
+  | 'intl-pnl'
   | 'settings';
 
 interface NavItem {
@@ -170,6 +172,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Configuration',
     items: [
       { value: 'gst-report', label: 'GST Report', icon: IndianRupee },
+      { value: 'intl-pnl', label: 'International P&L', icon: Globe2 },
       { value: 'integrations', label: 'Integrations', icon: Plug },
       { value: 'settings', label: 'Settings', icon: Settings },
       { value: 'cache-warm', label: 'Cache Warm', icon: Flame },

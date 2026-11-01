@@ -27,6 +27,10 @@ export interface InternationalSettings {
 export interface InternationalCosts {
   stripe_fee_percent: number;
   stripe_fixed_fee_inr: number;
+  /** Phase 9: Stripe chargeback fee per dispute, INR (lost disputes also lose the order revenue). */
+  dispute_fee_inr: number;
+  /** Phase 9: if a product has no cost saved, assume cost = this % of its selling price (0 = treat as unknown and flag it). */
+  fallback_cogs_percent: number;
 }
 
 /** Admin-only. Used on the export invoice (Phase 6). */
@@ -76,7 +80,7 @@ export const DEFAULT_INTERNATIONAL_SETTINGS: InternationalSettings = {
   default_item_weight_grams: 700,
 };
 
-export const DEFAULT_INTERNATIONAL_COSTS: InternationalCosts = { stripe_fee_percent: 3, stripe_fixed_fee_inr: 0 };
+export const DEFAULT_INTERNATIONAL_COSTS: InternationalCosts = { stripe_fee_percent: 3, stripe_fixed_fee_inr: 0, dispute_fee_inr: 1350, fallback_cogs_percent: 0 };
 
 export const DEFAULT_EXPORT_DETAILS: ExportDetails = {
   iec: '',
@@ -117,6 +121,8 @@ export function normalizeInternationalCosts(raw: Partial<InternationalCosts> | n
   return {
     stripe_fee_percent: num(r.stripe_fee_percent, 3, 0, 20),
     stripe_fixed_fee_inr: Math.round(num(r.stripe_fixed_fee_inr, 0, 0, 1000)),
+    dispute_fee_inr: Math.round(num(r.dispute_fee_inr, 1350, 0, 10000)),
+    fallback_cogs_percent: num(r.fallback_cogs_percent, 0, 0, 100),
   };
 }
 

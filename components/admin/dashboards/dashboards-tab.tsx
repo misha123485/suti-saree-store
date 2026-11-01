@@ -9,6 +9,7 @@ import {
   DASHBOARD_IDS, DASHBOARD_META, DEFAULT_DASHBOARD_SETTINGS, DashboardSettings, DashboardsResponse,
 } from '@/lib/dashboards-config';
 import { KpiDashboard, LiveDashboard, MarketingDashboard, StoreDashboard } from './dashboards';
+import IntlMonthCard from './intl-month-card';
 
 function SettingsPanel({
   initial,
@@ -167,6 +168,8 @@ export default function DashboardsTab() {
           onSaved={() => { setShowSettings(false); load(); }}
         />
       )}
+
+      {!loading && <div className="mb-5"><IntlMonthCard /></div>}
 
       {loading ? (
         <div className="grid gap-4"><Skeleton className="h-72 rounded-2xl" /><Skeleton className="h-72 rounded-2xl" /></div>
