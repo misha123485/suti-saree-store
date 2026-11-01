@@ -6,6 +6,10 @@ import { fetchShippingSettings } from '@/lib/pincode-api';
 import { resolveGoogleProductCategory } from '@/lib/google-category';
 import { toPublicMediaUrls } from '@/lib/media-url';
 import type { Product } from '@/lib/types';
+import { getPublicInternationalConfig } from '@/lib/intl-server';
+import { convertInrToMinor, minorToMajor } from '@/lib/intl-pricing';
+import { currencyDigits } from '@/lib/intl-shipping';
+import type { InternationalSettings, ShippingZone } from '@/lib/intl-api';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
 
@@ -88,7 +92,23 @@ async function fetchVariantsForFeed(productIds: string[]): Promise<Map<string, F
 // 3 colors becomes 3 separate Shopping listings, each with its own link,
 // images, and stock -- linked together via item_group_id so Google shows
 // them as swatches/variants of the same product instead of duplicates.
-export async function GET() {
+//
+// Phase 8 -- country feeds:
+//   /api/merchant-feed                -> India, INR (unchanged)
+//   /api/merchant-feed?country=US     -> United States, USD   (also AE, MY, AU, CA, OM, BH, QA, SA, KW, GB)
+// A country feed only exists while International Selling is ON, that country is enabled AND covered by
+// an active shipping zone; otherwise it answers 404. Prices use lib/intl-pricing.ts, i.e. the SAME
+// formula the storefront and the order RPC use, so Google never sees a price different from the
+// landing page. Every <g:link> carries ?cc=XX so the landing page opens in the same currency.
+// One country = one feed = one currency: price, shipping and landing page currency always agree.
+interface IntlFeedCtx {
+  code: string;
+  currency: string;
+  settings: InternationalSettings;
+  zone: ShippingZone;
+}
+
+export async function GET(request: Request) {
   const supabase = getServerSupabase();
   const { data: settingsRow } = await supabase
     .from('settings')
@@ -101,6 +121,26 @@ export async function GET() {
     return new NextResponse('Merchant feed is disabled in Admin > Marketing.', { status: 404 });
   }
 
+  // ---- Optional country variant (?country=XX). Anything but a valid, enabled, zoned country -> 404. ----
+  const countryParam = (new URL(request.url).searchParams.get('country') || '').trim().toUpperCase();
+  let intl: IntlFeedCtx | null = null;
+  if (countryParam && countryParam !== 'IN') {
+    const cfg = await getPublicInternationalConfig();
+    const country = cfg.countries.find((c) => c.code === countryParam);
+    const zone = cfg.zones.find((z) => z.countries.includes(countryParam));
+    const hasRate = country ? (cfg.settings.fx_rates[country.currency] ?? 0) > 0 : false;
+    if (!cfg.settings.international_enabled || !country || !zone || !hasRate) {
+      return new NextResponse('International feed is not available for this country.', { status: 404 });
+    }
+    intl = { code: country.code, currency: country.currency, settings: cfg.settings, zone };
+  }
+
+  /** "1234.50 INR" for India; converted with the storefront formula for a country feed. */
+  const money = (inr: number): string =>
+    intl
+      ? `${minorToMajor(convertInrToMinor(inr, intl.currency, intl.settings), intl.currency).toFixed(currencyDigits(intl.currency))} ${intl.currency}`
+      : `${inr.toFixed(2)} INR`;
+
   const brand = marketing.merchant_feed_brand || 'Sutisaree';
   const products = await fetchProductsServer();
   const variantsByProduct = await fetchVariantsForFeed(products.map((p) => p.id));
@@ -111,7 +151,7 @@ export async function GET() {
   // is exactly what Google Merchant Center checks for when it flags
   // shipping/returns misrepresentation.
   const [fulfillment, shipping] = await Promise.all([fetchFulfillmentSettings(), fetchShippingSettings()]);
-  const shippingBlock = `
+  const indiaShippingBlock = `
       <g:shipping>
         <g:country>IN</g:country>
         <g:service>Standard</g:service>
@@ -121,6 +161,34 @@ export async function GET() {
         <g:min_transit_time>${fulfillment.delivery_metro_min}</g:min_transit_time>
         <g:max_transit_time>${fulfillment.delivery_remote_max}</g:max_transit_time>
       </g:shipping>`;
+
+  // Country feeds: ONE <g:shipping> block for that country, using the zone's rate converted to the
+  // feed currency (same conversion as prices). The zone's free-shipping threshold is applied per item
+  // price, and transit days come from the zone (omitted if the zone has none). Handling time is the
+  // same dispatch window as everywhere else.
+  function shippingFor(itemPriceInr: number): string {
+    if (!intl) return indiaShippingBlock;
+    const z = intl.zone;
+    const free = z.free_shipping_threshold_inr > 0 && itemPriceInr >= z.free_shipping_threshold_inr;
+    const transit =
+      z.eta_min_days && z.eta_max_days
+        ? `
+        <g:min_transit_time>${z.eta_min_days}</g:min_transit_time>
+        <g:max_transit_time>${z.eta_max_days}</g:max_transit_time>`
+        : '';
+    return `
+      <g:shipping>
+        <g:country>${escapeXml(intl.code)}</g:country>
+        <g:service>${escapeXml(z.courier || 'International')}</g:service>
+        <g:price>${money(free ? 0 : z.base_rate_inr)}</g:price>
+        <g:min_handling_time>${fulfillment.dispatch_days_min}</g:min_handling_time>
+        <g:max_handling_time>${fulfillment.dispatch_days_max}</g:max_handling_time>${transit}
+      </g:shipping>`;
+  }
+
+  /** Adds ?cc=XX (or &cc=XX when a query string already exists) so the landing page shows the same currency. */
+  const withCountry = (url: string): string =>
+    intl ? `${url}${url.includes('?') ? '&' : '?'}cc=${encodeURIComponent(intl.code)}` : url;
 
   function renderItem(opts: {
     id: string;
@@ -146,9 +214,14 @@ export async function GET() {
       .map((img) => `<g:additional_image_link>${escapeXml(img)}</g:additional_image_link>`)
       .join('');
     const availability = inStock ? 'in stock' : 'out of stock';
-    const priceText = `${price.toFixed(2)} INR`;
+    const priceText = money(price);
     const salePrice = mrp && mrp > price ? `<g:sale_price>${priceText}</g:sale_price>` : '';
-    const listedPrice = mrp && mrp > price ? `${mrp.toFixed(2)} INR` : priceText;
+    const listedPrice = mrp && mrp > price ? money(mrp) : priceText;
+    // No <g:tax> block on purpose: exports are supplied under LUT without IGST and the buyer pays
+    // destination duties/VAT to the courier (DAP), so there is no tax for us to declare per item. If
+    // Merchant Center ever asks for tax settings for a country, set them in the account, not here.
+    const shipsFrom = intl ? `
+      <g:ships_from_country>IN</g:ships_from_country>` : '';
 
     const gender = product.gender || 'female';
     const ageGroup = product.age_group || 'adult';
@@ -161,7 +234,7 @@ export async function GET() {
       <g:item_group_id>${escapeXml(itemGroupId)}</g:item_group_id>
       <title>${escapeXml(title)}</title>
       <description>${escapeXml(ensureColorMentioned(product.description || product.name, color).slice(0, 5000))}</description>
-      <link>${escapeXml(link)}</link>
+      <link>${escapeXml(withCountry(link))}</link>
       <g:image_link>${escapeXml(image)}</g:image_link>
       ${extraImages}
       <g:availability>${availability}</g:availability>
@@ -177,8 +250,8 @@ export async function GET() {
       <g:gender>${escapeXml(gender)}</g:gender>
       <g:age_group>${escapeXml(ageGroup)}</g:age_group>
       ${material}
-      ${pattern}
-      ${shippingBlock}
+      ${pattern}${shipsFrom}
+      ${shippingFor(price)}
     </item>`;
   }
 
@@ -274,7 +347,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
-    <title>${escapeXml(brand)} Product Feed</title>
+    <title>${escapeXml(brand)} Product Feed${intl ? ` (${intl.code})` : ''}</title>
     <link>${escapeXml(SITE_URL)}</link>
     <description>Product feed for Google Merchant Center / Meta Catalog</description>${items}
   </channel>

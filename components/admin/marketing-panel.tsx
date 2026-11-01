@@ -465,9 +465,37 @@ function MerchantFeedTab() {
   const { settings, setSettings, saving, save } = useMarketingSettings();
   const [feedUrl, setFeedUrl] = useState('');
 
+  // Phase 8: one feed URL per enabled international country (only listed while International Selling is on).
+  const [countryFeeds, setCountryFeeds] = useState<{ code: string; name: string; currency: string; hasZone: boolean }[]>([]);
+  const [intlOn, setIntlOn] = useState(false);
+
   useEffect(() => {
     setFeedUrl(`${window.location.origin}/api/merchant-feed`);
+    fetch('/api/international/config')
+      .then((r) => r.json())
+      .then((cfg) => {
+        setIntlOn(Boolean(cfg?.enabled));
+        const zones: { countries: string[] }[] = cfg?.zones ?? [];
+        setCountryFeeds(
+          ((cfg?.countries ?? []) as { code: string; name: string; currency: string }[]).map((c) => ({
+            code: c.code,
+            name: c.name,
+            currency: c.currency,
+            hasZone: zones.some((z) => z.countries.includes(c.code)),
+          })),
+        );
+      })
+      .catch(() => {});
   }, []);
+
+  const copyText = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Feed URL copied');
+    } catch {
+      toast.error('Could not copy — please copy manually');
+    }
+  };
 
   const copyFeedUrl = async () => {
     try {
@@ -523,6 +551,39 @@ function MerchantFeedTab() {
           </Button>
         </div>
       </div>
+
+      {intlOn && countryFeeds.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-border p-3">
+          <Label>International feeds — one scheduled fetch per country</Label>
+          <p className="text-xs text-muted-foreground">
+            In Merchant Center create one feed per country: set the country of sale, language English, feed label = country
+            code, and the URL below. Prices are in that country&apos;s currency, using the same formula as the storefront.
+            A country only works if it is enabled <strong>and</strong> covered by an active shipping zone.
+          </p>
+          {countryFeeds.map((c) => {
+            const url = `${feedUrl}?country=${c.code}`;
+            return (
+              <div key={c.code} className="space-y-1">
+                <p className="text-xs font-medium">
+                  {c.name} ({c.currency}) — feed label <code>{c.code}</code>
+                  {!c.hasZone && <span className="ml-2 text-destructive">no active shipping zone — feed returns 404</span>}
+                </p>
+                <div className="flex gap-2">
+                  <Input readOnly value={url} className="text-xs" />
+                  <Button type="button" variant="outline" onClick={() => copyText(url)} disabled={!c.hasZone}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="outline" asChild disabled={!c.hasZone}>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <Button type="submit" disabled={saving} className="gap-2 bg-primary">
         <Save className="h-4 w-4" />
