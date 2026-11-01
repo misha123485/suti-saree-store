@@ -34,7 +34,7 @@ async function requireAdmin() {
 
 const UPDATABLE_FIELDS = [
   'name', 'slug', 'description', 'price', 'mrp', 'category_id',
-  'category_name', 'fabric', 'origin', 'colors', 'sizes', 'occasion', 'images',
+  'category_name', 'category_names', 'fabric', 'origin', 'colors', 'sizes', 'occasion', 'images',
   'video_url', 'autoplay_video_in_catalog', 'gender', 'age_group', 'material', 'pattern', 'sku', 'highlights',
   'stock_quantity', 'low_stock_threshold', 'rating', 'reviews', 'featured', 'in_stock',
 ] as const;

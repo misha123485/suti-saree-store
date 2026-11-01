@@ -10,6 +10,7 @@ import {
   countProductsInCategory,
 } from '@/lib/products-api';
 import { CategoryRow } from '@/lib/types';
+import { productInCategory } from '@/lib/category-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,7 +63,7 @@ export default function CategoriesPanel() {
   const productCounts = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of categories) {
-      map.set(c.id, products.filter((p) => p.category === c.name).length);
+      map.set(c.id, products.filter((p) => productInCategory(p, c.name)).length);
     }
     return map;
   }, [categories, products]);
@@ -119,7 +120,7 @@ export default function CategoriesPanel() {
   const askDelete = async (c: CategoryRow) => {
     setConfirmTarget(c);
     try {
-      const count = await countProductsInCategory(c.id);
+      const count = await countProductsInCategory(c.id, c.name);
       setConfirmCount(count);
     } catch {
       setConfirmCount(null);

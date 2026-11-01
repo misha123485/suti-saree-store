@@ -274,13 +274,17 @@ export async function deleteCategory(id: string): Promise<void> {
 }
 
 /** How many products currently reference this category — shown before delete. */
-export async function countProductsInCategory(categoryId: string): Promise<number> {
-  const { count, error } = await supabase
+export async function countProductsInCategory(categoryId: string, categoryName?: string): Promise<number> {
+  const { data, error } = await supabase
     .from('products')
-    .select('id', { count: 'exact', head: true })
-    .eq('category_id', categoryId);
+    .select('id, category_id, category_names')
+    .or(
+      categoryName
+        ? `category_id.eq.${categoryId},category_names.cs.{"${categoryName.replace(/"/g, '')}"}`
+        : `category_id.eq.${categoryId}`
+    );
   if (error) throw error;
-  return count ?? 0;
+  return (data ?? []).length;
 }
 
 /**

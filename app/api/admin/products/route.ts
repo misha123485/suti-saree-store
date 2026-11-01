@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     mrp: input.mrp,
     category_id: input.category_id,
     category_name: input.category_name,
+    category_names: Array.isArray(input.category_names) ? input.category_names : [],
     fabric: input.fabric,
     origin: input.origin,
     colors: input.colors ?? [],

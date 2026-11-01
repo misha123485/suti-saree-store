@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { productInCategory } from '@/lib/category-utils';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -189,6 +190,7 @@ interface FormState {
   name: string;
   slug: string;
   category_name: string;
+  category_names: string[];
   price: string;
   mrp: string;
   description: string;
@@ -334,6 +336,7 @@ const emptyForm = (): FormState => ({
   name: '',
   slug: '',
   category_name: 'Silk Sarees',
+  category_names: [],
   price: '',
   mrp: '',
   description: '',
@@ -365,6 +368,7 @@ const fromProduct = (p: Product): FormState => ({
   name: p.name,
   slug: p.slug,
   category_name: p.category,
+  category_names: (p.category_names ?? []).filter((n) => n !== p.category),
   price: String(p.price),
   mrp: p.mrp ? String(p.mrp) : '',
   description: p.description,
@@ -927,7 +931,7 @@ export default function ProductsPanel() {
         (sourcing?.whatsapp_number ?? '').toLowerCase().includes(q);
 
       const matchesCategory =
-        categoryFilter === 'all' || p.category === categoryFilter;
+        categoryFilter === 'all' || productInCategory(p, categoryFilter);
 
       const matchesVendor =
         vendorFilter === 'all' ||
@@ -1206,6 +1210,8 @@ export default function ProductsPanel() {
       mrp: form.mrp ? Number(form.mrp) : null,
       category_id: category?.id ?? null,
       category_name: form.category_name,
+      // Extra categories (primary excluded here; storefront merges both).
+      category_names: Array.from(new Set([form.category_name, ...form.category_names])).filter(Boolean),
       fabric: form.fabric,
       origin: form.origin,
       colors,
@@ -2016,6 +2022,31 @@ export default function ProductsPanel() {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-2 rounded-md border p-2">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    Also show in these categories (multiple)
+                  </p>
+                  <div className="grid max-h-40 gap-1 overflow-y-auto">
+                    {categories
+                      .filter((c: CategoryRow) => c.name !== form.category_name)
+                      .map((c: CategoryRow) => (
+                        <label key={c.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={form.category_names.includes(c.name)}
+                            onCheckedChange={(v) =>
+                              setForm((f) => ({
+                                ...f,
+                                category_names: v
+                                  ? [...f.category_names, c.name]
+                                  : f.category_names.filter((n) => n !== c.name),
+                              }))
+                            }
+                          />
+                          {c.name}
+                        </label>
+                      ))}
+                  </div>
+                </div>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="price">Price (₹) *</Label>
