@@ -1,5 +1,6 @@
 import { formatINR } from './format';
 import { formatMinor } from './intl-api';
+import { orderMoney, isInternationalOrder } from './order-money';
 import { toPublicMediaUrl } from './media-url';
 import { getSupabaseAdmin } from './supabase-admin';
 import { getOrCreateReviewToken } from './review-link-tokens';
@@ -213,6 +214,24 @@ function intlItemsList(items: any[]) {
   return `<ul style="padding-left:18px;font-size:14px;">${items
     .map((it) => `<li>${escHtml(it.product_name || it.name || 'Item')}${it.size ? ` (Size: ${escHtml(it.size)})` : ''} × ${Number(it.quantity) || 1}</li>`)
     .join('')}</ul>`;
+}
+
+/** Order fields needed to show amounts in the currency the customer was charged (Phase 13). Absent/India = INR as before. */
+export type EmailMoneyOrder = {
+  is_international?: boolean | null;
+  charge_currency?: string | null;
+  charge_amount_minor?: number | string | null;
+  total_amount?: number | string | null;
+};
+
+/** INR amount of this order shown the way the customer paid it. India orders: exactly formatINR as before. */
+function fm(money: EmailMoneyOrder | undefined, amountInr: number): string {
+  return money && isInternationalOrder(money) ? orderMoney(money, amountInr) : formatINR(amountInr);
+}
+
+/** Item list: names only (no INR prices) for international orders, the normal table otherwise. */
+function itemsFor(money: EmailMoneyOrder | undefined, items: any[]) {
+  return money && isInternationalOrder(money) ? intlItemsList(items) : itemsTable(items);
 }
 
 /** DAP/DDP duty rule + international return rule, shown in every international customer email. */
@@ -705,6 +724,8 @@ export function orderCancelledByCustomerEmail(order: {
   customer_name?: string;
   items?: any[];
   total_amount: number;
+  // International orders (Phase 13): pass the order row so amounts show in the charged currency.
+  money?: EmailMoneyOrder;
   refund: {
     status: 'not_applicable' | 'refunded' | 'pending_manual' | 'failed';
     amount?: number;
@@ -715,15 +736,17 @@ export function orderCancelledByCustomerEmail(order: {
   const name = order.customer_name || 'there';
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
 
+  const intlOrder = !!order.money && isInternationalOrder(order.money);
+  const refundDays = intlOrder ? '5–10' : '5–7';
   let refundBlock = '';
   if (order.refund.status === 'refunded') {
     refundBlock = `
       <table role="presentation" style="width:100%; border-collapse:collapse; margin: 0 0 20px; background:#f0f9f1; border:1px solid #d5ecd8; border-left: 4px solid #1f7a3d; border-radius: 6px;">
         <tr>
           <td style="padding: 14px 16px; font-size: 14px; color:#1a4d2b; line-height:1.6;">
-            <strong>Refund of ${formatINR(order.refund.amount ?? order.total_amount)} initiated.</strong>
-            It has been sent back to your original payment method and usually reflects within 5–7 business days,
-            depending on your bank.
+            <strong>Refund of ${fm(order.money, order.refund.amount ?? order.total_amount)} initiated.</strong>
+            It has been sent back to your original ${intlOrder ? 'card' : 'payment method'} and usually reflects within ${refundDays} business days,
+            depending on your bank.${intlOrder ? ` The refund is made in the same currency you paid in (${escHtml(String(order.money!.charge_currency).toUpperCase())}); any exchange-rate difference on your card statement comes from your bank.` : ''}
             ${order.refund.razorpay_refund_id ? `<br /><span style="font-size:12px; color:#4a3d34;">Refund reference: ${order.refund.razorpay_refund_id}</span>` : ''}
           </td>
         </tr>
@@ -733,8 +756,8 @@ export function orderCancelledByCustomerEmail(order: {
       <table role="presentation" style="width:100%; border-collapse:collapse; margin: 0 0 20px; background:#fbf1e7; border:1px solid #ecdfd2; border-left: 4px solid ${GOLD_ACCENT}; border-radius: 6px;">
         <tr>
           <td style="padding: 14px 16px; font-size: 14px; color:#4a3d34; line-height:1.6;">
-            <strong>Refund of ${formatINR(order.refund.amount ?? order.total_amount)} is being arranged.</strong>
-            Our team will process it to your original payment method within 1–2 business days. You don't need
+            <strong>Refund of ${fm(order.money, order.refund.amount ?? order.total_amount)} is being arranged.</strong>
+            Our team will process it to your original ${intlOrder ? 'card' : 'payment method'} within 1–2 business days. You don't need
             to do anything further — we'll take care of it.
           </td>
         </tr>
@@ -752,11 +775,11 @@ export function orderCancelledByCustomerEmail(order: {
       to this email or reach out to our support team right away and we'll help sort it out.
     </p>
     ${refundBlock}
-    ${order.items?.length ? itemsTable(order.items) : ''}
+    ${order.items?.length ? itemsFor(order.money, order.items) : ''}
     <table role="presentation" style="width:100%; margin: 4px 0 24px;">
       <tr>
         <td style="text-align:right; font-size:16px; font-weight:bold; padding-top: 6px; border-top: 2px solid ${BRAND_COLOR};">
-          Order total: ${formatINR(order.total_amount)}
+          Order total: ${fm(order.money, order.total_amount)}
         </td>
       </tr>
     </table>
@@ -780,6 +803,8 @@ export function orderStatusUpdateEmail(order: {
   courier_name?: string | null;
   items?: any[];
   total_amount?: number;
+  // International orders (Phase 13): pass the order row so amounts show in the charged currency.
+  money?: EmailMoneyOrder;
   // True only for orders that went through Admin > "Request Online
   // Payment" (made-to-order / kept-ready-on-demand pieces where shipment
   // genuinely takes a little longer). Ordinary checkout/resume-cart online
@@ -804,12 +829,13 @@ export function orderStatusUpdateEmail(order: {
   const shortId = `#${order.id.slice(0, 8).toUpperCase()}`;
   const name = order.customer_name || 'there';
 
+  const intlOrder = !!order.money && isInternationalOrder(order.money);
   let cancelledRefundLine = `If you've already paid online, any eligible refund will be processed to your original payment method.`;
   if (order.refund) {
     if (order.refund.status === 'refunded') {
-      cancelledRefundLine = `<strong>Refund of ${formatINR(order.refund.amount ?? order.total_amount ?? 0)} initiated</strong> to your original payment method. It usually reflects within 5–7 business days.${order.refund.razorpay_refund_id ? ` (Refund reference: ${order.refund.razorpay_refund_id})` : ''}`;
+      cancelledRefundLine = `<strong>Refund of ${fm(order.money, order.refund.amount ?? order.total_amount ?? 0)} initiated</strong> to your original ${intlOrder ? 'card' : 'payment method'}. It usually reflects within ${intlOrder ? '5–10' : '5–7'} business days.${order.refund.razorpay_refund_id ? ` (Refund reference: ${order.refund.razorpay_refund_id})` : ''}`;
     } else if (order.refund.status === 'pending_manual' || order.refund.status === 'failed') {
-      cancelledRefundLine = `<strong>Refund of ${formatINR(order.refund.amount ?? order.total_amount ?? 0)} is being arranged</strong> and will be processed to your original payment method within 1–2 business days. You don't need to do anything.`;
+      cancelledRefundLine = `<strong>Refund of ${fm(order.money, order.refund.amount ?? order.total_amount ?? 0)} is being arranged</strong> and will be processed to your original ${intlOrder ? 'card' : 'payment method'} within 1–2 business days. You don't need to do anything.`;
     } else if (order.refund.status === 'not_applicable') {
       cancelledRefundLine = '';
     }
@@ -868,12 +894,13 @@ export function orderStatusUpdateEmail(order: {
   const html = wrapper(`
     <h2 style="margin-top:0; color:${BRAND_COLOR};">${c.heading}</h2>
     <p>${c.body}</p>
-    ${order.items?.length ? itemsTable(order.items) : ''}
+    ${order.items?.length ? itemsFor(order.money, order.items) : ''}
     ${
       order.items?.length && typeof order.total_amount === 'number'
-        ? `<p style="text-align:right; font-size:16px; font-weight:bold;">Total: ${formatINR(order.total_amount)}</p>`
+        ? `<p style="text-align:right; font-size:16px; font-weight:bold;">Total: ${fm(order.money, order.total_amount)}</p>`
         : ''
     }
+    ${intlOrder && (order.status === 'paid' || order.status === 'shipped' || order.status === 'delivered') ? intlDutyBlock('DAP', null) : ''}
     <p style="text-align:center; margin-top: 16px;">
       <a href="${process.env.NEXT_PUBLIC_SITE_URL || ''}/track/${order.id}" style="background:${BRAND_COLOR}; color:#fff; padding: 12px 28px; text-decoration:none; border-radius: 4px; font-size: 14px; display:inline-block;">
         Track My Order
@@ -1124,7 +1151,11 @@ export function returnStatusEmail(ret: {
   status: string;
   admin_notes?: string | null;
   refund_amount?: number | null;
+  // International orders (Phase 13): the order row (amounts in charged currency) + the intl return window.
+  money?: EmailMoneyOrder;
+  intlReturnDays?: number | null;
 }) {
+  const intlOrder = !!ret.money && isInternationalOrder(ret.money);
   const statusLabelMap: Record<string, string> = {
     approved: 'approved',
     rejected: 'declined',
@@ -1138,7 +1169,12 @@ export function returnStatusEmail(ret: {
     <p>Your ${ret.type} request for order <strong>#${ret.order_id.slice(0, 8)}</strong> has been <strong>${label}</strong>.</p>
     ${
       ret.refund_amount
-        ? `<p style="font-size:16px;"><strong>Refund amount:</strong> ${formatINR(ret.refund_amount)}</p>`
+        ? `<p style="font-size:16px;"><strong>Refund amount:</strong> ${fm(ret.money, ret.refund_amount)}</p>`
+        : ''
+    }
+    ${
+      intlOrder && ret.status === 'approved'
+        ? `<p style="font-size:14px; color:#4a3d34; background:#fff8e6; border:1px solid #f0dca8; border-radius:6px; padding:10px 12px;"><strong>How to send it back:</strong> international returns are not collected by our courier. Please reply to this email and we will share the return address. Ship the item (unused, with tags, in its original packing) within ${ret.intlReturnDays || 7} days of delivery and send us the tracking number. Return shipping is paid by you unless the item was wrong or damaged. Duties and taxes are not refundable. Your refund goes to your original card once we receive and inspect the item.</p>`
         : ''
     }
     ${ret.admin_notes ? `<p style="font-size:14px; color:#6b5f57;"><strong>Note from our team:</strong> ${ret.admin_notes}</p>` : ''}
@@ -1222,13 +1258,16 @@ export function returnRefundProcessedEmail(ret: {
   order_id: string;
   refund_amount: number;
   razorpay_refund_id?: string | null;
+  // International orders (Phase 13): the order row, so the amount shows in the charged currency and the wording says card/Stripe.
+  money?: EmailMoneyOrder;
 }) {
+  const intlOrder = !!ret.money && isInternationalOrder(ret.money);
   const subject = `Refund processed — Order #${ret.order_id.slice(0, 8)}`;
   const html = wrapper(`
     <h2 style="margin-top:0; color:${BRAND_COLOR};">Your refund is on its way</h2>
-    <p>We've processed a refund of <strong>${formatINR(ret.refund_amount)}</strong> for order <strong>#${ret.order_id.slice(0, 8)}</strong> to your original payment method via Razorpay.</p>
+    <p>We've processed a refund of <strong>${fm(ret.money, ret.refund_amount)}</strong> for order <strong>#${ret.order_id.slice(0, 8)}</strong> to your original ${intlOrder ? 'card via Stripe' : 'payment method via Razorpay'}.</p>${intlOrder ? `<p style="font-size:13px; color:#6b5f57;">The refund is in the same currency you paid in (${escHtml(String(ret.money!.charge_currency).toUpperCase())}). Duties, taxes and the original shipping fee are not included, as described in our returns policy.</p>` : ''}
     ${ret.razorpay_refund_id ? `<p style="font-size:12px; color:#9a8f87;">Refund reference: ${ret.razorpay_refund_id}</p>` : ''}
-    <p>It usually reflects in your account within 5-7 business days, depending on your bank.</p>
+    <p>It usually reflects in your account within ${intlOrder ? '5-10' : '5-7'} business days, depending on your bank.</p>
   `);
   return { subject, html };
 }

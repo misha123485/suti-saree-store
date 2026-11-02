@@ -85,6 +85,10 @@ type OrderRow = {
   razorpay_payment_id?: string | null;
   payment_gateway?: string | null;
   cashfree_order_id?: string | null;
+  // International orders (Phase 13)
+  is_international?: boolean | null;
+  charge_currency?: string | null;
+  charge_amount_minor?: number | string | null;
 };
 
 /**
@@ -99,6 +103,16 @@ export async function schedulePickupForReturn(
 ): Promise<{ success: boolean; error?: string }> {
   if (ret.pickup_waybill) {
     return { success: true }; // already scheduled — no-op, avoids double-booking
+  }
+
+  // International orders (Phase 13): Delhivery cannot collect from a foreign address, and our returns policy
+  // says the buyer ships the item back. Never create a reverse pickup for them. The 'approved' email already
+  // carries the return instructions; the admin refunds from Admin > Returns once the parcel is received.
+  if (order.is_international) {
+    return {
+      success: false,
+      error: 'International order: no courier pickup. The customer ships the item back (instructions are in the approval email). Mark it received and refund from Returns.',
+    };
   }
 
   try {
@@ -216,6 +230,7 @@ export async function processRefundForReturn(
       order_id: ret.order_id,
       refund_amount: refundAmount,
       razorpay_refund_id: result.refundId,
+      money: order, // Phase 13: charged currency for international orders
     });
     sendEmail({ to: order.customer_email, subject, html }).catch(() => {});
   }

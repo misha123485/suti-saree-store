@@ -214,7 +214,7 @@ export async function updateOrderStatus(id: string, status: string) {
   const { data: existing, error: fetchError } = await supabase
     .from('orders')
     .select(
-      'id, status, customer_email, customer_name, tracking_number, courier_name, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, advance_amount, advance_paid_at, advance_refund_id'
+      'id, status, customer_email, customer_name, tracking_number, courier_name, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, advance_amount, advance_paid_at, advance_refund_id, is_international, charge_currency, charge_amount_minor'
     )
     .eq('id', id)
     .maybeSingle();
@@ -310,6 +310,7 @@ export async function updateOrderStatus(id: string, status: string) {
       isPaymentRequestFlow,
       payment_method: existing.payment_method,
       advance_amount: existing.advance_amount,
+      money: existing, // Phase 13: charged currency for international orders
       refund: needsRefund ? refundOutcome : undefined,
     });
     // Best-effort -- never let a slow/broken email provider fail the

@@ -32,7 +32,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(
-        'id, customer_name, customer_email, customer_phone, shipping_address, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id'
+        'id, customer_name, customer_email, customer_phone, shipping_address, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, is_international, charge_currency, charge_amount_minor'
       )
       .eq('id', ret.order_id)
       .single();

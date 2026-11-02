@@ -72,7 +72,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { data: order } = await supabase
       .from('orders')
       .select(
-        'id, customer_name, customer_email, customer_phone, shipping_address, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id'
+        'id, customer_name, customer_email, customer_phone, shipping_address, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, is_international, charge_currency, charge_amount_minor'
       )
       .eq('id', updated.order_id)
       .single();
@@ -148,6 +148,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     // General status-change email
     if (status && updated && order?.customer_email) {
+      let intlReturnDays: number | null = null;
+      if (order.is_international) {
+        const { data: intlSetting } = await supabase.from('settings').select('value').eq('key', 'international_settings').maybeSingle();
+        intlReturnDays = Number((intlSetting?.value as any)?.return_window_days_intl) || 7;
+      }
       const { subject, html } = returnStatusEmail({
         id: updated.id,
         order_id: updated.order_id,
@@ -155,6 +160,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         status: updated.status,
         admin_notes: updated.admin_notes,
         refund_amount: updated.refund_amount,
+        money: order, // Phase 13: charged currency for international orders
+        intlReturnDays,
       });
       sendEmail({ to: order.customer_email, subject, html }).catch(() => {});
     }

@@ -29,7 +29,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const { data: order, error: fetchError } = await admin
     .from('orders')
     .select(
-      'id, user_id, customer_email, customer_name, items, status, created_at, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, total_amount, tracking_number, advance_amount, advance_paid_at, advance_refund_id'
+      'id, user_id, customer_email, customer_name, items, status, created_at, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, total_amount, tracking_number, advance_amount, advance_paid_at, advance_refund_id, is_international, charge_currency, charge_amount_minor'
     )
     .eq('id', params.id)
     .single();
@@ -106,6 +106,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       customer_name: order.customer_name,
       items: Array.isArray(order.items) ? order.items : [],
       total_amount: order.total_amount,
+      money: order, // Phase 13: charged currency for international orders
       refund,
     });
     sendEmail({ to: order.customer_email, subject, html }).catch((err) => {

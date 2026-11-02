@@ -676,7 +676,7 @@ export async function runReturnPickupTrackingJob() {
   const { data: orders } = await supabase
     .from('orders')
     .select(
-      'id, customer_name, customer_email, customer_phone, shipping_address, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id'
+      'id, customer_name, customer_email, customer_phone, shipping_address, items, total_amount, payment_method, razorpay_payment_id, payment_gateway, cashfree_order_id, is_international, charge_currency, charge_amount_minor'
     )
     .in('id', orderIds);
   const ordersById = new Map((orders || []).map((o) => [o.id, o]));

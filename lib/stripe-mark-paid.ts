@@ -18,6 +18,9 @@ export interface StripePayableOrder {
   tracking_number?: string | null;
   courier_name?: string | null;
   items?: any;
+  is_international?: boolean | null;
+  charge_currency?: string | null;
+  charge_amount_minor?: number | string | null;
 }
 
 export async function markOrderPaidViaStripe(
@@ -57,6 +60,8 @@ export async function markOrderPaidViaStripe(
       items: order.items,
       total_amount: order.total_amount,
       payment_method: order.payment_method,
+      // Phase 13: amounts in the currency the customer paid (USD/AED/...), not INR.
+      money: order,
     } as any);
     sendEmail({ to: order.customer_email, subject, html }).catch((err) =>
       console.error('[stripe] payment-confirmed email failed:', err),
