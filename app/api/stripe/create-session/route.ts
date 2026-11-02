@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error } = await admin
       .from('orders')
       .select(
-        'id, status, payment_method, is_international, country_code, charge_currency, charge_amount_minor, customer_name, customer_email, customer_phone, shipping_address, stripe_session_id',
+        'id, status, items, payment_method, is_international, country_code, charge_currency, charge_amount_minor, customer_name, customer_email, customer_phone, shipping_address, stripe_session_id',
       )
       .eq('id', internalOrderId)
       .maybeSingle();
@@ -68,6 +68,15 @@ export async function POST(req: NextRequest) {
     ]);
     if (!normalizeInternationalSettings(sRow?.value as never).international_enabled || !cRow?.is_enabled) {
       return NextResponse.json({ error: 'International orders are currently unavailable for this country.' }, { status: 409 });
+    }
+
+    // Products flagged "export blocked" can never be paid for through the international path.
+    const itemIds = Array.from(new Set(((Array.isArray((order as { items?: unknown }).items) ? (order as { items: Array<{ product_id?: string }> }).items : []) as Array<{ product_id?: string }>).map((i) => i?.product_id).filter((x): x is string => !!x)));
+    if (itemIds.length) {
+      const { data: blocked } = await admin.from('products').select('name').in('id', itemIds).eq('export_blocked', true);
+      if (blocked && blocked.length) {
+        return NextResponse.json({ error: `Not available for international delivery: ${blocked.map((b) => b.name).join(', ')}. Please remove it from your cart.` }, { status: 409 });
+      }
     }
 
     const currency = String(order.charge_currency || '').toUpperCase();

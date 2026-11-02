@@ -13,7 +13,7 @@ const istToday = () => new Date(Date.now() + 5.5 * 3600_000).toISOString().slice
 const istMonthStart = () => istToday().slice(0, 8) + '01';
 
 interface PnlResponse { from: string; to: string; rows: PnlRow[]; totals: PnlTotals; byCountry: Array<{ country: string; totals: PnlTotals }> }
-interface CostProduct { id: string; name: string; price: number; cost_inr: number | null }
+interface CostProduct { id: string; name: string; price: number; cost_inr: number | null; export_blocked: boolean }
 
 const th = 'px-3 py-2 text-left text-xs font-medium text-muted-foreground whitespace-nowrap';
 const td = 'px-3 py-2 text-sm whitespace-nowrap';
@@ -240,6 +240,7 @@ function ProductCosts({ onChanged }: { onChanged: () => void }) {
   const [q, setQ] = useState('');
   const [items, setItems] = useState<CostProduct[]>([]);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [blockEdits, setBlockEdits] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
   const search = useCallback(async () => {
@@ -248,7 +249,7 @@ function ProductCosts({ onChanged }: { onChanged: () => void }) {
       const res = await fetch(`/api/admin/international/product-costs?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Load nahi hua');
-      setItems(body.products); setEdits({});
+      setItems(body.products); setEdits({}); setBlockEdits({});
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Load nahi hua'); }
     finally { setBusy(false); }
   }, [q]);
@@ -257,13 +258,14 @@ function ProductCosts({ onChanged }: { onChanged: () => void }) {
 
   const save = async () => {
     const costs = Object.entries(edits).map(([product_id, v]) => ({ product_id, cost_inr: v === '' ? null : Number(v) }));
-    if (!costs.length) return;
+    const blocked = Object.entries(blockEdits).map(([product_id, export_blocked]) => ({ product_id, export_blocked }));
+    if (!costs.length && !blocked.length) return;
     setBusy(true);
     try {
-      const res = await fetch('/api/admin/international/product-costs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ costs }) });
+      const res = await fetch('/api/admin/international/product-costs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(costs.length ? { costs } : {}), ...(blocked.length ? { blocked } : {}) }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Save nahi hua');
-      toast.success(`${body.saved} saved, ${body.removed} removed`);
+      toast.success(`${body.saved} cost(s) saved, ${body.removed} removed, ${body.blocked || 0} export flag(s) updated`);
       await search(); onChanged();
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Save nahi hua'); }
     finally { setBusy(false); }
@@ -274,11 +276,11 @@ function ProductCosts({ onChanged }: { onChanged: () => void }) {
       <div className="mb-3 flex gap-2">
         <Input className="h-9 max-w-xs" placeholder="Search product name" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') search(); }} />
         <Button variant="outline" size="sm" onClick={search} disabled={busy}>Search</Button>
-        <Button size="sm" onClick={save} disabled={busy || !Object.keys(edits).length}>{busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Save {Object.keys(edits).length || ''} change(s)</Button>
+        <Button size="sm" onClick={save} disabled={busy || !(Object.keys(edits).length + Object.keys(blockEdits).length)}>{busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Save {Object.keys(edits).length + Object.keys(blockEdits).length || ''} change(s)</Button>
       </div>
       <div className="max-h-80 overflow-auto">
         <table className="w-full">
-          <thead><tr><th className={th}>Product</th><th className={th}>Price ₹</th><th className={th}>Your cost ₹</th></tr></thead>
+          <thead><tr><th className={th}>Product</th><th className={th}>Price ₹</th><th className={th}>Your cost ₹</th><th className={th} title="Tick = never sold outside India (hidden from country feeds, blocked at checkout)">Do not export</th></tr></thead>
           <tbody>
             {items.map((p) => (
               <tr key={p.id} className="border-t">
@@ -288,9 +290,13 @@ function ProductCosts({ onChanged }: { onChanged: () => void }) {
                   <Input className="h-8 w-28 text-right tabular-nums" inputMode="decimal" placeholder="—" value={edits[p.id] ?? (p.cost_inr == null ? '' : String(p.cost_inr))}
                     onChange={(e) => setEdits({ ...edits, [p.id]: e.target.value.replace(/[^\d.]/g, '') })} />
                 </td>
+                <td className={`${td} text-center`}>
+                  <input type="checkbox" className="h-4 w-4" checked={blockEdits[p.id] ?? p.export_blocked}
+                    onChange={(e) => setBlockEdits({ ...blockEdits, [p.id]: e.target.checked })} />
+                </td>
               </tr>
             ))}
-            {items.length === 0 && <tr><td className={td} colSpan={3}>No products found.</td></tr>}
+            {items.length === 0 && <tr><td className={td} colSpan={4}>No products found.</td></tr>}
           </tbody>
         </table>
       </div>

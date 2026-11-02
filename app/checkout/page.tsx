@@ -1329,6 +1329,21 @@ export default function CheckoutPage() {
         toast.error('Please accept the import duty & tax notice to continue');
         return;
       }
+      // Products flagged "export blocked" cannot go abroad: tell the customer before any order is created.
+      try {
+        const chk = await fetch('/api/international/blocked-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productIds: items.map((i) => i.product.id) }),
+        });
+        const chkData = await chk.json().catch(() => ({}));
+        if (Array.isArray(chkData.blocked) && chkData.blocked.length) {
+          toast.error(`Not available for international delivery: ${chkData.blocked.map((b: { name: string }) => b.name).join(', ')}. Please remove it from your cart.`, { duration: 8000 });
+          return;
+        }
+      } catch {
+        // Network hiccup: the server still blocks payment for these products in create-session.
+      }
     }
     let phoneDigits = shipPhone.replace(/[^0-9]/g, '');
     if (phoneDigits.startsWith('91') && phoneDigits.length === 12) phoneDigits = phoneDigits.slice(2);

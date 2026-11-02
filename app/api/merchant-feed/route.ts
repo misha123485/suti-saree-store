@@ -142,7 +142,13 @@ export async function GET(request: Request) {
       : `${inr.toFixed(2)} INR`;
 
   const brand = marketing.merchant_feed_brand || 'Sutisaree';
-  const products = await fetchProductsServer();
+  let products = await fetchProductsServer();
+  if (intl) {
+    // Country feeds skip products flagged "export blocked" (Admin > International P&L > Product costs).
+    const { data: blockedRows } = await supabase.from('products').select('id').eq('export_blocked', true);
+    const blockedIds = new Set((blockedRows ?? []).map((r: { id: string }) => String(r.id)));
+    if (blockedIds.size) products = products.filter((p) => !blockedIds.has(String(p.id)));
+  }
   const variantsByProduct = await fetchVariantsForFeed(products.map((p) => p.id));
 
   // Same numbers as Admin > Marketing > Shipping & Returns Timing / GST &
