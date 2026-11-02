@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { CheckCircle2, Circle, Package, Truck, Home, XCircle, LogIn, Gift, Users, PackageCheck } from 'lucide-react';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { formatINR } from '@/lib/format';
+import { orderMoney } from '@/lib/order-money';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import OrderTracking from '@/components/order/order-tracking';
@@ -291,7 +292,7 @@ export default async function TrackOrderPage({ params }: { params: { id: string 
                   </p>
                 </div>
               </div>
-              <p className="font-medium">{formatINR(item.price * item.quantity)}</p>
+              <p className="font-medium">{orderMoney(order, item.price * item.quantity)}</p>
             </div>
           ))}
         </div>
@@ -306,7 +307,7 @@ export default async function TrackOrderPage({ params }: { params: { id: string 
                 ? 'Total Due (Payment Pending)'
                 : 'Total Paid'}
           </span>
-          <span className="font-serif text-primary">{formatINR(order.total_amount)}</span>
+          <span className="font-serif text-primary">{orderMoney(order, order.total_amount)}</span>
         </div>
           {order.payment_method === 'partial' && (
             <div className="mt-2 space-y-1 rounded-md bg-muted/40 p-3 text-sm font-normal">

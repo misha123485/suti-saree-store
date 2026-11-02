@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { CheckCircle2, Download, Truck, ShieldCheck, LogIn, Gift, Users } from 'lucide-react';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { formatINR } from '@/lib/format';
+import { orderMoney } from '@/lib/order-money';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import OrderTracking from '@/components/order/order-tracking';
@@ -255,7 +256,7 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
           {order.payment_method === 'cod' && order.status !== 'cancelled' && (
             <>
               {' '}
-              Please keep <strong>{formatINR(order.total_amount)}</strong> ready in cash for our
+              Please keep <strong>{orderMoney(order, order.total_amount)}</strong> ready in cash for our
               delivery partner.
             </>
           )}
@@ -332,7 +333,7 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
                   </p>
                 </div>
               </div>
-              <p className="font-medium">{formatINR(item.price * item.quantity)}</p>
+              <p className="font-medium">{orderMoney(order, item.price * item.quantity)}</p>
             </div>
           ))}
         </div>
@@ -342,27 +343,27 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
         <div className="flex flex-col gap-1.5 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
-            <span>{formatINR(order.subtotal ?? order.total_amount)}</span>
+            <span>{orderMoney(order, order.subtotal ?? order.total_amount)}</span>
           </div>
           {order.coupon_discount > 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Coupon ({order.coupon_code})</span>
-              <span>-{formatINR(order.coupon_discount)}</span>
+              <span>-{orderMoney(order, order.coupon_discount)}</span>
             </div>
           )}
           {(order.bogo_discount ?? 0) > 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">BOGO offer</span>
-              <span>-{formatINR(order.bogo_discount ?? 0)}</span>
+              <span>-{orderMoney(order, order.bogo_discount ?? 0)}</span>
             </div>
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Shipping</span>
-            <span>{order.shipping_charge ? formatINR(order.shipping_charge) : 'FREE'}</span>
+            <span>{order.shipping_charge ? orderMoney(order, order.shipping_charge) : 'FREE'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">GST (included)</span>
-            <span>{formatINR(order.gst_amount ?? 0)}</span>
+            <span>{orderMoney(order, order.gst_amount ?? 0)}</span>
           </div>
           <Separator className="my-2" />
           <div className="flex justify-between font-semibold text-foreground">
@@ -375,7 +376,7 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
                   ? 'Total Due (Payment Pending)'
                   : 'Total Paid'}
             </span>
-            <span className="font-serif text-lg text-primary">{formatINR(order.total_amount)}</span>
+            <span className="font-serif text-lg text-primary">{orderMoney(order, order.total_amount)}</span>
           </div>
           {order.payment_method === 'partial' && (
             <div className="mt-2 space-y-1 rounded-md bg-muted/40 p-3 text-sm font-normal">

@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Package, TrendingUp, Download } from 'lucide-react';
 import { getSupabaseServer, getCurrentUser } from '@/lib/supabase-server-auth';
 import { formatINR } from '@/lib/format';
+import { orderMoney } from '@/lib/order-money';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import PaymentPendingBanner from '@/components/order/payment-pending-banner';
@@ -143,7 +144,7 @@ export default async function OrdersPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-primary">
-                        {formatINR(order.total_amount)}
+                        {orderMoney(order, order.total_amount)}
                       </p>
                       {isResellerOrder && order.reseller_profit && (
                         <p className="text-xs text-green-600 flex items-center justify-end gap-1">
@@ -219,7 +220,7 @@ export default async function OrdersPage() {
                     {o.first_item ?? 'Items'}
                     {o.item_count > 1 ? ` +${o.item_count - 1} more` : ''}
                   </span>
-                  <span className="shrink-0 font-semibold text-primary">{formatINR(o.total_amount)}</span>
+                  <span className="shrink-0 font-semibold text-primary">{orderMoney(o, o.total_amount)}</span>
                 </div>
               </Link>
             ))}

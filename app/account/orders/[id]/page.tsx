@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { PackageCheck, CreditCard, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSupabaseServer, getCurrentUser } from '@/lib/supabase-server-auth';
-import { formatINR } from '@/lib/format';
+import { orderMoney } from '@/lib/order-money';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import ReturnRequestButton from '@/components/account/return-request-button';
@@ -131,7 +131,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   <p className="mt-2 text-amber-800/80">
                     Your payment is fully protected — if anything about this order doesn't work out,
                     you'll receive a full refund of{' '}
-                    <span className="font-semibold text-amber-900">{formatINR(order.total_amount)}</span>,
+                    <span className="font-semibold text-amber-900">{orderMoney(order, order.total_amount)}</span>,
                     covered under our{' '}
                     <Link href="/legal/refund-policy" className="font-medium text-amber-900 underline underline-offset-2">
                       Refund &amp; Cancellation Policy
@@ -206,7 +206,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   </p>
                 </div>
               </div>
-              <p className="font-medium">{formatINR(item.price * item.quantity)}</p>
+              <p className="font-medium">{orderMoney(order, item.price * item.quantity)}</p>
             </div>
             {order.status === 'delivered' && item.product_id && (
               <DeliveredItemReview productId={item.product_id} productName={item.product_name} />
@@ -247,21 +247,21 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <div className="mt-2 space-y-1 text-sm text-muted-foreground">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>{formatINR(order.subtotal ?? order.total_amount)}</span>
+              <span>{orderMoney(order, order.subtotal ?? order.total_amount)}</span>
             </div>
             <div className="flex justify-between">
               <span>Shipping</span>
-              <span>{order.shipping_charge ? formatINR(order.shipping_charge) : 'Free'}</span>
+              <span>{order.shipping_charge ? orderMoney(order, order.shipping_charge) : 'Free'}</span>
             </div>
             {order.online_payment_discount > 0 && (
               <div className="flex justify-between text-green-700">
                 <span>Online payment discount</span>
-                <span>-{formatINR(order.online_payment_discount)}</span>
+                <span>-{orderMoney(order, order.online_payment_discount)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-foreground">
               <span>Total</span>
-              <span>{formatINR(order.total_amount)}</span>
+              <span>{orderMoney(order, order.total_amount)}</span>
             </div>
           </div>
         </div>
