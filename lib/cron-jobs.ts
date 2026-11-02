@@ -735,7 +735,7 @@ export async function runForwardShipmentTrackingJob() {
   const { data: allTracked, error } = await supabase
     .from('orders')
     .select(
-      'id, customer_phone, tracking_number, status, delivery_status, expected_delivery_date, arriving_email_sent_at, out_for_delivery_email_sent_at'
+      'id, customer_phone, tracking_number, status, delivery_status, expected_delivery_date, arriving_email_sent_at, out_for_delivery_email_sent_at, is_international'
     )
     .not('tracking_number', 'is', null);
   if (error) throw error;
@@ -746,6 +746,9 @@ export async function runForwardShipmentTrackingJob() {
   // freshly-shipped orders this job most needs to check.
   const orders = (allTracked || []).filter(
     (o) =>
+      // International parcels (DHL/FedEx/...) are not Delhivery waybills: never poll Delhivery for them.
+      // Admin marks them delivered by hand (Orders dropdown), same as before.
+      !o.is_international &&
       o.delivery_status !== 'delivered' &&
       o.delivery_status !== 'rto_delivered' &&
       !splitResult.splitOrderIds.has(o.id)
@@ -873,7 +876,7 @@ async function runSplitShipmentTracking() {
   const ids = Array.from(splitOrderIds);
   const { data: orderRows } = await supabase
     .from('orders')
-    .select('id, customer_phone, customer_email, customer_name, status, items, delivery_status')
+    .select('id, customer_phone, customer_email, customer_name, status, items, delivery_status, is_international')
     .in('id', ids);
   const orderById = new Map<string, any>((orderRows || []).map((o: any) => [o.id, o]));
 
@@ -885,6 +888,8 @@ async function runSplitShipmentTracking() {
   for (const orderId of ids) {
     const order = orderById.get(orderId);
     if (!order || ['cancelled', 'failed'].includes(order.status)) continue;
+    // International parcels are not Delhivery waybills (see runForwardShipmentTrackingJob).
+    if (order.is_international) continue;
     const shipments = byOrder.get(orderId) ?? [];
     const remainingCount = getUnshippedItemIndexes(order.items, shipments).length;
 

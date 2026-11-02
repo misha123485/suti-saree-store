@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser, getSupabaseServer } from '@/lib/supabase-server-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { trackDelhiveryShipment } from '@/lib/delhivery-api';
+import { orderMoney, isInternationalOrder } from '@/lib/order-money';
 
 // ---------------------------------------------------------------------
 // Deterministic (non-AI) order lookup used by the chat widget's
@@ -26,7 +27,10 @@ async function withTracking(order: any) {
   let expectedDeliveryDate: string | undefined;
   let liveStatus: string | undefined;
 
-  if (order.tracking_number) {
+  const international = isInternationalOrder(order);
+
+  // International AWBs (DHL/FedEx/...) are not Delhivery waybills -> no live Delhivery lookup for them.
+  if (order.tracking_number && !international) {
     try {
       // Live courier lookups can be slow — never let one hang the chat reply.
       const result = await Promise.race([
@@ -50,6 +54,10 @@ async function withTracking(order: any) {
     liveStatus: liveStatus || null,
     createdAt: order.created_at,
     totalAmount: order.total_amount,
+    // Amount in the currency the customer was charged (e.g. "$54.99"); plain INR for India orders.
+    totalDisplay: orderMoney(order, Number(order.total_amount) || 0),
+    isInternational: international,
+    trackingUrl: international ? order.intl_tracking_url || null : null,
     items: Array.isArray(order.items)
       ? order.items.map((i: any) => ({ name: i?.product_name, quantity: i?.quantity }))
       : [],
@@ -72,7 +80,7 @@ export async function POST(req: Request) {
       const supabase = await getSupabaseServer();
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('id, status, items, total_amount, created_at, tracking_number, courier_name, customer_email')
+        .select('id, status, items, total_amount, created_at, tracking_number, courier_name, customer_email, is_international, charge_currency, charge_amount_minor, intl_tracking_url')
         .or(`user_id.eq.${user.id},customer_email.eq.${user.email}`)
         .order('created_at', { ascending: false })
         .limit(MAX_ORDERS);
@@ -109,7 +117,7 @@ export async function POST(req: Request) {
     const supabase = getSupabaseAdmin();
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('id, status, items, total_amount, created_at, tracking_number, courier_name, customer_email')
+      .select('id, status, items, total_amount, created_at, tracking_number, courier_name, customer_email, is_international, charge_currency, charge_amount_minor, intl_tracking_url')
       .eq('customer_email', email)
       .order('created_at', { ascending: false })
       .limit(30);

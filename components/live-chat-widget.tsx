@@ -167,6 +167,9 @@ interface LookedUpOrder {
   items: Array<{ name?: string; quantity?: number }>;
   courierName?: string | null;
   trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  totalDisplay?: string;
+  isInternational?: boolean;
   currentLocation?: string | null;
   expectedDeliveryDate?: string | null;
 }
@@ -178,11 +181,13 @@ function orderToChatText(order: LookedUpOrder): string {
   if (order.trackingNumber) {
     lines.push(`Courier: ${order.courierName || 'Assigned courier'} · Tracking #: ${order.trackingNumber}`);
     if (order.currentLocation) lines.push(`Last known location: ${order.currentLocation}`);
+    if (order.trackingUrl) lines.push(`Track here: ${order.trackingUrl}`);
   } else {
     lines.push('A tracking number will appear here as soon as the order ships.');
   }
   const expected = formatExpectedDate(order.expectedDeliveryDate);
   if (expected) lines.push(`Expected delivery: ${expected}`);
+  if (order.isInternational && order.totalDisplay) lines.push(`Total charged: ${order.totalDisplay}`);
   const itemNames = order.items.map((i) => `${i.name || 'Item'}${i.quantity ? ` x${i.quantity}` : ''}`).join(', ');
   if (itemNames) lines.push(`Items: ${itemNames}`);
   return lines.join('\n');
