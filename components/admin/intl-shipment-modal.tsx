@@ -47,7 +47,7 @@ export default function IntlShipmentModal({
   confirming: boolean;
   onConfirm: (p: IntlShipmentPayload) => void;
 }) {
-  const [courier, setCourier] = useState<string>('DHL');
+  const [courier, setCourier] = useState<string>('Delhivery');
   const [courierOther, setCourierOther] = useState('');
   const [awb, setAwb] = useState('');
   const [trackingUrl, setTrackingUrl] = useState('');
@@ -80,7 +80,7 @@ export default function IntlShipmentModal({
   const submit = () => {
     if (!awb.trim()) return toast.error('Enter the AWB / tracking number');
     if (courier === 'Other' && !courierOther.trim()) return toast.error('Enter the courier name');
-    if (courier === 'Other' && !trackingUrl.trim()) return toast.error('Paste the courier tracking link for "Other" couriers');
+    if ((courier === 'Other' || courier === 'Delhivery') && !trackingUrl.trim()) return toast.error('Paste the tracking link from your courier dashboard');
     if (selected.length === 0) return toast.error('Select at least one item for this parcel');
     onConfirm({
       courier,
@@ -144,7 +144,7 @@ export default function IntlShipmentModal({
           </label>
 
           <label className="block text-xs font-medium">
-            Tracking link {courier !== 'Other' && <span className="font-normal text-muted-foreground">(auto-filled — change only if needed)</span>}
+            Tracking link {courier !== 'Other' && courier !== 'Delhivery' && <span className="font-normal text-muted-foreground">(auto-filled — change only if needed)</span>}
             <Input value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} placeholder={autoUrl || 'https://…'} className="mt-1" />
           </label>
 

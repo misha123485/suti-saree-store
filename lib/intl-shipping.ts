@@ -1,5 +1,5 @@
 // Shared (client + server safe) helpers for international couriers.
-export const INTL_COURIERS = ['DHL', 'FedEx', 'Aramex', 'Shiprocket', 'Other'] as const;
+export const INTL_COURIERS = ['Delhivery', 'DHL', 'FedEx', 'Aramex', 'Shiprocket', 'Other'] as const;
 export type IntlCourier = (typeof INTL_COURIERS)[number];
 
 const TEMPLATES: Record<string, string> = {
@@ -9,7 +9,7 @@ const TEMPLATES: Record<string, string> = {
   Shiprocket: 'https://shiprocket.co/tracking/{awb}',
 };
 
-/** Auto tracking link for the known couriers; '' for 'Other' (admin pastes the link). */
+/** Auto tracking link for the known couriers; '' for 'Delhivery' (Cross Border) and 'Other': admin pastes the link. */
 export function intlTrackingUrl(courier: string, awb: string): string {
   const t = TEMPLATES[courier];
   return t && awb ? t.replace('{awb}', encodeURIComponent(awb.trim())) : '';
