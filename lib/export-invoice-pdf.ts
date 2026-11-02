@@ -47,13 +47,33 @@ export interface ExportSeller {
   default_hs_code?: string;
 }
 
-/** Helvetica (WinAnsi) throws on characters it cannot encode (Arabic / Malay names etc.) -> replace them. */
-function makeSafe(font: PDFFont) {
-  const set = new Set(font.getCharacterSet());
+/** Letters that do not decompose with NFD but have an obvious plain-Latin form. */
+const EXTRA_LATIN: Record<string, string> = {
+  '\u0142': 'l', '\u0141': 'L', '\u0131': 'i', '\u0130': 'I', '\u0111': 'd', '\u0110': 'D',
+  '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"', '\u2013': '-', '\u2014': '-', '\u00A0': ' ',
+};
+
+/**
+ * Helvetica (WinAnsi) throws on characters it cannot encode -> never pass raw text to drawText.
+ * Order: keep the character if the font has it; else try a plain-Latin form (accents removed, e.g. a-macron -> a,
+ * s-cedilla -> s); else '?'. Arabic / Chinese etc. still become '?' (needs an embedded Unicode font + text shaping).
+ */
+export function makeSafeText(has: (cp: number) => boolean) {
   return (t: string) =>
     Array.from(String(t ?? ''))
-      .map((ch) => (set.has(ch.codePointAt(0) as number) ? ch : ch === '\n' ? ' ' : '?'))
+      .map((ch) => {
+        if (ch === '\n' || ch === '\r' || ch === '\t') return ' ';
+        if (has(ch.codePointAt(0) as number)) return ch;
+        const plain = EXTRA_LATIN[ch] ?? ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (plain && plain !== ch && Array.from(plain).every((c) => has(c.codePointAt(0) as number))) return plain;
+        return '?';
+      })
       .join('');
+}
+
+function makeSafe(font: PDFFont) {
+  const set = new Set(font.getCharacterSet());
+  return makeSafeText((cp) => set.has(cp));
 }
 
 const fmtMinor = (minor: number, currency: string) => {
