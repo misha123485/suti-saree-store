@@ -1,1 +1,1 @@
-Replace components/checkout/payment-method-selector.tsx (git pull first), or: git apply payment-selector.patch
+Replace app/product/[slug]/product-detail.tsx (git pull first), or: git apply reviews-move.patch

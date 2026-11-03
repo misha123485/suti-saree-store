@@ -796,6 +796,14 @@ export default function ProductDetail({
           </div>
         </div>
         <ProductInfo
+          reviewsSlot={
+            <div id="product-reviews" className="scroll-mt-24">
+              <h2 className="mb-3 text-sm font-semibold text-foreground">
+                Reviews ({displayRatingsCount})
+              </h2>
+              <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
+            </div>
+          }
           product={product}
           displayName={displayName}
           displayRating={displayRating}
@@ -855,13 +863,6 @@ export default function ProductDetail({
           referral nudge reaches shoppers deep on a product page too. */}
       <div className="mt-8">
         <PromoSlider />
-      </div>
-
-      <div id="product-reviews" className="mt-8 scroll-mt-24">
-        <h2 className="mb-3 text-sm font-semibold text-foreground">
-          Reviews ({displayRatingsCount})
-        </h2>
-        <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
       </div>
 
       <div className="mt-6">
@@ -958,6 +959,7 @@ export default function ProductDetail({
 
 
 function ProductInfo({
+  reviewsSlot,
   product,
   displayName,
   displayRating,
@@ -984,6 +986,8 @@ function ProductInfo({
   loyaltySettings,
   loyaltyBalance,
 }: {
+  /** Reviews section, rendered between Product Highlights and Delivery details. */
+  reviewsSlot?: React.ReactNode;
   product: Product;
   displayName: string;
   displayRating: number;
@@ -1309,6 +1313,8 @@ function ProductInfo({
       <PriceQuickBrowseBar category={product.category} />
 
       <ProductHighlights product={product} />
+
+      {reviewsSlot}
 
       <DeliveryInfo />
 
