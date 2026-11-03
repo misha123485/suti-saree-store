@@ -1,5 +1,6 @@
 import { getServerSupabase } from './supabase-server';
 import { purgeSiteLayoutCache } from './purge-site-cache';
+import { STORE_POLICY } from './store-policy';
 
 export interface PincodeResult {
   serviceable: boolean;
@@ -199,8 +200,8 @@ export interface ShippingSettings {
 }
 
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
-  flat_rate: 99,
-  free_shipping_threshold: 2000,
+  flat_rate: STORE_POLICY.flatShippingRate,
+  free_shipping_threshold: STORE_POLICY.freeShippingThreshold,
   gst_rate_percent: 5,
   payment_gateway_fee_percent: 2.36,
   other_charges: 0,
@@ -225,7 +226,13 @@ export async function fetchShippingSettings(): Promise<ShippingSettings> {
     .eq('key', 'shipping')
     .maybeSingle();
   if (error || !data) return DEFAULT_SHIPPING_SETTINGS;
-  return { ...DEFAULT_SHIPPING_SETTINGS, ...(data.value as Partial<ShippingSettings>) };
+  // Customer-facing shipping charge is pinned to Merchant Center ("Free shipping, all orders").
+  return {
+    ...DEFAULT_SHIPPING_SETTINGS,
+    ...(data.value as Partial<ShippingSettings>),
+    flat_rate: STORE_POLICY.flatShippingRate,
+    free_shipping_threshold: STORE_POLICY.freeShippingThreshold,
+  };
 }
 
 export async function saveShippingSettings(settings: ShippingSettings): Promise<void> {

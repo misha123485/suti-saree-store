@@ -1,24 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Truck, Clock, ChevronDown } from 'lucide-react';
+import { Truck, Clock, ChevronDown, RotateCcw } from 'lucide-react';
 
-// Static delivery info card — replaces the old pincode-checker widget.
-// No pincode input, no serviceability lookup: just the same delivery
-// promise already declared in Google Merchant Center > Shipping > Delivery
-// times, shown as plain text for every visitor/every product.
-//
-// IMPORTANT: keep these four numbers in sync with Merchant Center
-// (merchants.google.com > Shipping > Delivery times) whenever that's
-// changed there, so the on-site promise never mismatches what's declared
-// to Google (shipping/misrepresentation policy):
-//   - Order cut off:      2:00 PM IST
-//   - Handling time:      2–3 business days
-//   - Transit time:       3–12 business days (all destinations)
-//   - Total delivery:     5–15 business days (all destinations)
-const ORDER_CUTOFF_LABEL = '2:00 PM';
-const HANDLING_LABEL = '2–3 business days';
-const TRANSIT_LABEL = '3–12 business days';
+// Static delivery info card. Values come from lib/store-policy.ts, which
+// mirrors Google Merchant Center > Shipping and returns exactly (cut off,
+// handling, transit, total delivery, free shipping, free returns), so the
+// on-site promise never mismatches what is declared to Google.
+import {
+  STORE_POLICY,
+  HANDLING_LABEL,
+  TRANSIT_LABEL,
+  TOTAL_DELIVERY_LABEL,
+  RETURN_WINDOW_LABEL,
+} from '@/lib/store-policy';
 
 import { useCountry } from '@/components/country-provider';
 import IntlShipsTo from './intl-ships-to';
@@ -40,7 +35,7 @@ export default function DeliveryInfo() {
           <Truck className="h-4 w-4 text-secondary" />
           Delivery details
           <span className="font-normal text-muted-foreground">
-            ({TRANSIT_LABEL})
+            ({TOTAL_DELIVERY_LABEL})
           </span>
         </span>
         <ChevronDown
@@ -51,13 +46,26 @@ export default function DeliveryInfo() {
       </button>
 
       {isOpen && (
-        <div className="mt-2.5 flex flex-col gap-2 rounded-md bg-secondary/10 p-3">
-          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+        <div className="mt-2.5 flex flex-col gap-2 rounded-md bg-secondary/10 p-3 text-xs text-muted-foreground">
+          <div className="flex items-start gap-2">
             <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <p>
-              Dispatched in {HANDLING_LABEL} for orders placed before {ORDER_CUTOFF_LABEL}, then{' '}
-              <span className="font-semibold text-foreground">{TRANSIT_LABEL}</span> in transit
-              depending on your location.
+              Orders placed before {STORE_POLICY.orderCutoffLabel} ({STORE_POLICY.orderCutoffTimezone}) are dispatched in{' '}
+              <span className="font-semibold text-foreground">{HANDLING_LABEL}</span>, then take{' '}
+              <span className="font-semibold text-foreground">{TRANSIT_LABEL}</span> in transit to any destination in India.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <p>
+              Estimated total delivery: <span className="font-semibold text-foreground">{TOTAL_DELIVERY_LABEL}</span>.{' '}
+              <span className="font-semibold text-foreground">Free shipping</span> on all orders.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <p>
+              <span className="font-semibold text-foreground">{RETURN_WINDOW_LABEL}</span> free returns on unworn items with original packaging.
             </p>
           </div>
         </div>

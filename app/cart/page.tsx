@@ -636,7 +636,7 @@ export default function CartPage() {
               </div>
               {shipping > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Add {formatINR(2000 - subtotal)} more for free shipping.
+                  Add {formatINR(Math.max(0, shippingSettings.free_shipping_threshold - subtotal))} more for free shipping.
                 </p>
               )}
             </div>

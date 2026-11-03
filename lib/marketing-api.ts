@@ -2,6 +2,7 @@ import { getServerSupabase } from './supabase-server';
 import { purgeSiteLayoutCache } from './purge-site-cache';
 import { fetchShippingSettings, type ShippingSettings } from './pincode-api';
 import { composeLegalText } from './legal-intl';
+import { STORE_POLICY } from './store-policy';
 import { fetchIntlLegalContext } from './legal-intl-context';
 
 // NOTE: this file is imported from BOTH client components (admin panels,
@@ -46,17 +47,35 @@ export interface FulfillmentSettings {
 }
 
 export const DEFAULT_FULFILLMENT_SETTINGS: FulfillmentSettings = {
-  dispatch_days_min: 2,
-  dispatch_days_max: 3,
-  delivery_metro_min: 3,
-  delivery_metro_max: 5,
-  delivery_other_min: 5,
-  delivery_other_max: 8,
-  delivery_remote_min: 10,
-  delivery_remote_max: 12,
-  return_window_days: 7,
+  dispatch_days_min: STORE_POLICY.handlingMinDays,
+  dispatch_days_max: STORE_POLICY.handlingMaxDays,
+  delivery_metro_min: STORE_POLICY.transitMinDays,
+  delivery_metro_max: STORE_POLICY.transitMaxDays,
+  delivery_other_min: STORE_POLICY.transitMinDays,
+  delivery_other_max: STORE_POLICY.transitMaxDays,
+  delivery_remote_min: STORE_POLICY.transitMinDays,
+  delivery_remote_max: STORE_POLICY.transitMaxDays,
+  return_window_days: STORE_POLICY.returnWindowDays,
   cancellation_window_hours: 24,
 };
+
+// Shipping/return timings are pinned to the Google Merchant Center values in
+// lib/store-policy.ts, so older numbers saved in the database can never make
+// the site disagree with what is declared to Google.
+function pinToStorePolicy(s: FulfillmentSettings): FulfillmentSettings {
+  return {
+    ...s,
+    dispatch_days_min: STORE_POLICY.handlingMinDays,
+    dispatch_days_max: STORE_POLICY.handlingMaxDays,
+    delivery_metro_min: STORE_POLICY.transitMinDays,
+    delivery_metro_max: STORE_POLICY.transitMaxDays,
+    delivery_other_min: STORE_POLICY.transitMinDays,
+    delivery_other_max: STORE_POLICY.transitMaxDays,
+    delivery_remote_min: STORE_POLICY.transitMinDays,
+    delivery_remote_max: STORE_POLICY.transitMaxDays,
+    return_window_days: STORE_POLICY.returnWindowDays,
+  };
+}
 
 export async function fetchFulfillmentSettings(): Promise<FulfillmentSettings> {
   const { data, error } = await supabase
@@ -65,7 +84,7 @@ export async function fetchFulfillmentSettings(): Promise<FulfillmentSettings> {
     .eq('key', 'fulfillment_settings')
     .maybeSingle();
   if (error || !data) return DEFAULT_FULFILLMENT_SETTINGS;
-  return { ...DEFAULT_FULFILLMENT_SETTINGS, ...(data.value as Partial<FulfillmentSettings>) };
+  return pinToStorePolicy({ ...DEFAULT_FULFILLMENT_SETTINGS, ...(data.value as Partial<FulfillmentSettings>) });
 }
 
 export async function saveFulfillmentSettings(settings: FulfillmentSettings) {
@@ -118,8 +137,8 @@ export function cancellationWindowText(f: FulfillmentSettings): string {
 export function shippingReturnsSummary(f: FulfillmentSettings, freeShippingThreshold?: number): string {
   const freeShip = freeShippingThreshold
     ? `Free shipping on all orders above Rs ${freeShippingThreshold.toLocaleString('en-IN')}. `
-    : '';
-  return `${freeShip}Dispatched within ${dispatchWindowText(f)}. ${returnWindowBadgeText(f)} easy returns on unworn items with original packaging.`;
+    : 'Free shipping on all orders. ';
+  return `${freeShip}Dispatched within ${dispatchWindowText(f)}; delivered in ${STORE_POLICY.totalMinDays}-${STORE_POLICY.totalMaxDays} business days. ${returnWindowBadgeText(f)} free returns on unworn items with original packaging.`;
 }
 
 // Tokens an admin can drop anywhere inside a Legal Page's text so that
@@ -141,6 +160,8 @@ export function applyFulfillmentTokens(
     .replace(/\{\{\s*metro_days\s*\}\}/g, dayRange(f.delivery_metro_min, f.delivery_metro_max))
     .replace(/\{\{\s*other_days\s*\}\}/g, dayRange(f.delivery_other_min, f.delivery_other_max))
     .replace(/\{\{\s*remote_days\s*\}\}/g, dayRange(f.delivery_remote_min, f.delivery_remote_max))
+    .replace(/\{\{\s*total_days\s*\}\}/g, `${STORE_POLICY.totalMinDays}-${STORE_POLICY.totalMaxDays}`)
+    .replace(/\{\{\s*order_cutoff\s*\}\}/g, `${STORE_POLICY.orderCutoffLabel} ${STORE_POLICY.orderCutoffTimezone}`)
     .replace(/\{\{\s*return_days\s*\}\}/g, String(f.return_window_days))
     .replace(/\{\{\s*cancellation_hours\s*\}\}/g, String(f.cancellation_window_hours));
   if (shipping) {
@@ -191,14 +212,12 @@ Where Partial Pay is offered at checkout, you pay a part of the order total onli
 Where an online-payment discount applies, it is shown at checkout before you pay and applies to full online payment only (not to Partial Pay or COD). Product prices and delivery charges are otherwise the same for every payment method, and the delivery timelines below apply from the date of dispatch for all of them.
 
 Delivery Timelines
-Metro cities: {{metro_days}} business days after dispatch
-Other cities/towns: {{other_days}} business days after dispatch
-Remote/rural areas: may take up to {{remote_days}} business days
+Orders are dispatched within {{dispatch_days}} business days, and delivery takes {{metro_days}} business days after dispatch to every destination in India (Monday to Sunday). In total, expect your order to arrive in {{total_days}} business days. Our order cut-off time is {{order_cutoff}}.
 
 These are estimated timelines and may vary depending on courier partner delays, weather conditions, or other unforeseen circumstances.
 
 Shipping Charges
-Free shipping on all orders above {{free_shipping_threshold}}. A flat shipping charge of {{shipping_fee}} applies on orders below that amount.
+We offer free shipping on all orders, with no minimum order value.
 
 Order Tracking
 Once your order is dispatched, you will receive a tracking link via email/WhatsApp/SMS to track your shipment in real time.
@@ -225,7 +244,7 @@ Not a sale/clearance item (unless defective)
 Certain items such as blouses that have been stitched or altered as per customer requirements are not eligible for return.
 
 How to Initiate a Return
-Contact us with your order number and reason for return. Once approved, we will arrange a free reverse pickup (where serviceable) at no extra cost to you. In areas where reverse pickup is not serviceable, we will share the return address with you and reimburse reasonable return shipping charges once the return is verified.
+Contact us with your order number and reason for return. Once approved, returns are free for you — we will arrange a free reverse pickup (where serviceable) at no extra cost. In areas where reverse pickup is not serviceable, we will share the return address with you and reimburse reasonable return shipping charges once the return is verified.
 
 Refunds
 Once we receive and inspect the returned item, refunds will be processed within 5-7 business days to your original payment method. For Cash on Delivery orders, refunds will be issued via bank transfer or store credit, as per your preference.

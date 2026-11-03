@@ -1327,7 +1327,7 @@ function ProductInfo({
             {
               icon: Truck,
               label: 'Free Shipping',
-              title: 'Pan-India delivery, tracked from dispatch to your door.',
+              title: 'Free shipping on all orders. Pan-India delivery in 4–7 business days, tracked from dispatch to your door.',
             },
             {
               icon: ShieldCheck,
@@ -1337,7 +1337,7 @@ function ProductInfo({
             {
               icon: RefreshCw,
               label: `${returnWindowBadgeText(fulfillment)} Returns`,
-              title: `${returnWindowBadgeText(fulfillment)} easy returns on unworn items with original packaging.`,
+              title: `${returnWindowBadgeText(fulfillment)} free returns on unworn items with original packaging.`,
             },
           ].map((a) => (
             <div key={a.label} title={a.title} className="flex flex-col items-center gap-1">

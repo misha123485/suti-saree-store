@@ -694,7 +694,7 @@ export default function Header() {
               {/* Footer strip */}
               <div className="border-t border-border/60 px-4 py-3">
                 <p className="text-center text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-                  ✦ Free Shipping ✦
+                  ✦ Free Shipping · 5-Day Free Returns ✦
                 </p>
               </div>
             </SheetContent>

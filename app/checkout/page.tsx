@@ -102,6 +102,7 @@ import { useIntlConfig } from '@/hooks/use-intl-config';
 import { isValidIntlPhone, isValidIntlPostal, estimateIntlShipping, formatEta } from '@/lib/intl-checkout';
 import { previewInrToMinor, formatMinor } from '@/lib/intl-api';
 import { setDisplayCurrency, getProviderDisplay, restoreProviderDisplay } from '@/lib/intl-pricing';
+import { TOTAL_DELIVERY_LABEL } from '@/lib/store-policy';
 
 // All Indian states & union territories, for the Shipping Address "State"
 // dropdown. Pincode auto-fill (via India Post's API) sets this field to
@@ -3344,7 +3345,7 @@ export default function CheckoutPage() {
 
             {deliveryEstimate?.serviceable && (
               <p className="mt-3 text-xs text-muted-foreground">
-                📦 Estimated delivery in {deliveryEstimate.etaDays}-{deliveryEstimate.etaDays + 2} business days
+                📦 Estimated delivery in {TOTAL_DELIVERY_LABEL}
                 {deliveryEstimate.city ? ` to ${deliveryEstimate.city}, ${deliveryEstimate.state}` : ''}, dispatched from our Naihati, West Bengal facility.
               </p>
             )}

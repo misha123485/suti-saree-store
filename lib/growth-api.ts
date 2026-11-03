@@ -62,7 +62,7 @@ export interface GrowthSettings {
 
 export const DEFAULT_GROWTH_SETTINGS: GrowthSettings = {
   urgency_banner_enabled: false,
-  urgency_banner_text: 'Free shipping on orders above ₹1999 — today only!',
+  urgency_banner_text: 'Free shipping on all orders | 4–7 day delivery | 5-day free returns',
   low_stock_enabled: true,
   low_stock_threshold: 5,
   exit_intent_enabled: false,
@@ -81,10 +81,10 @@ export const DEFAULT_GROWTH_SETTINGS: GrowthSettings = {
   sale_countdown_end_at: null,
 
   feature_strip_enabled: true,
-  feature_strip_returns_title: 'Easy returns',
-  feature_strip_returns_subtitle: 'Free pick up',
+  feature_strip_returns_title: '5-day returns',
+  feature_strip_returns_subtitle: 'Free returns',
   feature_strip_delivery_title: 'Fast delivery',
-  feature_strip_delivery_subtitle: '10000+ styles',
+  feature_strip_delivery_subtitle: '4–7 business days',
   feature_strip_shipping_title: 'Free shipping',
   feature_strip_shipping_subtitle: '',
 };
@@ -96,7 +96,15 @@ export async function fetchGrowthSettings(): Promise<GrowthSettings> {
     .eq('key', 'growth_settings')
     .maybeSingle();
   if (error || !data) return DEFAULT_GROWTH_SETTINGS;
-  return { ...DEFAULT_GROWTH_SETTINGS, ...(data.value as Partial<GrowthSettings>) };
+  return {
+    ...DEFAULT_GROWTH_SETTINGS,
+    ...(data.value as Partial<GrowthSettings>),
+    // Returns / delivery claims are pinned to Merchant Center (lib/store-policy.ts).
+    feature_strip_returns_title: DEFAULT_GROWTH_SETTINGS.feature_strip_returns_title,
+    feature_strip_returns_subtitle: DEFAULT_GROWTH_SETTINGS.feature_strip_returns_subtitle,
+    feature_strip_delivery_title: DEFAULT_GROWTH_SETTINGS.feature_strip_delivery_title,
+    feature_strip_delivery_subtitle: DEFAULT_GROWTH_SETTINGS.feature_strip_delivery_subtitle,
+  };
 }
 
 export async function saveGrowthSettings(settings: GrowthSettings) {

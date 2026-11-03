@@ -168,7 +168,7 @@ export default function Navbar() {
     <>
       {/* ── Announcement Bar ── */}
       <div className="bg-[#7B1C2E] text-white text-center text-xs py-2 px-4 tracking-widest font-medium">
-        ✦ FREE SHIPPING ON ORDERS ABOVE ₹999 &nbsp;|&nbsp; HANDCRAFTED WITH LOVE ✦
+        ✦ FREE SHIPPING ON ALL ORDERS &nbsp;|&nbsp; 5-DAY FREE RETURNS ✦
       </div>
 
       {/* ── Main Navbar ── */}

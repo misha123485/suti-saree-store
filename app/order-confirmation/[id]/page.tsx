@@ -473,7 +473,7 @@ export default async function OrderConfirmationPage({ params }: { params: { id: 
       <div className="mt-5 grid grid-cols-2 gap-3 rounded-lg border border-border/60 bg-card p-4 text-center text-sm sm:grid-cols-3">
         <div className="flex flex-col items-center gap-1">
           <Truck className="h-5 w-5 text-secondary" />
-          <span className="text-[11px] font-medium">Dispatch in 2-3 days</span>
+          <span className="text-[11px] font-medium">Dispatch in {fulfillmentSettings.dispatch_days_min}-{fulfillmentSettings.dispatch_days_max} days</span>
         </div>
         <div className="flex flex-col items-center gap-1">
           <ShieldCheck className="h-5 w-5 text-secondary" />
