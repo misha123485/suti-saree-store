@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toPublicMediaUrl } from '@/lib/media-url';
@@ -91,6 +92,7 @@ import {
   type PartialPaySettings,
 } from '@/lib/partial-pay';
 import StickyOrderBar from '@/components/checkout/sticky-order-bar';
+import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
 import { useForceMobileRepaint } from '@/hooks/use-force-mobile-repaint';
 import { usePaymentGateway } from '@/hooks/use-payment-gateway';
 import { payWithCashfree } from '@/lib/cashfree-client';
@@ -239,6 +241,10 @@ export default function CheckoutPage() {
   // "Resell this product" is for resellers only — keep it tucked away so retail
   // customers aren't confused by it mid-checkout.
   const [showResellBox, setShowResellBox] = useState(false);
+  // Mobile sticky pay bar: price-details popup + portal mount flag.
+  const [priceSheetOpen, setPriceSheetOpen] = useState(false);
+  const [barMounted, setBarMounted] = useState(false);
+  useEffect(() => setBarMounted(true), []);
   // "Choose Address" opens a dialog with a radio list of saved addresses,
   // a "+ New Address" option, and an "Edit" action for the highlighted one.
   const [showAddressPicker, setShowAddressPicker] = useState(false);
@@ -2210,12 +2216,13 @@ export default function CheckoutPage() {
       {gateway.active === 'razorpay' && (
         <NextScript src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
       )}
-      <h1 className="mb-2 font-serif text-3xl font-bold text-primary sm:text-4xl">
+      <div className="mb-3 flex items-center justify-between gap-3">
+      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">
         Checkout
       </h1>
 
-      {/* Simple 2-step progress: Delivery -> Payment */}
-      <ol className="mb-4 flex items-center gap-2 text-xs font-medium" aria-label="Checkout progress">
+      {/* Simple 2-step progress: Delivery -> Payment (sits on the right of the heading) */}
+      <ol className="flex shrink-0 items-center gap-2 text-xs font-medium" aria-label="Checkout progress">
         <li className="flex items-center gap-1.5 text-primary">
           <span
             className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
@@ -2238,6 +2245,7 @@ export default function CheckoutPage() {
           Payment
         </li>
       </ol>
+      </div>
 
       {/* Top coupon banner — same offer shown lower down inside the Order
           Summary card, but surfaced here too so it's visible immediately
@@ -2339,6 +2347,17 @@ export default function CheckoutPage() {
         )
       )}
 
+      <PriceDetailsSheet
+        open={priceSheetOpen}
+        onOpenChange={setPriceSheetOpen}
+        subtotal={subtotal}
+        shipping={shipping}
+        payableTotal={payableTotal}
+        totalSavings={totalSavings}
+        paymentMethod={paymentMethod}
+        onlineDiscountAmount={potentialOnlinePaymentDiscount}
+        discountBreakdown={discountBreakdown}
+      />
       <StickyOrderBar
         items={items}
         subtotal={subtotal}
@@ -2409,7 +2428,7 @@ export default function CheckoutPage() {
         </DialogContent>
       </Dialog>
 
-      <form onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-3">
+      <form id="checkout-form" onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {/* Login status — always shown, whether the saved-address summary
               or the editable guest form is what's displayed below it. */}
@@ -3380,7 +3399,10 @@ export default function CheckoutPage() {
                 </>
               )}
             </Button>
-            {/* Mobile: pay button always visible at the bottom of the screen */}
+            {/* Mobile: pay button always visible at the bottom of the screen.
+                Rendered in a portal on <body> so no parent (transform/overflow)
+                can break position:fixed; it still submits the form via form="". */}
+            {barMounted && !phoneSheetActive && createPortal(
             <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
               <div className="shrink-0">
                 <p className="font-serif text-xl font-bold leading-tight text-primary">
@@ -3388,9 +3410,7 @@ export default function CheckoutPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() =>
-                    document.getElementById('order-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }
+                  onClick={() => setPriceSheetOpen(true)}
                   className="text-[11px] font-semibold uppercase tracking-wide text-secondary"
                 >
                   View price details
@@ -3398,6 +3418,7 @@ export default function CheckoutPage() {
               </div>
               <Button
                 type="submit"
+                form="checkout-form"
                 size="lg"
                 disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
                 className="h-12 min-w-0 flex-1 bg-primary text-base"
@@ -3424,7 +3445,9 @@ export default function CheckoutPage() {
                 </>
               )}
               </Button>
-            </div>
+            </div>,
+            document.body
+            )}
             <p className="mt-3 text-center text-[11px] text-muted-foreground">
               By placing your order, you agree to our Terms & Privacy Policy.
             </p>
