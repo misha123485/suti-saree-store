@@ -117,6 +117,27 @@ async function countEvents(type: string, from: Date, to?: Date): Promise<number>
   return count ?? 0;
 }
 
+// Distinct sessions that fired `type` since `from` — used for the marketing
+// funnel. Raw event counts overstate steps like checkout_start, which the
+// checkout page fires once per cart item (and again on every reload).
+async function countSessions(type: string, from: Date): Promise<number> {
+  const seen = new Set<string>();
+  const PAGE = 1000;
+  for (let page = 0; page < 30; page++) {
+    const { data, error } = await getSupabaseAdmin()
+      .from('activity_events')
+      .select('session_id')
+      .eq('event_type', type)
+      .gte('created_at', from.toISOString())
+      .order('id', { ascending: true })
+      .range(page * PAGE, page * PAGE + PAGE - 1);
+    if (error) throw error;
+    for (const r of data ?? []) if (r.session_id) seen.add(r.session_id as string);
+    if (!data || data.length < PAGE) break;
+  }
+  return seen.size;
+}
+
 async function countRows(table: string, apply?: (q: any) => any): Promise<number> {
   let q: any = getSupabaseAdmin().from(table).select('id', { count: 'exact', head: true });
   if (apply) q = apply(q);
@@ -292,7 +313,7 @@ async function buildMarketing(orders: OrderRow[], now: Date): Promise<MarketingD
     ['purchase', 'Purchased'],
   ];
   const [funnelCounts, visits, abandoned, subTotal, subWeek, reviews] = await Promise.all([
-    Promise.all(types.map(([t]) => countEvents(t, weekStart))),
+    Promise.all(types.map(([t]) => countSessions(t, weekStart))),
     Promise.all(
       Array.from({ length: 7 }, (_, i) => countEvents('page_view', istDayStart(now, i - 6), istDayStart(now, i - 5)))
     ),

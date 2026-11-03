@@ -236,6 +236,9 @@ export default function CheckoutPage() {
   // read-only summary instead of the full editable form. "Change address"
   // flips this to true to reveal the picker + editable fields again.
   const [showAddressForm, setShowAddressForm] = useState(false);
+  // "Resell this product" is for resellers only — keep it tucked away so retail
+  // customers aren't confused by it mid-checkout.
+  const [showResellBox, setShowResellBox] = useState(false);
   // "Choose Address" opens a dialog with a radio list of saved addresses,
   // a "+ New Address" option, and an "Edit" action for the highlighted one.
   const [showAddressPicker, setShowAddressPicker] = useState(false);
@@ -1290,7 +1293,7 @@ export default function CheckoutPage() {
       const detailsError = validateDeliveryDetails();
       if (detailsError) {
         showSheetError(detailsError);
-        setDetailsSheetOpen(true);
+        if (!inlineForm) setDetailsSheetOpen(true);
         return;
       }
     }
@@ -1872,6 +1875,12 @@ export default function CheckoutPage() {
   const hasSavedAddressSummary =
     !!user && savedAddresses.length > 0 && !showAddressForm && selectedAddressId !== 'new';
 
+  // Guests (and logged-in customers with no saved address) see the delivery
+  // form directly on the page — no extra tap to open a sheet. Logged-in
+  // customers with saved addresses keep the summary + picker + edit sheet.
+  const inlineForm = !hasSavedAddressSummary && !(user && savedAddresses.length > 0);
+  const phoneSheetActive = phoneFormOpen && !inlineForm;
+
   const detailsFields = (
     <>
 {/* Contact */}
@@ -2131,7 +2140,7 @@ export default function CheckoutPage() {
 
   return (
     <>
-      {phoneFormOpen && (
+      {phoneSheetActive && (
         <div
           onInputCapture={() => {
             if (invalidField) hideSheetError();
@@ -2194,7 +2203,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
-    <div className={`container-boutique py-8 ${phoneFormOpen ? 'hidden' : ''}`}>
+    <div className={`container-boutique py-8 max-lg:pb-32 ${phoneSheetActive ? 'hidden' : ''}`}>
       {/* Loaded only here (not site-wide in app/layout.tsx) since only the
           checkout page ever opens the Razorpay popup — this used to load
           on every single page load across the whole site for no reason. */}
@@ -2380,8 +2389,10 @@ export default function CheckoutPage() {
           {/* Login status — always shown, whether the saved-address summary
               or the editable guest form is what's displayed below it. */}
           <section
-            className={`mb-4 flex items-center justify-between gap-3 rounded-lg border p-4 ${
-              user ? 'border-green-200 bg-green-50' : 'border-border/60 bg-card'
+            className={`mb-3 flex items-center justify-between gap-3 ${
+              user
+                ? 'rounded-lg border border-green-200 bg-green-50 p-4'
+                : 'px-1 text-xs'
             }`}
           >
             {user ? (
@@ -2390,15 +2401,15 @@ export default function CheckoutPage() {
               </span>
             ) : (
               <>
-                <span className="text-sm text-muted-foreground">
-                  Checking out as a guest.
+                <span className="text-xs text-muted-foreground">
+                  Checking out as a guest — no account needed.
                 </span>
                 <button
                   type="button"
                   onClick={goToLoginFromCheckout}
-                  className="shrink-0 text-sm font-medium text-secondary underline-offset-2 hover:underline"
+                  className="shrink-0 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-secondary"
                 >
-                  Already have an account? Log in
+                  Have an account? Log in
                 </button>
               </>
             )}
@@ -2433,6 +2444,37 @@ export default function CheckoutPage() {
               </div>
             </section>
           ) : (
+            inlineForm ? (
+            <section
+              onInputCapture={() => {
+                if (invalidField) hideSheetError();
+              }}
+              className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5 [&_input]:h-11 [&_[role=combobox]]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
+            >
+              {sheetError?.visible && (
+                <div
+                  role="alert"
+                  style={{ top: (phoneHeaderH || 0) + 8 }}
+                  className="sticky z-30 mb-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="flex-1 leading-snug">{sheetError.message}</span>
+                  <button
+                    type="button"
+                    onClick={hideSheetError}
+                    aria-label="Dismiss message"
+                    className="-mr-1 rounded-full p-1 text-red-400"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {detailsFields}
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                <Lock className="h-3 w-3" /> Your details are used only to deliver this order.
+              </p>
+            </section>
+            ) : (
             <>
               {/* Delivery details card -- tap to open the bottom sheet */}
               <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
@@ -2597,6 +2639,7 @@ export default function CheckoutPage() {
                 </SheetContent>
               </Sheet>
             </>
+            )
           )}
 
           {/* Payment info */}
@@ -3128,7 +3171,16 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {!isIntl && (
+            {!isIntl && !isResale && !showResellBox && (
+              <button
+                type="button"
+                onClick={() => setShowResellBox(true)}
+                className="mt-4 text-xs text-muted-foreground underline underline-offset-2 hover:text-primary"
+              >
+                Are you a reseller?
+              </button>
+            )}
+            {!isIntl && (isResale || showResellBox) && (
             <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
               <label className="flex cursor-pointer items-start gap-3">
                 <Checkbox
@@ -3279,7 +3331,7 @@ export default function CheckoutPage() {
               type="submit"
               size="lg"
               disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
-              className="mt-5 w-full bg-primary"
+              className="mt-5 w-full bg-primary max-lg:hidden"
             >
               {placing ? (
                 <>
@@ -3303,6 +3355,37 @@ export default function CheckoutPage() {
                 </>
               )}
             </Button>
+            {/* Mobile: pay button always visible at the bottom of the screen */}
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
+                className="h-12 w-full bg-primary text-base"
+              >
+{placing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : paymentMethod === 'cod' ? (
+                <>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Place Order (COD) — {formatINR(payableTotal)}
+                </>
+              ) : paymentMethod === 'partial' && partialOption ? (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Pay advance — {formatINR(partialOption.advance)}
+                </>
+              ) : (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Pay securely — {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
+                </>
+              )}
+              </Button>
+            </div>
             <p className="mt-3 text-center text-[11px] text-muted-foreground">
               By placing your order, you agree to our Terms & Privacy Policy.
             </p>
