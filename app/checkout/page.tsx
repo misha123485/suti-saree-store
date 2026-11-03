@@ -2209,7 +2209,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
-    <div className={`container-boutique py-8 max-lg:pb-32 ${phoneSheetActive ? 'hidden' : ''}`}>
+    <div className={`container-boutique py-8 max-lg:pb-40 ${phoneSheetActive ? 'hidden' : ''}`}>
       {/* Loaded only here (not site-wide in app/layout.tsx) since only the
           checkout page ever opens the Razorpay popup — this used to load
           on every single page load across the whole site for no reason. */}
@@ -3407,7 +3407,18 @@ export default function CheckoutPage() {
                 Rendered in a portal on <body> so no parent (transform/overflow)
                 can break position:fixed; it still submits the form via form="". */}
             {barMounted && !phoneSheetActive && createPortal(
-            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
+              {totalSavings > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPriceSheetOpen(true)}
+                  className="flex w-full items-center justify-center gap-1.5 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700"
+                >
+                  You&apos;ll save {formatINR(totalSavings)} on this order
+                  <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                </button>
+              )}
+              <div className="flex items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
               <div className="shrink-0">
                 <p className="font-serif text-xl font-bold leading-tight text-primary">
                   {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
@@ -3449,6 +3460,7 @@ export default function CheckoutPage() {
                 </>
               )}
               </Button>
+              </div>
             </div>,
             document.body
             )}
