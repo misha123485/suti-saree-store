@@ -1,0 +1,70 @@
+diff --git a/components/product/reviews-section.tsx b/components/product/reviews-section.tsx
+index 4e73bd5..6ba9395 100644
+--- a/components/product/reviews-section.tsx
++++ b/components/product/reviews-section.tsx
+@@ -83,14 +83,6 @@ function StarPicker({
+   );
+ }
+ 
+-const RATING_LABELS: Record<1 | 2 | 3 | 4 | 5, string> = {
+-  5: 'Excellent',
+-  4: 'Very Good',
+-  3: 'Good',
+-  2: 'Average',
+-  1: 'Poor',
+-};
+-
+ function initials(name: string) {
+   const parts = name.trim().split(/\s+/).filter(Boolean);
+   if (parts.length === 0) return '?';
+@@ -619,41 +611,19 @@ export default function ReviewsSection({
+ 
+   return (
+     <div className="grid gap-6 lg:grid-cols-[320px_1fr] lg:gap-8">
+-      <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-secondary/25 bg-gradient-to-b from-secondary/[0.06] via-card to-card p-5 shadow-[0_2px_24px_-8px_rgba(0,0,0,0.08)]">
++      <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-secondary/30 bg-gradient-to-b from-secondary/[0.09] via-card to-card p-6 shadow-[0_12px_40px_-16px_hsl(var(--primary)/0.25)] ring-1 ring-inset ring-white/60">
+         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-secondary/10 blur-2xl" />
+ 
+-        <div className="relative flex items-end gap-3">
+-          <p className="font-serif text-5xl font-bold leading-none text-primary">
++        <div className="relative flex flex-col items-center gap-2 pt-1 text-center">
++          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary">Customer rating</p>
++          <p className="bg-gradient-to-b from-primary to-primary/75 bg-clip-text font-serif text-6xl font-bold leading-none text-transparent">
+             {summary.totalRatings > 0 ? summary.average.toFixed(1) : '—'}
+           </p>
+-          <div className="flex flex-col gap-1 pb-0.5">
+-            <StarRow value={summary.totalRatings > 0 ? summary.average : 0} size="h-4 w-4" />
+-            <p className="text-xs font-medium tracking-wide text-muted-foreground">
+-              {summary.totalRatings.toLocaleString('en-IN')} Rating{summary.totalRatings === 1 ? '' : 's'} ·{' '}
+-              {summary.totalReviews.toLocaleString('en-IN')} Review{summary.totalReviews === 1 ? '' : 's'}
+-            </p>
+-          </div>
+-        </div>
+-
+-        <div className="h-px w-full bg-gradient-to-r from-secondary/40 via-secondary/10 to-transparent" />
+-
+-        <div className="flex flex-col gap-2.5">
+-          {([5, 4, 3, 2, 1] as const).map((star) => {
+-            const count = summary.breakdown[star];
+-            const pct = summary.totalRatings > 0 ? (count / summary.totalRatings) * 100 : 0;
+-            return (
+-              <div key={star} className="flex items-center gap-2.5 text-xs">
+-                <span className="w-[4.5rem] shrink-0 font-medium text-muted-foreground">{RATING_LABELS[star]}</span>
+-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/80">
+-                  <div
+-                    className="h-full rounded-full bg-gradient-to-r from-secondary to-primary transition-all duration-700 ease-out"
+-                    style={{ width: `${pct}%` }}
+-                  />
+-                </div>
+-                <span className="w-6 text-right font-medium text-muted-foreground">{count}</span>
+-              </div>
+-            );
+-          })}
++          <StarRow value={summary.totalRatings > 0 ? summary.average : 0} size="h-5 w-5" />
++          <p className="text-xs font-medium tracking-wide text-muted-foreground">
++            Based on {summary.totalRatings.toLocaleString('en-IN')} rating{summary.totalRatings === 1 ? '' : 's'} ·{' '}
++            {summary.totalReviews.toLocaleString('en-IN')} review{summary.totalReviews === 1 ? '' : 's'}
++          </p>
+         </div>
+ 
+         <div className="h-px w-full bg-gradient-to-r from-secondary/40 via-secondary/10 to-transparent" />
