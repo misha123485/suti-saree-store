@@ -2231,7 +2231,7 @@ export default function CheckoutPage() {
           >
             {detailsComplete ? '✓' : '1'}
           </span>
-          Delivery
+          Address
         </li>
         <span className={`h-px w-8 ${detailsComplete ? 'bg-green-600' : 'bg-border'}`} aria-hidden="true" />
         <li className={`flex items-center gap-1.5 ${detailsComplete ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -2350,6 +2350,10 @@ export default function CheckoutPage() {
       <PriceDetailsSheet
         open={priceSheetOpen}
         onOpenChange={setPriceSheetOpen}
+        items={items}
+        partialAdvance={partialOption?.advance}
+        partialBalance={partialOption?.balance}
+        onSwitchToOnline={() => setPaymentMethod('online')}
         subtotal={subtotal}
         shipping={shipping}
         payableTotal={payableTotal}

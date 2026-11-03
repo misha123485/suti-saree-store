@@ -40,7 +40,7 @@ index 3f90049..bc34237 100644
        Array.from({ length: 7 }, (_, i) => countEvents('page_view', istDayStart(now, i - 6), istDayStart(now, i - 5)))
      ),
 diff --git a/app/checkout/page.tsx b/app/checkout/page.tsx
-index ded3250..048e93a 100644
+index ded3250..d528871 100644
 --- a/app/checkout/page.tsx
 +++ b/app/checkout/page.tsx
 @@ -1,6 +1,7 @@
@@ -132,7 +132,7 @@ index ded3250..048e93a 100644
 +          >
 +            {detailsComplete ? '✓' : '1'}
 +          </span>
-+          Delivery
++          Address
 +        </li>
 +        <span className={`h-px w-8 ${detailsComplete ? 'bg-green-600' : 'bg-border'}`} aria-hidden="true" />
 +        <li className={`flex items-center gap-1.5 ${detailsComplete ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -151,13 +151,17 @@ index ded3250..048e93a 100644
        {/* Top coupon banner — same offer shown lower down inside the Order
            Summary card, but surfaced here too so it's visible immediately
            on page load instead of only after scrolling past the whole
-@@ -2305,6 +2347,17 @@ export default function CheckoutPage() {
+@@ -2305,6 +2347,21 @@ export default function CheckoutPage() {
          )
        )}
  
 +      <PriceDetailsSheet
 +        open={priceSheetOpen}
 +        onOpenChange={setPriceSheetOpen}
++        items={items}
++        partialAdvance={partialOption?.advance}
++        partialBalance={partialOption?.balance}
++        onSwitchToOnline={() => setPaymentMethod('online')}
 +        subtotal={subtotal}
 +        shipping={shipping}
 +        payableTotal={payableTotal}
@@ -169,7 +173,7 @@ index ded3250..048e93a 100644
        <StickyOrderBar
          items={items}
          subtotal={subtotal}
-@@ -2375,13 +2428,15 @@ export default function CheckoutPage() {
+@@ -2375,13 +2432,15 @@ export default function CheckoutPage() {
          </DialogContent>
        </Dialog>
  
@@ -188,7 +192,7 @@ index ded3250..048e93a 100644
              }`}
            >
              {user ? (
-@@ -2390,15 +2445,15 @@ export default function CheckoutPage() {
+@@ -2390,15 +2449,15 @@ export default function CheckoutPage() {
                </span>
              ) : (
                <>
@@ -208,7 +212,7 @@ index ded3250..048e93a 100644
                  </button>
                </>
              )}
-@@ -2433,6 +2488,37 @@ export default function CheckoutPage() {
+@@ -2433,6 +2492,37 @@ export default function CheckoutPage() {
                </div>
              </section>
            ) : (
@@ -246,7 +250,7 @@ index ded3250..048e93a 100644
              <>
                {/* Delivery details card -- tap to open the bottom sheet */}
                <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-@@ -2597,6 +2683,7 @@ export default function CheckoutPage() {
+@@ -2597,6 +2687,7 @@ export default function CheckoutPage() {
                  </SheetContent>
                </Sheet>
              </>
@@ -254,7 +258,7 @@ index ded3250..048e93a 100644
            )}
  
            {/* Payment info */}
-@@ -2668,7 +2755,7 @@ export default function CheckoutPage() {
+@@ -2668,7 +2759,7 @@ export default function CheckoutPage() {
          </div>
  
          {/* Summary */}
@@ -263,7 +267,7 @@ index ded3250..048e93a 100644
            <div
              ref={orderSummaryRef}
              style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
-@@ -3128,7 +3215,16 @@ export default function CheckoutPage() {
+@@ -3128,7 +3219,16 @@ export default function CheckoutPage() {
                </div>
              )}
  
@@ -281,7 +285,7 @@ index ded3250..048e93a 100644
              <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
                <label className="flex cursor-pointer items-start gap-3">
                  <Checkbox
-@@ -3279,7 +3375,7 @@ export default function CheckoutPage() {
+@@ -3279,7 +3379,7 @@ export default function CheckoutPage() {
                type="submit"
                size="lg"
                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
@@ -290,7 +294,7 @@ index ded3250..048e93a 100644
              >
                {placing ? (
                  <>
-@@ -3303,6 +3399,55 @@ export default function CheckoutPage() {
+@@ -3303,6 +3403,55 @@ export default function CheckoutPage() {
                  </>
                )}
              </Button>
@@ -387,19 +391,23 @@ index 61d08d4..3f326c7 100644
  
 diff --git a/components/checkout/price-details-sheet.tsx b/components/checkout/price-details-sheet.tsx
 new file mode 100644
-index 0000000..83460c6
+index 0000000..7f5d7c5
 --- /dev/null
 +++ b/components/checkout/price-details-sheet.tsx
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,203 @@
 +'use client';
 +
-+import { X } from 'lucide-react';
++import Image from 'next/image';
++import { X, CreditCard, Wallet, Split, Zap, ShieldCheck, Truck } from 'lucide-react';
 +import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 +import { formatINR } from '@/lib/format';
++import { toPublicMediaUrl } from '@/lib/media-url';
++import type { CartItem } from '@/lib/types';
 +
 +interface PriceDetailsSheetProps {
 +  open: boolean;
 +  onOpenChange: (open: boolean) => void;
++  items: CartItem[];
 +  subtotal: number;
 +  shipping: number;
 +  payableTotal: number;
@@ -408,12 +416,39 @@ index 0000000..83460c6
 +  /** Rupee amount of the online-payment discount (shown even if COD is selected). */
 +  onlineDiscountAmount: number;
 +  discountBreakdown?: { label: string; amount: number }[];
++  /** Only for partial pay. */
++  partialAdvance?: number;
++  partialBalance?: number;
++  /** Lets a COD customer switch to online right from the popup. */
++  onSwitchToOnline?: () => void;
 +}
++
++const METHOD_INFO = {
++  online: {
++    icon: CreditCard,
++    title: 'Pay Online',
++    sub: 'UPI · Cards · Netbanking',
++    note: 'Confirmed instantly and dispatched first',
++  },
++  cod: {
++    icon: Wallet,
++    title: 'Cash on Delivery',
++    sub: 'Pay when your order arrives',
++    note: 'Dispatched after online orders',
++  },
++  partial: {
++    icon: Split,
++    title: 'Partial Pay',
++    sub: 'Part now, rest on delivery',
++    note: 'Dispatched along with prepaid orders',
++  },
++} as const;
 +
 +// Bottom popup opened from the mobile sticky pay bar ("View price details").
 +export default function PriceDetailsSheet({
 +  open,
 +  onOpenChange,
++  items,
 +  subtotal,
 +  shipping,
 +  payableTotal,
@@ -421,29 +456,106 @@ index 0000000..83460c6
 +  paymentMethod,
 +  onlineDiscountAmount,
 +  discountBreakdown = [],
++  partialAdvance,
++  partialBalance,
++  onSwitchToOnline,
 +}: PriceDetailsSheetProps) {
++  const info = METHOD_INFO[paymentMethod];
++  const MethodIcon = info.icon;
++  const itemCount = items.reduce((n, i) => n + (i.quantity ?? 1), 0);
++
 +  return (
 +    <Sheet open={open} onOpenChange={onOpenChange}>
 +      <SheetContent
 +        side="bottom"
 +        hideClose
-+        className="mx-auto flex max-h-[85dvh] max-w-lg flex-col gap-0 rounded-t-3xl p-0"
++        className="mx-auto flex max-h-[88dvh] max-w-lg flex-col gap-0 rounded-t-3xl p-0"
 +      >
-+        <SheetHeader className="flex-row items-center justify-between border-b border-border/60 px-5 py-4 text-left">
++        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden="true" />
++        <SheetHeader className="flex-row items-center justify-between px-5 pb-3 pt-3 text-left">
 +          <div>
-+            <SheetTitle className="font-serif text-lg font-bold text-primary">Price details</SheetTitle>
-+            <SheetDescription className="sr-only">Breakdown of what you pay for this order</SheetDescription>
++            <SheetTitle className="font-serif text-xl font-bold text-primary">Price details</SheetTitle>
++            <SheetDescription className="text-xs">
++              {itemCount} item{itemCount > 1 ? 's' : ''} in your order
++            </SheetDescription>
 +          </div>
 +          <SheetClose
 +            aria-label="Close price details"
-+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border/70 text-primary"
++            className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 text-primary"
 +          >
 +            <X className="h-4 w-4" />
 +          </SheetClose>
 +        </SheetHeader>
 +
-+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-sm">
-+          <div className="flex flex-col gap-2.5">
++        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-5 text-sm">
++          {/* Selected payment method */}
++          <div
++            className={`flex items-start gap-3 rounded-2xl border p-3.5 ${
++              paymentMethod === 'cod' ? 'border-amber-200 bg-amber-50/70' : 'border-primary/30 bg-primary/[0.04]'
++            }`}
++          >
++            <span
++              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
++                paymentMethod === 'cod' ? 'bg-amber-100 text-amber-700' : 'bg-primary text-primary-foreground'
++              }`}
++            >
++              <MethodIcon className="h-5 w-5" />
++            </span>
++            <div className="min-w-0 flex-1">
++              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
++                Payment method
++              </p>
++              <p className="font-serif text-base font-bold leading-tight text-foreground">{info.title}</p>
++              <p className="mt-0.5 text-xs text-muted-foreground">{info.sub}</p>
++              {paymentMethod === 'partial' && partialAdvance !== undefined && partialBalance !== undefined && (
++                <p className="mt-1.5 text-xs font-medium text-foreground">
++                  Pay <b>{formatINR(partialAdvance)}</b> now · <b>{formatINR(partialBalance)}</b> on delivery
++                </p>
++              )}
++              <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-secondary">
++                {paymentMethod === 'cod' ? <Truck className="h-3 w-3" /> : <Zap className="h-3 w-3" />}
++                {info.note}
++              </p>
++            </div>
++          </div>
++
++          {paymentMethod === 'cod' && onlineDiscountAmount > 0 && onSwitchToOnline && (
++            <button
++              type="button"
++              onClick={() => {
++                onSwitchToOnline();
++                onOpenChange(false);
++              }}
++              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-secondary/60 bg-secondary/10 px-3 py-2.5 text-xs font-semibold text-primary"
++            >
++              <Zap className="h-3.5 w-3.5 text-secondary" />
++              Pay online instead &amp; save {formatINR(onlineDiscountAmount)}
++            </button>
++          )}
++
++          {/* Items */}
++          <ul className="space-y-2.5">
++            {items.map((item) => {
++              const thumb = toPublicMediaUrl(item.product.images?.[0]) || 'https://placehold.co/56x64?text=No+Image';
++              return (
++                <li key={`${item.product.id}-${item.size}`} className="flex items-center gap-3">
++                  <span className="relative h-12 w-10 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-border/60">
++                    <Image src={thumb} alt={item.product.name} fill sizes="40px" className="object-cover" />
++                  </span>
++                  <span className="min-w-0 flex-1">
++                    <span className="line-clamp-1 text-[13px] font-medium text-foreground">{item.product.name}</span>
++                    <span className="block text-[11px] text-muted-foreground">Qty {item.quantity ?? 1}</span>
++                  </span>
++                  <span className="text-[13px] font-semibold">
++                    {formatINR(item.product.price * (item.quantity ?? 1))}
++                  </span>
++                </li>
++              );
++            })}
++          </ul>
++
++          {/* Breakdown */}
++          <div className="space-y-2.5 rounded-2xl border border-border/60 bg-card p-4">
 +            <div className="flex justify-between text-muted-foreground">
 +              <span>Subtotal</span>
 +              <span>{formatINR(subtotal)}</span>
@@ -454,13 +566,10 @@ index 0000000..83460c6
 +                <span>-{formatINR(d.amount)}</span>
 +              </div>
 +            ))}
-+            {onlineDiscountAmount > 0 && (
++            {onlineDiscountAmount > 0 && paymentMethod !== 'cod' && (
 +              <div className="flex justify-between font-medium text-green-700">
-+                <span>{paymentMethod === 'online' ? 'Online payment discount' : 'Pay online to save an extra'}</span>
-+                <span>
-+                  {paymentMethod === 'online' ? '-' : ''}
-+                  {formatINR(onlineDiscountAmount)}
-+                </span>
++                <span>Online payment discount</span>
++                <span>-{formatINR(onlineDiscountAmount)}</span>
 +              </div>
 +            )}
 +            <div className="flex justify-between text-muted-foreground">
@@ -469,18 +578,21 @@ index 0000000..83460c6
 +                {shipping > 0 ? formatINR(shipping) : 'Free'}
 +              </span>
 +            </div>
-+          </div>
-+
-+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
-+            <span className="font-bold">To pay</span>
-+            <span className="font-serif text-xl font-bold text-primary">{formatINR(payableTotal)}</span>
++            <div className="flex items-center justify-between border-t border-dashed border-border pt-3">
++              <span className="font-bold">To pay</span>
++              <span className="font-serif text-2xl font-bold text-primary">{formatINR(payableTotal)}</span>
++            </div>
 +          </div>
 +
 +          {totalSavings > 0 && (
-+            <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-center text-xs font-semibold text-green-700">
-+              You are saving {formatINR(totalSavings)} on this order
++            <p className="rounded-xl bg-green-50 px-3 py-2 text-center text-xs font-semibold text-green-700">
++              🎉 You are saving {formatINR(totalSavings)} on this order
 +            </p>
 +          )}
++
++          <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
++            <ShieldCheck className="h-3.5 w-3.5 text-secondary" /> 100% secure checkout · Easy returns
++          </p>
 +        </div>
 +      </SheetContent>
 +    </Sheet>
