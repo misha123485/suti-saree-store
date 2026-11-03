@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
 import { getR2Client } from '@/lib/storage';
 
 // ---------------------------------------------------------------------
@@ -52,6 +53,79 @@ function decodeSegment(seg: string): string {
   }
 }
 
+
+// ---------------------------------------------------------------------
+// On-demand responsive variants (speed).
+//
+// The storefront image loader asks for  photo-sm.webp (480px) or
+// photo-md.webp (900px)  instead of the full-size photo.png. These files
+// don't exist for the old WordPress library, so on the FIRST request we
+// create the variant from the original, save it next to the original in
+// R2 (never touching the original), and serve it. Every later request is
+// a plain R2 read (and CDN-cached). If ANYTHING fails (original missing,
+// too big, sharp error) we silently serve the original, so an image is
+// never broken.
+// ---------------------------------------------------------------------
+const VARIANT_WIDTH: Record<string, number> = { sm: 480, md: 900 };
+const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024;
+
+function parseVariantKey(key: string): { originalKey: string; width: number; ext: string } | null {
+  const m = key.match(/^(.*)-(sm|md)\.(jpe?g|png|webp)$/i);
+  if (!m) return null;
+  return { originalKey: `${m[1]}.${m[3]}`, width: VARIANT_WIDTH[m[2].toLowerCase()], ext: m[3].toLowerCase() };
+}
+
+async function createVariant(bucket: string, key: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const parsed = parseVariantKey(key);
+  if (!parsed) return null;
+  try {
+    const client = getR2Client();
+    const orig = await client.send(new GetObjectCommand({ Bucket: bucket, Key: parsed.originalKey }));
+    if (typeof orig.ContentLength === 'number' && orig.ContentLength > MAX_ORIGINAL_BYTES) return null;
+    const body = orig.Body as unknown as { transformToByteArray?: () => Promise<Uint8Array> } | undefined;
+    if (!body?.transformToByteArray) return null;
+    const input = Buffer.from(await body.transformToByteArray());
+
+    let img = sharp(input, { failOn: 'none' })
+      .rotate()
+      .resize({ width: parsed.width, withoutEnlargement: true });
+    let contentType: string;
+    if (parsed.ext === 'webp') {
+      img = img.webp({ quality: 80 });
+      contentType = 'image/webp';
+    } else if (parsed.ext === 'png') {
+      img = img.png({ compressionLevel: 9, palette: true });
+      contentType = 'image/png';
+    } else {
+      img = img.jpeg({ quality: 80, mozjpeg: true });
+      contentType = 'image/jpeg';
+    }
+    const buffer = await img.toBuffer();
+
+    // Never serve a "variant" that is bigger than the original.
+    if (buffer.length >= input.length) return null;
+
+    // Best-effort save so the next request is a plain read.
+    try {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+          CacheControl: 'public, max-age=31536000, immutable',
+        })
+      );
+    } catch (putErr) {
+      console.error('[wp-uploads] could not save variant (serving anyway):', key, putErr);
+    }
+    return { buffer, contentType };
+  } catch (err) {
+    console.error('[wp-uploads] variant generation failed, falling back to original:', key, err);
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
   const segments = (params.path || []).map(decodeSegment);
   if (segments.length === 0 || segments.some((s) => !s || s === '.' || s === '..' || s.includes('\\'))) {
@@ -99,6 +173,24 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
     const status = e?.$metadata?.httpStatusCode;
     if (status === 304) return new NextResponse(null, { status: 304 });
     if (status === 404 || e?.name === 'NoSuchKey' || e?.name === 'NotFound') {
+      // Missing -sm/-md variant? Create it from the original (or fall
+      // back to serving the original) instead of returning 404.
+      const parsed = parseVariantKey(key);
+      if (parsed) {
+        const made = await createVariant(bucket, key);
+        if (made) {
+          return new NextResponse(new Uint8Array(made.buffer), {
+            status: 200,
+            headers: {
+              'Content-Type': made.contentType,
+              'Content-Length': String(made.buffer.length),
+              'Cache-Control': 'public, max-age=2592000, s-maxage=31536000, stale-while-revalidate=86400',
+            },
+          });
+        }
+        // Fallback: redirect to the original (same origin, always exists if the variant could exist).
+        return NextResponse.redirect(new URL('/' + parsed.originalKey.split('/').map(encodeURIComponent).join('/'), req.url), 302);
+      }
       return new NextResponse('Not found', { status: 404, headers: { 'Cache-Control': 'public, max-age=300' } });
     }
     console.error('[wp-uploads] R2 read failed:', key, err);
