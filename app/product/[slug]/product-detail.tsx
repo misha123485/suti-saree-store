@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -38,25 +39,16 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCountry } from '@/components/country-provider';
-import ReviewsSection from '@/components/product/reviews-section';
 import { fetchApprovedReviews, summarizeReviews, RatingSummary } from '@/lib/reviews-api';
 import DeliveryInfo from '@/components/product/delivery-info';
 import VariantSwatches from '@/components/product/variant-swatches';
 import ProductHighlights from '@/components/product/product-highlights';
 import PriceQuickBrowseBar from '@/components/product/price-quick-browse-bar';
-import BogoOfferSheet from '@/components/product/bogo-offer-sheet';
-import SizeChart from '@/components/product/size-chart';
 import ProductGallery from '@/components/product/product-gallery';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import MobileStickyCartBar from '@/components/product/mobile-sticky-cart-bar';
-import RelatedProducts from '@/components/product/related-products';
-import VendorCollection from '@/components/product/vendor-collection';
-import RecentlyViewedSection from '@/components/product/recently-viewed';
-import PromoSlider from '@/components/home/promo-slider';
-import NotifyMeForm from '@/components/product/notify-me-form';
 import LowStockBadge from '@/components/growth/low-stock-badge';
 import LiveViewersBadge from '@/components/growth/live-viewers-badge';
-import CouponList from '@/components/product/coupon-list';
 import WishlistButton from '@/components/wishlist-button';
 import ShareButton from '@/components/share-button';
 import { Coupon, validateCoupon } from '@/lib/coupons-api';
@@ -66,13 +58,27 @@ import {
   DEFAULT_LOYALTY_SETTINGS,
   type LoyaltySettings,
 } from '@/lib/loyalty-api';
-import FrequentlyBoughtTogether from '@/components/product/frequently-bought-together';
 import { addRecentlyViewed } from '@/lib/recently-viewed';
 import { trackEvent } from '@/lib/track-api';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from 'sonner';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
+import LazyOnView from '@/components/lazy-on-view';
+
+// Below-the-fold / on-demand sections are code-split (and wrapped in
+// <LazyOnView> where they sit under the fold) so they don't add to the
+// initial JS bundle or Total Blocking Time.
+const ReviewsSection = dynamic(() => import('@/components/product/reviews-section'), { ssr: false });
+const BogoOfferSheet = dynamic(() => import('@/components/product/bogo-offer-sheet'), { ssr: false });
+const SizeChart = dynamic(() => import('@/components/product/size-chart'), { ssr: false });
+const RelatedProducts = dynamic(() => import('@/components/product/related-products'), { ssr: false });
+const VendorCollection = dynamic(() => import('@/components/product/vendor-collection'), { ssr: false });
+const RecentlyViewedSection = dynamic(() => import('@/components/product/recently-viewed'), { ssr: false });
+const PromoSlider = dynamic(() => import('@/components/home/promo-slider'), { ssr: false });
+const NotifyMeForm = dynamic(() => import('@/components/product/notify-me-form'), { ssr: false });
+const CouponList = dynamic(() => import('@/components/product/coupon-list'), { ssr: false });
+const FrequentlyBoughtTogether = dynamic(() => import('@/components/product/frequently-bought-together'), { ssr: false });
 
 // Coupon "preview" applied on a product page before Add to Cart. Persisted
 // so it survives a page reload, or a trip to another product and back —
@@ -787,7 +793,9 @@ export default function ProductDetail({
       <h2 className="mb-3 text-sm font-semibold text-foreground">
         Reviews ({displayRatingsCount})
       </h2>
-      <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
+      <LazyOnView minHeight={240}>
+        <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
+      </LazyOnView>
     </div>
   );
 
@@ -859,7 +867,7 @@ export default function ProductDetail({
       {/* Desktop only: reviews sit full-width right above "You may also like". */}
       {isDesktop === true && <div className="mt-8">{reviewsBlock}</div>}
 
-      <div className="mt-8">
+      <LazyOnView className="mt-8" minHeight={320}>
         <RelatedProducts
           current={product}
           allProducts={products}
@@ -877,7 +885,7 @@ export default function ProductDetail({
         {bogoCollectionProducts.length > 0 && (
           <RelatedProducts current={product} allProducts={products} />
         )}
-      </div>
+      </LazyOnView>
 
       {/* Shop by price -- shown right after "You may also like". */}
       <div className="mt-6">
@@ -887,9 +895,9 @@ export default function ProductDetail({
       {/* Same Refer & Earn / trust-signal carousel shown on the home page,
           repeated here right after "You may also like" so the loyalty/
           referral nudge reaches shoppers deep on a product page too. */}
-      <div className="mt-8">
+      <LazyOnView className="mt-8" minHeight={160}>
         <PromoSlider />
-      </div>
+      </LazyOnView>
 
       <div className="mt-6">
         <Accordion type="single" collapsible>
@@ -963,11 +971,11 @@ export default function ProductDetail({
         </Accordion>
       </div>
 
-      <FrequentlyBoughtTogether productId={baseProduct.id} />
-
-      <VendorCollection productId={baseProduct.id} />
-
-      <RecentlyViewedSection excludeId={product.id} />
+      <LazyOnView minHeight={200}>
+        <FrequentlyBoughtTogether productId={baseProduct.id} />
+        <VendorCollection productId={baseProduct.id} />
+        <RecentlyViewedSection excludeId={product.id} />
+      </LazyOnView>
 
       <MobileStickyCartBar
         name={displayName}
