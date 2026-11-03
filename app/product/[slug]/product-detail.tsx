@@ -858,6 +858,11 @@ export default function ProductDetail({
         )}
       </div>
 
+      {/* Shop by price -- shown right after "You may also like". */}
+      <div className="mt-6">
+        <PriceQuickBrowseBar category={product.category} />
+      </div>
+
       {/* Same Refer & Earn / trust-signal carousel shown on the home page,
           repeated here right after "You may also like" so the loyalty/
           referral nudge reaches shoppers deep on a product page too. */}
@@ -1309,8 +1314,6 @@ function ProductInfo({
           the buttons right here too, right below the coupon/stock info the
           shopper is already looking at, gives a second clear path to
           purchase instead of relying on the fixed bar being noticed. */}
-
-      <PriceQuickBrowseBar category={product.category} />
 
       <ProductHighlights product={product} />
 

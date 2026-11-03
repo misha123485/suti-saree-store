@@ -1,1 +1,4 @@
-Replace components/product/reviews-section.tsx (git pull first), or: git apply reviews-ui.patch
+git pull first, then replace:
+ app/product/[slug]/product-detail.tsx
+ components/product/reviews-section.tsx
+or: git apply changes.patch

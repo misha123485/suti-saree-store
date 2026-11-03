@@ -611,19 +611,20 @@ export default function ReviewsSection({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr] lg:gap-8">
-      <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-secondary/30 bg-gradient-to-b from-secondary/[0.09] via-card to-card p-6 shadow-[0_12px_40px_-16px_hsl(var(--primary)/0.25)] ring-1 ring-inset ring-white/60">
+      <div className="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-secondary/25 bg-gradient-to-b from-secondary/[0.06] via-card to-card p-5 shadow-[0_2px_24px_-8px_rgba(0,0,0,0.08)]">
         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-secondary/10 blur-2xl" />
 
-        <div className="relative flex flex-col items-center gap-2 pt-1 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary">Customer rating</p>
-          <p className="bg-gradient-to-b from-primary to-primary/75 bg-clip-text font-serif text-6xl font-bold leading-none text-transparent">
+        <div className="relative flex items-end gap-3">
+          <p className="font-serif text-5xl font-bold leading-none text-primary">
             {summary.totalRatings > 0 ? summary.average.toFixed(1) : '—'}
           </p>
-          <StarRow value={summary.totalRatings > 0 ? summary.average : 0} size="h-5 w-5" />
-          <p className="text-xs font-medium tracking-wide text-muted-foreground">
-            Based on {summary.totalRatings.toLocaleString('en-IN')} rating{summary.totalRatings === 1 ? '' : 's'} ·{' '}
-            {summary.totalReviews.toLocaleString('en-IN')} review{summary.totalReviews === 1 ? '' : 's'}
-          </p>
+          <div className="flex flex-col gap-1 pb-0.5">
+            <StarRow value={summary.totalRatings > 0 ? summary.average : 0} size="h-4 w-4" />
+            <p className="text-xs font-medium tracking-wide text-muted-foreground">
+              {summary.totalRatings.toLocaleString('en-IN')} Rating{summary.totalRatings === 1 ? '' : 's'} ·{' '}
+              {summary.totalReviews.toLocaleString('en-IN')} Review{summary.totalReviews === 1 ? '' : 's'}
+            </p>
+          </div>
         </div>
 
         <div className="h-px w-full bg-gradient-to-r from-secondary/40 via-secondary/10 to-transparent" />
