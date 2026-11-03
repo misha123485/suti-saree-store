@@ -1,8 +1,1 @@
-Suti Saree - checkout UX changes (v5, includes v1-v4)
-Copy these 4 files into suti-saree-store (same paths; price-details-sheet.tsx is NEW):
-  app/checkout/page.tsx
-  app/api/admin/dashboards/route.ts
-  components/checkout/payment-method-selector.tsx
-  components/checkout/price-details-sheet.tsx
-Run `git pull` first. If you have unpushed local edits in these files use:
-  git apply checkout-ux.patch
+Replace components/checkout/payment-method-selector.tsx (git pull first), or: git apply payment-selector.patch
