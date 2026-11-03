@@ -2214,6 +2214,31 @@ export default function CheckoutPage() {
         Checkout
       </h1>
 
+      {/* Simple 2-step progress: Delivery -> Payment */}
+      <ol className="mb-4 flex items-center gap-2 text-xs font-medium" aria-label="Checkout progress">
+        <li className="flex items-center gap-1.5 text-primary">
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+              detailsComplete ? 'bg-green-600 text-white' : 'bg-primary text-primary-foreground'
+            }`}
+          >
+            {detailsComplete ? '✓' : '1'}
+          </span>
+          Delivery
+        </li>
+        <span className={`h-px w-8 ${detailsComplete ? 'bg-green-600' : 'bg-border'}`} aria-hidden="true" />
+        <li className={`flex items-center gap-1.5 ${detailsComplete ? 'text-primary' : 'text-muted-foreground'}`}>
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+              detailsComplete ? 'bg-primary text-primary-foreground' : 'border border-border'
+            }`}
+          >
+            2
+          </span>
+          Payment
+        </li>
+      </ol>
+
       {/* Top coupon banner — same offer shown lower down inside the Order
           Summary card, but surfaced here too so it's visible immediately
           on page load instead of only after scrolling past the whole
@@ -2711,7 +2736,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Summary */}
-        <aside className="lg:col-span-1">
+        <aside id="order-summary" className="lg:col-span-1">
           <div
             ref={orderSummaryRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
@@ -3356,12 +3381,26 @@ export default function CheckoutPage() {
               )}
             </Button>
             {/* Mobile: pay button always visible at the bottom of the screen */}
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
+            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
+              <div className="shrink-0">
+                <p className="font-serif text-xl font-bold leading-tight text-primary">
+                  {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    document.getElementById('order-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                  className="text-[11px] font-semibold uppercase tracking-wide text-secondary"
+                >
+                  View price details
+                </button>
+              </div>
               <Button
                 type="submit"
                 size="lg"
                 disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
-                className="h-12 w-full bg-primary text-base"
+                className="h-12 min-w-0 flex-1 bg-primary text-base"
               >
 {placing ? (
                 <>

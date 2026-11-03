@@ -20,11 +20,10 @@ import { formatINR } from '@/lib/format';
  */
 export const PAYMENT_COPY = {
   onlineTitle: 'Pay Online',
-  onlineSub: 'UPI, cards, netbanking · Secure payment',
+  onlineSub: 'UPI (GPay, PhonePe, Paytm) · Cards · Netbanking',
   onlineNote: 'Prepaid orders are confirmed instantly and packed ahead of COD orders.',
   benefits: [
     { icon: 'zap', title: 'Dispatched first', sub: 'Priority packing' },
-    { icon: 'truck', title: 'Ships sooner', sub: 'Ships ahead of COD' },
     { icon: 'check', title: 'Instant confirmation', sub: 'No verification wait' },
   ],
   codTitle: 'Cash on Delivery',
@@ -146,7 +145,7 @@ export default function PaymentMethodSelector({
                 Recommended
               </span>
             </span>
-            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
               {PAYMENT_COPY.onlineSub}
             </span>
           </span>
@@ -180,12 +179,6 @@ export default function PaymentMethodSelector({
           })}
         </span>
 
-        <Expand open={online}>
-          <span className="flex items-start gap-1.5 pl-[30px] pt-2 text-[11px] leading-snug text-muted-foreground">
-            <Lock className="mt-px h-3 w-3 shrink-0 text-secondary" />
-            {PAYMENT_COPY.onlineNote}
-          </span>
-        </Expand>
       </button>
       )}
 

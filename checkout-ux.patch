@@ -40,7 +40,7 @@ index 3f90049..bc34237 100644
        Array.from({ length: 7 }, (_, i) => countEvents('page_view', istDayStart(now, i - 6), istDayStart(now, i - 5)))
      ),
 diff --git a/app/checkout/page.tsx b/app/checkout/page.tsx
-index ded3250..b9cca91 100644
+index ded3250..c58282b 100644
 --- a/app/checkout/page.tsx
 +++ b/app/checkout/page.tsx
 @@ -236,6 +236,9 @@ export default function CheckoutPage() {
@@ -93,7 +93,39 @@ index ded3250..b9cca91 100644
        {/* Loaded only here (not site-wide in app/layout.tsx) since only the
            checkout page ever opens the Razorpay popup — this used to load
            on every single page load across the whole site for no reason. */}
-@@ -2380,8 +2389,10 @@ export default function CheckoutPage() {
+@@ -2205,6 +2214,31 @@ export default function CheckoutPage() {
+         Checkout
+       </h1>
+ 
++      {/* Simple 2-step progress: Delivery -> Payment */}
++      <ol className="mb-4 flex items-center gap-2 text-xs font-medium" aria-label="Checkout progress">
++        <li className="flex items-center gap-1.5 text-primary">
++          <span
++            className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
++              detailsComplete ? 'bg-green-600 text-white' : 'bg-primary text-primary-foreground'
++            }`}
++          >
++            {detailsComplete ? '✓' : '1'}
++          </span>
++          Delivery
++        </li>
++        <span className={`h-px w-8 ${detailsComplete ? 'bg-green-600' : 'bg-border'}`} aria-hidden="true" />
++        <li className={`flex items-center gap-1.5 ${detailsComplete ? 'text-primary' : 'text-muted-foreground'}`}>
++          <span
++            className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
++              detailsComplete ? 'bg-primary text-primary-foreground' : 'border border-border'
++            }`}
++          >
++            2
++          </span>
++          Payment
++        </li>
++      </ol>
++
+       {/* Top coupon banner — same offer shown lower down inside the Order
+           Summary card, but surfaced here too so it's visible immediately
+           on page load instead of only after scrolling past the whole
+@@ -2380,8 +2414,10 @@ export default function CheckoutPage() {
            {/* Login status — always shown, whether the saved-address summary
                or the editable guest form is what's displayed below it. */}
            <section
@@ -106,7 +138,7 @@ index ded3250..b9cca91 100644
              }`}
            >
              {user ? (
-@@ -2390,15 +2401,15 @@ export default function CheckoutPage() {
+@@ -2390,15 +2426,15 @@ export default function CheckoutPage() {
                </span>
              ) : (
                <>
@@ -126,7 +158,7 @@ index ded3250..b9cca91 100644
                  </button>
                </>
              )}
-@@ -2433,6 +2444,37 @@ export default function CheckoutPage() {
+@@ -2433,6 +2469,37 @@ export default function CheckoutPage() {
                </div>
              </section>
            ) : (
@@ -164,7 +196,7 @@ index ded3250..b9cca91 100644
              <>
                {/* Delivery details card -- tap to open the bottom sheet */}
                <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-@@ -2597,6 +2639,7 @@ export default function CheckoutPage() {
+@@ -2597,6 +2664,7 @@ export default function CheckoutPage() {
                  </SheetContent>
                </Sheet>
              </>
@@ -172,7 +204,16 @@ index ded3250..b9cca91 100644
            )}
  
            {/* Payment info */}
-@@ -3128,7 +3171,16 @@ export default function CheckoutPage() {
+@@ -2668,7 +2736,7 @@ export default function CheckoutPage() {
+         </div>
+ 
+         {/* Summary */}
+-        <aside className="lg:col-span-1">
++        <aside id="order-summary" className="lg:col-span-1">
+           <div
+             ref={orderSummaryRef}
+             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
+@@ -3128,7 +3196,16 @@ export default function CheckoutPage() {
                </div>
              )}
  
@@ -190,7 +231,7 @@ index ded3250..b9cca91 100644
              <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
                <label className="flex cursor-pointer items-start gap-3">
                  <Checkbox
-@@ -3279,7 +3331,7 @@ export default function CheckoutPage() {
+@@ -3279,7 +3356,7 @@ export default function CheckoutPage() {
                type="submit"
                size="lg"
                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
@@ -199,17 +240,31 @@ index ded3250..b9cca91 100644
              >
                {placing ? (
                  <>
-@@ -3303,6 +3355,37 @@ export default function CheckoutPage() {
+@@ -3303,6 +3380,51 @@ export default function CheckoutPage() {
                  </>
                )}
              </Button>
 +            {/* Mobile: pay button always visible at the bottom of the screen */}
-+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
++            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border/60 bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
++              <div className="shrink-0">
++                <p className="font-serif text-xl font-bold leading-tight text-primary">
++                  {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
++                </p>
++                <button
++                  type="button"
++                  onClick={() =>
++                    document.getElementById('order-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
++                  }
++                  className="text-[11px] font-semibold uppercase tracking-wide text-secondary"
++                >
++                  View price details
++                </button>
++              </div>
 +              <Button
 +                type="submit"
 +                size="lg"
 +                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
-+                className="h-12 w-full bg-primary text-base"
++                className="h-12 min-w-0 flex-1 bg-primary text-base"
 +              >
 +{placing ? (
 +                <>
@@ -237,3 +292,42 @@ index ded3250..b9cca91 100644
              <p className="mt-3 text-center text-[11px] text-muted-foreground">
                By placing your order, you agree to our Terms & Privacy Policy.
              </p>
+diff --git a/components/checkout/payment-method-selector.tsx b/components/checkout/payment-method-selector.tsx
+index 61d08d4..3f326c7 100644
+--- a/components/checkout/payment-method-selector.tsx
++++ b/components/checkout/payment-method-selector.tsx
+@@ -20,11 +20,10 @@ import { formatINR } from '@/lib/format';
+  */
+ export const PAYMENT_COPY = {
+   onlineTitle: 'Pay Online',
+-  onlineSub: 'UPI, cards, netbanking · Secure payment',
++  onlineSub: 'UPI (GPay, PhonePe, Paytm) · Cards · Netbanking',
+   onlineNote: 'Prepaid orders are confirmed instantly and packed ahead of COD orders.',
+   benefits: [
+     { icon: 'zap', title: 'Dispatched first', sub: 'Priority packing' },
+-    { icon: 'truck', title: 'Ships sooner', sub: 'Ships ahead of COD' },
+     { icon: 'check', title: 'Instant confirmation', sub: 'No verification wait' },
+   ],
+   codTitle: 'Cash on Delivery',
+@@ -146,7 +145,7 @@ export default function PaymentMethodSelector({
+                 Recommended
+               </span>
+             </span>
+-            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
++            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+               {PAYMENT_COPY.onlineSub}
+             </span>
+           </span>
+@@ -180,12 +179,6 @@ export default function PaymentMethodSelector({
+           })}
+         </span>
+ 
+-        <Expand open={online}>
+-          <span className="flex items-start gap-1.5 pl-[30px] pt-2 text-[11px] leading-snug text-muted-foreground">
+-            <Lock className="mt-px h-3 w-3 shrink-0 text-secondary" />
+-            {PAYMENT_COPY.onlineNote}
+-          </span>
+-        </Expand>
+       </button>
+       )}
+ 

@@ -1,22 +1,16 @@
-Suti Saree - checkout UX changes
-================================
-Files (copy into your suti-saree-store folder, same paths, replace):
+Suti Saree - checkout UX changes (v2, includes v1)
+Copy the 3 files into suti-saree-store (same paths, replace):
   app/checkout/page.tsx
   app/api/admin/dashboards/route.ts
+  components/checkout/payment-method-selector.tsx
+Run `git pull` first. If you have unpushed local edits in these files, use
+checkout-ux.patch instead:  git apply checkout-ux.patch
 
-IMPORTANT: run `git pull` first. These files are based on the latest GitHub
-commit (20f7fa6). If you changed these two files locally and did not push,
-use checkout-ux.patch instead:  git apply checkout-ux.patch
-
-Changes:
-1. Delivery form is shown directly on the page for guests (no "Add delivery
-   details" tap / bottom sheet). Logged-in users with saved addresses keep
-   the old summary + picker.
-2. Mobile: Pay button is fixed at the bottom of the screen.
-3. "Resell this product" box hidden behind a small "Are you a reseller?" link.
-4. "Already have an account? Log in" made small and low-key.
-5. Admin dashboard funnel (visited / viewed / cart / checkout / purchased)
-   now counts unique sessions, not raw events. Checkout 158 was inflated
-   because checkout_start fires once per cart item.
-
-Not changed: email is still required (backend/payment gateways use it).
+Changes
+1. Delivery form shown directly on the page for guests.
+2. Mobile sticky bottom bar: price + "View price details" (left), Pay button (right).
+3. 2-step progress: Delivery -> Payment.
+4. Payment card simpler: UPI apps text line, 2 badges, no extra note.
+5. "Resell this product" hidden behind "Are you a reseller?" link.
+6. Login line made small.
+7. Admin dashboard funnel counts unique sessions.
