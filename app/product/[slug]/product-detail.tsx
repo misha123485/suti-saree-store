@@ -614,6 +614,22 @@ export default function ProductDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCouponCode, cartSubtotal]);
 
+  // Reviews placement: on mobile they stay inside the product info column
+  // (unchanged). On desktop (>= lg, 1024px) they move out of the right
+  // column and render full-width below the product grid, right above
+  // "You may also like". Only ONE copy is ever mounted (so there is no
+  // duplicate #product-reviews id and no double fetch). Until the first
+  // client-side media-query check (isDesktop === null) the mobile copy is
+  // rendered with `lg:hidden`, so desktop never flashes the old position.
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   if (isLoading && !product) {
     return (
       <div className="container-boutique py-8">
@@ -766,6 +782,15 @@ export default function ProductDetail({
     router.push('/checkout');
   };
 
+  const reviewsBlock = (
+    <div id="product-reviews" className={`scroll-mt-24${isDesktop === null ? ' lg:hidden' : ''}`}>
+      <h2 className="mb-3 text-sm font-semibold text-foreground">
+        Reviews ({displayRatingsCount})
+      </h2>
+      <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
+    </div>
+  );
+
   return (
     <div className="container-boutique pt-0 pb-24 sm:pt-4 md:pb-8">
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-8 lg:items-start">
@@ -796,14 +821,7 @@ export default function ProductDetail({
           </div>
         </div>
         <ProductInfo
-          reviewsSlot={
-            <div id="product-reviews" className="scroll-mt-24">
-              <h2 className="mb-3 text-sm font-semibold text-foreground">
-                Reviews ({displayRatingsCount})
-              </h2>
-              <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
-            </div>
-          }
+          reviewsSlot={isDesktop === true ? null : reviewsBlock}
           product={product}
           displayName={displayName}
           displayRating={displayRating}
@@ -837,6 +855,9 @@ export default function ProductDetail({
           }}
         />
       </div>
+
+      {/* Desktop only: reviews sit full-width right above "You may also like". */}
+      {isDesktop === true && <div className="mt-8">{reviewsBlock}</div>}
 
       <div className="mt-8">
         <RelatedProducts
