@@ -54,7 +54,7 @@ export default async function Icon() {
           borderRadius: 6,
         }}
       >
-        <span style={{ fontSize: 28, fontWeight: 700, color: '#DAAA2F' }}>A</span>
+        <span style={{ fontSize: 28, fontWeight: 700, color: '#DAAA2F' }}>S</span>
       </div>
     ),
     { ...size }
