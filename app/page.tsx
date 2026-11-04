@@ -113,6 +113,7 @@ export default async function Home() {
         discoverInitialProducts={homeData.discoverInitialProducts}
         discoverInitialHasMore={homeData.discoverInitialHasMore}
         discoverCategoryCounts={homeData.discoverCategoryCounts}
+        appLayout={homeData.appLayout}
       />
     </>
   );

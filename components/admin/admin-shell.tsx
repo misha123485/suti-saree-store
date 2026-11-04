@@ -45,6 +45,7 @@ import {
   Award,
   FolderOpen,
   Plug,
+  Smartphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationBell from './notification-bell';
@@ -71,6 +72,7 @@ export type AdminSection =
   | 'promotions'
   | 'homepage-tiles'
   | 'discover-products'
+  | 'app-layout'
   | 'hero-banners'
   | 'marketing'
   | 'partner-pages'
@@ -156,6 +158,7 @@ const NAV_GROUPS: NavGroup[] = [
       { value: 'coupons', label: 'Coupons', icon: Tag },
       { value: 'promotions', label: 'Promotions', icon: Percent },
       { value: 'homepage-tiles', label: 'Homepage Tiles', icon: LayoutGrid },
+      { value: 'app-layout', label: 'App Layout', icon: Smartphone },
       { value: 'discover-products', label: 'Discover Products', icon: Sparkles },
       { value: 'hero-banners', label: 'Hero Banners', icon: Images },
       { value: 'marketing', label: 'Marketing', icon: Megaphone },

@@ -16,6 +16,9 @@ import { expandProductVariants } from '@/lib/expand-product-variants';
 import CouponStrip from '@/components/home/coupon-strip';
 import PromoSlider from '@/components/home/promo-slider';
 import HomepageGrid from '@/components/home/homepage-grid';
+import AppCategoryBar from '@/components/home/app-category-bar';
+import AppCategoryGrid from '@/components/home/app-category-grid';
+import type { HomeAppLayoutSettings } from '@/lib/home-app-layout';
 import HeroBannerCarousel from '@/components/home/hero-banner-carousel';
 import { Button } from '@/components/ui/button';
 import { toPublicMediaUrl } from '@/lib/media-url';
@@ -35,6 +38,7 @@ interface HomeClientProps {
   discoverInitialProducts: Product[];
   discoverInitialHasMore: boolean;
   discoverCategoryCounts: Record<string, number>;
+  appLayout: HomeAppLayoutSettings;
 }
 
 export default function HomeClient({
@@ -51,6 +55,7 @@ export default function HomeClient({
   discoverInitialProducts,
   discoverInitialHasMore,
   discoverCategoryCounts,
+  appLayout,
 }: HomeClientProps) {
   // Explode each grid's finite pick list into one card per colour, so a
   // featured/new-arrival piece that comes in several colours shows every
@@ -90,8 +95,32 @@ export default function HomeClient({
     [categories, categoryCounts]
   );
 
+  // App-style layout (Admin > App Layout): primary tabs in the admin's
+  // chosen order (auto = first 8 categories with products), and the grid
+  // shows every other visible category minus the ones the admin hid.
+  const primaryItems = useMemo(() => {
+    const toItem = (c: CategoryRow) => ({ category: c, thumb: categoryThumbs.get(c.id) });
+    if (appLayout.primary_category_ids.length > 0) {
+      const byId = new Map(visibleCategories.map((c) => [c.id, c]));
+      return appLayout.primary_category_ids
+        .map((id) => byId.get(id))
+        .filter((c): c is CategoryRow => !!c)
+        .map(toItem);
+    }
+    return visibleCategories.slice(0, 8).map(toItem);
+  }, [appLayout.primary_category_ids, visibleCategories, categoryThumbs]);
+
+  const gridItems = useMemo(() => {
+    const hidden = new Set(appLayout.hidden_category_ids);
+    return visibleCategories
+      .filter((c) => !hidden.has(c.id))
+      .map((c) => ({ category: c, thumb: categoryThumbs.get(c.id) }));
+  }, [appLayout.hidden_category_ids, visibleCategories, categoryThumbs]);
+
   return (
     <div className="flex flex-col">
+      {appLayout.enabled && <AppCategoryBar items={primaryItems} layout={appLayout} />}
+
       {/* Hero */}
       {heroBanners.length > 0 ? (
         <HeroBannerCarousel banners={heroBanners} />
@@ -223,7 +252,11 @@ export default function HomeClient({
       </section>
       )}
 
-      {/* Categories */}
+      {/* Categories — app-style 2/3-row grid when enabled in Admin > App
+          Layout, otherwise the original circle row below. */}
+      {appLayout.enabled ? (
+        <AppCategoryGrid items={gridItems} layout={appLayout} />
+      ) : (
       <section className="container-boutique py-8 sm:py-10">
         <div className="mb-5 flex items-end justify-between">
           <div>
@@ -278,6 +311,7 @@ export default function HomeClient({
           )}
         </div>
       </section>
+      )}
 
       {/* Collections — same circle-row treatment as categories above, but
           sourced from Admin > Collections instead of the categories table.

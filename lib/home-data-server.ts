@@ -5,6 +5,7 @@ import { fetchPublicCollectionsServer, PublicCollectionRow } from './collections
 import { Product, CategoryRow } from './types';
 import { HomepageTile } from './homepage-tiles-api';
 import { HeroBanner } from './hero-banners-api';
+import { HomeAppLayoutSettings, DEFAULT_HOME_APP_LAYOUT, HOME_APP_LAYOUT_KEY, normalizeHomeAppLayout } from './home-app-layout';
 import { fetchDiscoverProductsServer, fetchDiscoverCategoryCountsServer, DiscoverSectionSettings, DEFAULT_DISCOVER_SETTINGS } from './discover-products-api';
 
 export interface HomeBanner {
@@ -37,6 +38,8 @@ export interface HomeData {
    *  set, used to hide empty category pills from that section's filter
    *  bar (see fetchDiscoverCategoryCountsServer). */
   discoverCategoryCounts: Record<string, number>;
+  /** App-style top bar + category grid settings (Admin > App Layout). */
+  appLayout: HomeAppLayoutSettings;
 }
 
 async function fetchHomeBanner(): Promise<HomeBanner | null> {
@@ -202,6 +205,20 @@ async function fetchHomeDiscoverProducts(): Promise<{
   }
 }
 
+async function fetchAppLayout(): Promise<HomeAppLayoutSettings> {
+  try {
+    const supabase = getServerSupabase();
+    const { data } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', HOME_APP_LAYOUT_KEY)
+      .maybeSingle();
+    return normalizeHomeAppLayout(data?.value);
+  } catch {
+    return DEFAULT_HOME_APP_LAYOUT;
+  }
+}
+
 export async function fetchHomeData(): Promise<HomeData> {
   const [
     products,
@@ -214,6 +231,7 @@ export async function fetchHomeData(): Promise<HomeData> {
     collectionSlugById,
     discover,
     discoverCategoryCounts,
+    appLayout,
   ] = await Promise.all([
     fetchProductsServer(),
     fetchCategoriesServer(),
@@ -225,6 +243,7 @@ export async function fetchHomeData(): Promise<HomeData> {
     fetchCollectionSlugMap(),
     fetchHomeDiscoverProducts(),
     fetchDiscoverCategoryCountsServer(),
+    fetchAppLayout(),
   ]);
 
   const promotionCollectionSlugById = await fetchPromotionCollectionSlugMap(collectionSlugById);
@@ -243,5 +262,6 @@ export async function fetchHomeData(): Promise<HomeData> {
     discoverInitialProducts: discover.products,
     discoverInitialHasMore: discover.hasMore,
     discoverCategoryCounts,
+    appLayout,
   };
 }
