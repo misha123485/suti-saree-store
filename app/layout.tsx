@@ -48,7 +48,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com'
 // across layout + page, so this 300 was silently capping app/page.tsx and
 // app/category/[slug]/page.tsx (both set to 1800) down to 5 minutes, and
 // making every other page without its own value regenerate every 5 minutes.
-export const revalidate = 1800;
+export const revalidate = 21600; // 6 hours (was 1800) - less CPU/ISR writes; admin edits still purge via revalidatePath
 
 const DEFAULT_SEO: SeoSettings = {
   site_title: 'Sutisaree — Handwoven Indian Ethnic Wear & Sarees',

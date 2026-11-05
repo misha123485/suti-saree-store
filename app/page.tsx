@@ -15,7 +15,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com'
 // CPU-saving change: 60s -> 1800s (30 min). Admin edits already purge this
 // page instantly via revalidatePath('/'), so the longer window is only the
 // safety net for changes that don't go through admin (e.g. vendor edits).
-export const revalidate = 1800;
+export const revalidate = 21600; // 6 hours (was 1800) - less CPU/ISR writes; admin edits still purge via revalidatePath
 
 interface HomeSeoData {
   name: string;

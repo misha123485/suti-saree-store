@@ -67,7 +67,7 @@ const ICONS: Record<AdminNotification['type'], typeof Bell> = {
 };
 
 const LAST_SEEN_KEY = 'admin_notifications_last_seen';
-const POLL_INTERVAL_MS = 20_000;
+const POLL_INTERVAL_MS = 60_000;
 
 interface NotificationBellProps {
   onNavigate: (section: AdminSection, focusId?: string) => void;

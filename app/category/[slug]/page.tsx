@@ -28,7 +28,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com'
 // see app/api/admin/products/[id]/route.ts -- this is just the safety net.
 // CPU-saving change: safety-net window raised 60s -> 1800s (30 min). Admin
 // product/collection edits still purge instantly via revalidatePath().
-export const revalidate = 1800;
+export const revalidate = 21600; // 6 hours (was 1800) - less CPU/ISR writes; admin edits still purge via revalidatePath
 
 type Params = { params: { slug: string } };
 

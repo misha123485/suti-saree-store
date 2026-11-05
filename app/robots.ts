@@ -14,8 +14,12 @@ export default function robots(): MetadataRoute.Robots {
     };
   }
 
+  const AI_BOTS = ['GPTBot', 'ChatGPT-User', 'CCBot', 'Bytespider', 'ClaudeBot', 'anthropic-ai', 'PerplexityBot', 'Amazonbot', 'Applebot-Extended', 'meta-externalagent', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot'];
+
   return {
     rules: [
+      // Heavy scrapers / AI crawlers: they burn serverless CPU for no sales.
+      { userAgent: AI_BOTS, disallow: '/' },
       // Merchant Center needs Googlebot (landing pages) AND Googlebot-Image (images).
       // AdsBot-Google ignores the '*' group, so it is listed explicitly too.
       { userAgent: 'Googlebot', allow: '/', disallow: PRIVATE_PATHS },
