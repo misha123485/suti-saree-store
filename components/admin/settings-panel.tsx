@@ -86,6 +86,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import OfferDisplayPanel from '@/components/admin/offer-display-panel';
 import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
 import {
   Select,
@@ -1747,6 +1748,16 @@ export default function SettingsPanel() {
           </Button>
         </form>
       )}
+
+      <div className="mt-8">
+        <h2 className="font-serif text-2xl font-bold text-primary">Product Page Offers (Mega Deal)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Choose what the product page shows under the price: online payment discount, coupons, and
+          (for logged-in customers) loyalty points and store credit. Turn the card off to go back to
+          the simple online-payment pill.
+        </p>
+        <OfferDisplayPanel />
+      </div>
 
       <div className="mt-8">
         <h2 className="font-serif text-2xl font-bold text-primary">Payment Gateways</h2>
