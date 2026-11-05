@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, ShoppingBag, Star, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ShoppingBag, Star, X } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { formatINR, discountPct } from '@/lib/format';
 import { useCart } from '@/lib/cart-context';
+import SizePickerSheet from '@/components/product/size-picker-sheet';
 import { useTopVariants } from '@/lib/top-variant-api';
 import { toPublicMediaUrl } from '@/lib/media-url';
 
@@ -37,7 +38,8 @@ export default function SimilarProductsSheet({
   allProducts: Product[];
   onClose: () => void;
 }) {
-  const { addItem } = useCart();
+  const { addItem, items: cartItems } = useCart();
+  const [sizeFor, setSizeFor] = useState<Product | null>(null);
   const topVariants = useTopVariants();
   const [shown, setShown] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -185,11 +187,15 @@ export default function SimilarProductsSheet({
                         {inStock ? (
                           <button
                             type="button"
-                            onClick={() => addItem(p, p.sizes[0], 1)}
-                            className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/60 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 active:scale-[0.98]"
+                            onClick={() => (p.sizes.length > 0 ? setSizeFor(p) : close())}
+                            className={`mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-sm font-semibold transition-colors active:scale-[0.98] ${
+                              cartItems.some((i) => i.product.id === p.id)
+                                ? 'border-emerald-600/50 bg-emerald-50 text-emerald-700'
+                                : 'border-primary/60 text-primary hover:bg-primary/5'
+                            }`}
                           >
-                            <ShoppingBag className="h-4 w-4" />
-                            Add to Bag
+                            {cartItems.some((i) => i.product.id === p.id) ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+                            {cartItems.some((i) => i.product.id === p.id) ? 'Added to Bag' : 'Add to Bag'}
                           </button>
                         ) : (
                           <Link
@@ -230,6 +236,17 @@ export default function SimilarProductsSheet({
           )}
         </div>
       </div>
+      {sizeFor && (
+        <SizePickerSheet
+          name={sizeFor.name}
+          image={toPublicMediaUrl(topVariants[sizeFor.id]?.image || sizeFor.images[0]) || sizeFor.images[0]}
+          price={sizeFor.price}
+          mrp={sizeFor.mrp}
+          sizes={sizeFor.sizes}
+          onDone={(size) => addItem(sizeFor, size, 1)}
+          onClose={() => setSizeFor(null)}
+        />
+      )}
     </div>,
     document.body
   );

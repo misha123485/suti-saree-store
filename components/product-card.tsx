@@ -3,15 +3,15 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ShoppingBag, Star, Zap } from 'lucide-react';
+import { Bell, Check, ShoppingBag, Star, Zap } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { formatINR, discountPct } from '@/lib/format';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
 import { useCart, getVisibleBogoPromotion, formatBogoLabel, usePaymentDiscount } from '@/lib/cart-context';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import WishlistButton from '@/components/wishlist-button';
 import NotifyMeDialog from '@/components/product/notify-me-dialog';
+import SizePickerSheet from '@/components/product/size-picker-sheet';
 import CatalogCardMedia from '@/components/catalog-card-media';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import { preloadImages, preloadImagesOnHover, cancelHoverPreload } from '@/lib/preload-image';
@@ -60,9 +60,10 @@ export default function ProductCard({
    *  present here. */
   blurPreviews?: Record<string, string>;
 }) {
-  const { addItem, activePromotions } = useCart();
+  const { addItem, activePromotions, items: cartItems } = useCart();
   const router = useRouter();
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [sizeOpen, setSizeOpen] = useState(false);
   // The card shows (and links to) the default colour variant, so its stock state is that
   // colour's real stock -- not the base product's flag, which can say "in stock" while this
   // colour is sold out. Exploded per-colour cards already carry their own `inStock`.
@@ -82,15 +83,19 @@ export default function ProductCard({
     setNotifyOpen(true);
   };
 
+  // True once any size of this product is in the bag -> button turns into "Added to Bag".
+  const inBag = cartItems.some((i) => i.product.id === product.id);
+
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!inStock) {
+    if (!inStock || product.sizes.length === 0) {
       router.push(`/product/${product.slug}`);
       return;
     }
-    const size = product.sizes[0];
-    addItem(inStock ? product : { ...product, inStock: false }, size, 1);
+    // Always ask for the size first (even a single "Onesize"), like the
+    // size sheet in the Similar Products popup.
+    setSizeOpen(true);
   };
 
   // The category and collection labels sit inside the card's outer <Link>,
@@ -245,17 +250,7 @@ export default function ProductCard({
         {!inStock && (
           <div className="pointer-events-none absolute inset-0 bg-background/55" />
         )}
-        {inStock ? (
-          <Button
-            onClick={quickAdd}
-            size="sm"
-            className="absolute bottom-3 right-3 hidden gap-1 rounded-full bg-primary/95 opacity-0 shadow-md transition-all duration-300 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-primary sm:flex"
-            aria-label="Add to bag"
-          >
-            <ShoppingBag className="h-4 w-4" />
-            Add
-          </Button>
-        ) : (
+        {!inStock && (
           <button
             type="button"
             onClick={openNotify}
@@ -265,6 +260,25 @@ export default function ProductCard({
             <Bell className="h-3.5 w-3.5" />
             Notify me
           </button>
+        )}
+        {product.reviews > 0 && product.rating > 0 && (
+          <span
+            className={`absolute left-2 z-10 inline-flex items-center gap-1 rounded-md bg-background/95 px-1.5 py-0.5 text-[11px] font-semibold text-foreground shadow-sm ${
+              inStock ? 'bottom-2' : 'bottom-14'
+            }`}
+            aria-label={`Rated ${product.rating.toFixed(1)} out of 5 from ${product.reviews} reviews`}
+          >
+            {product.rating.toFixed(1)}
+            <Star
+              className={`h-3 w-3 ${
+                product.rating >= 3.5
+                  ? 'fill-emerald-600 text-emerald-600'
+                  : product.rating >= 2.5
+                  ? 'fill-amber-500 text-amber-500'
+                  : 'fill-red-500 text-red-500'
+              }`}
+            />
+          </span>
         )}
       </div>
 
@@ -294,17 +308,9 @@ export default function ProductCard({
             Free Delivery
           </span>
         </div>
-        <h3 className={`line-clamp-2 font-serif font-semibold leading-snug text-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
+        <h3 className={`line-clamp-1 font-serif font-semibold leading-snug text-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
           {displayName}
         </h3>
-        {product.reviews > 0 && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Star className="h-3 w-3 fill-secondary text-secondary" />
-            <span>{product.rating.toFixed(1)}</span>
-            <span>·</span>
-            <span>{product.reviews} reviews</span>
-          </div>
-        )}
         <div className="mt-1 flex items-baseline gap-2">
           <span className={`font-serif font-bold text-primary ${compact ? 'text-sm' : 'text-base'}`}>
             {formatINR(product.price)}
@@ -353,8 +359,40 @@ export default function ProductCard({
             ))}
           </div>
         )}
+
+        <div className="mt-auto pt-2">
+          {inStock ? (
+            <button
+              type="button"
+              onClick={quickAdd}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-sm font-semibold transition-colors active:scale-[0.98] ${
+                inBag
+                  ? 'border-emerald-600/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                  : 'border-primary/60 text-primary hover:bg-primary/5'
+              }`}
+            >
+              {inBag ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+              {inBag ? 'Added to Bag' : 'Add to Bag'}
+            </button>
+          ) : (
+            <span className="flex w-full items-center justify-center rounded-lg border border-border py-2 text-sm font-semibold text-muted-foreground">
+              Out of Stock
+            </span>
+          )}
+        </div>
       </div>
     </Link>
+    {sizeOpen && inStock && (
+      <SizePickerSheet
+        name={displayName}
+        image={img}
+        price={product.price}
+        mrp={product.mrp}
+        sizes={product.sizes}
+        onDone={(size) => addItem(product, size, 1)}
+        onClose={() => setSizeOpen(false)}
+      />
+    )}
     {notifyOpen && !inStock && (
       <NotifyMeDialog
         open={notifyOpen}
