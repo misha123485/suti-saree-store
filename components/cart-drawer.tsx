@@ -5,9 +5,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import {
-  Minus,
-  Plus,
-  Trash2,
   ShoppingBag,
   Tag,
   ArrowLeft,
@@ -15,10 +12,12 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
-  Info,
   Wallet,
   PartyPopper,
   Gift,
+  MapPin,
+  Truck,
+  Undo2,
 } from 'lucide-react';
 import {
   useCart,
@@ -44,6 +43,8 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { checkPincodeServiceability, isValidPincode, PincodeResult } from '@/lib/pincode-api';
+import { STORE_POLICY } from '@/lib/store-policy';
 import CartBump from '@/components/cart/cart-bump';
 import LowStockBadge from '@/components/growth/low-stock-badge';
 
@@ -169,6 +170,85 @@ export default function CartDrawer() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCartOpen]);
+
+  // ---- Delivery PIN code bar (same storage key as the product-page checker,
+  // so a PIN confirmed there shows up here automatically) ----
+  const PIN_KEY = 'aruhi_delivery_pincode';
+  const [pinPanelOpen, setPinPanelOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinChecking, setPinChecking] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinResult, setPinResult] = useState<PincodeResult | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PIN_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as PincodeResult;
+      if (saved?.serviceable) setPinResult(saved);
+    } catch {
+      /* storage unavailable -- bar just starts empty */
+    }
+  }, []);
+
+  const handleCheckPin = async () => {
+    const pin = pinInput.trim();
+    if (!isValidPincode(pin)) {
+      setPinError('Enter a valid 6-digit PIN code');
+      return;
+    }
+    setPinError(null);
+    setPinChecking(true);
+    try {
+      const result = await checkPincodeServiceability(pin);
+      if (!result.serviceable) {
+        setPinError(result.message || 'Delivery is not available at this PIN code');
+        return;
+      }
+      setPinResult(result);
+      setPinPanelOpen(false);
+      setPinInput('');
+      try {
+        window.localStorage.setItem(PIN_KEY, JSON.stringify({ ...result, savedAt: Date.now() }));
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      setPinError('Could not check this PIN code. Please try again.');
+    } finally {
+      setPinChecking(false);
+    }
+  };
+
+  // ---- Tabs (Items / Coupons & Offers / Price Details) that scroll the one
+  // long bag to the matching section and follow the scroll position back ----
+  type BagTab = 'items' | 'offers' | 'price';
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sectionRefs = {
+    items: useRef<HTMLDivElement | null>(null),
+    offers: useRef<HTMLDivElement | null>(null),
+    price: useRef<HTMLDivElement | null>(null),
+  };
+  const [activeTab, setActiveTab] = useState<BagTab>('items');
+
+  const scrollToSection = (tab: BagTab) => {
+    const container = scrollRef.current;
+    const el = sectionRefs[tab].current;
+    if (!container || !el) return;
+    setActiveTab(tab);
+    container.scrollTo({ top: Math.max(0, el.offsetTop - 8), behavior: 'smooth' });
+  };
+
+  const onBagScroll = () => {
+    const c = scrollRef.current;
+    if (!c) return;
+    const y = c.scrollTop + 80;
+    const atBottom = c.scrollTop + c.clientHeight >= c.scrollHeight - 4;
+    const priceTop = sectionRefs.price.current?.offsetTop ?? Infinity;
+    const offersTop = sectionRefs.offers.current?.offsetTop ?? Infinity;
+    const next: BagTab = atBottom || y >= priceTop ? 'price' : y >= offersTop ? 'offers' : 'items';
+    setActiveTab((prev) => (prev === next ? prev : next));
+  };
 
   // Swipe-to-close for the side cart on mobile — drag the panel toward the
   // right edge (the side it slides in from) to dismiss it, same gesture
@@ -316,6 +396,21 @@ export default function CartDrawer() {
     return sum + Math.max(0, mrp - i.product.price) * i.quantity;
   }, 0);
   const totalSavings = mrpSavings + couponDiscount + bogoDiscount;
+  const totalMrp = items.reduce((sum, i) => {
+    const mrp = i.product.mrp ?? i.product.price;
+    return sum + Math.max(mrp, i.product.price) * i.quantity;
+  }, 0);
+  const discountOnMrp = Math.max(0, totalMrp - subtotal);
+  const bestCouponSaving = availableCoupons.reduce((best, c) => {
+    const v = c.discount_type === 'percentage' ? (subtotal * c.discount_value) / 100 : c.discount_value;
+    return Math.max(best, Math.round(v));
+  }, 0);
+
+  const tabs: { key: BagTab; label: string }[] = [
+    { key: 'items', label: 'Items' },
+    { key: 'offers', label: 'Coupons & Offers' },
+    { key: 'price', label: 'Price Details' },
+  ];
 
   return (
     <Sheet
@@ -331,13 +426,15 @@ export default function CartDrawer() {
       <SheetContent
         ref={panelRef}
         side="right"
+        hideClose
         className="flex w-full flex-col gap-0 bg-background p-0 sm:max-w-md"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       >
-        <SheetHeader className="flex-row items-center gap-3 space-y-0 border-b border-border/60 p-5">
+        {/* Header */}
+        <SheetHeader className="flex-row items-center gap-3 space-y-0 border-b border-border/60 bg-card px-4 py-3.5">
           <button
             type="button"
             onClick={() => setCartOpen(false)}
@@ -346,17 +443,13 @@ export default function CartDrawer() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex items-baseline gap-2">
-            <SheetTitle className="font-serif text-xl font-bold text-primary">
-              Bag
-            </SheetTitle>
-            <span className="text-sm text-muted-foreground">
-              {count} item{count === 1 ? '' : 's'}
-            </span>
-          </div>
-          <SheetDescription className="sr-only">
-            Review the items in your shopping bag
-          </SheetDescription>
+          <SheetTitle className="font-serif text-base font-bold tracking-wide text-primary">
+            SHOPPING BAG
+          </SheetTitle>
+          <span className="text-xs text-muted-foreground">
+            {count} item{count === 1 ? '' : 's'}
+          </span>
+          <SheetDescription className="sr-only">Review the items in your shopping bag</SheetDescription>
         </SheetHeader>
 
         {items.length === 0 ? (
@@ -376,7 +469,84 @@ export default function CartDrawer() {
           </div>
         ) : (
           <>
-            <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-muted/40 p-4">
+            {/* Delivery PIN code bar */}
+            <div className="border-b border-primary/10 bg-primary/5">
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                {pinResult ? (
+                  <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+                    <Truck className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate">
+                      Delivering to <b>{pinResult.pincode}</b>
+                      {pinResult.city ? ` (${pinResult.city})` : ''}
+                      {pinResult.etaDays ? ` · ${pinResult.etaDays} days` : ''}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                    Check delivery time &amp; services
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPinPanelOpen((o) => !o)}
+                  className="shrink-0 text-xs font-bold tracking-wide text-primary"
+                >
+                  {pinResult ? 'CHANGE' : 'ENTER PIN CODE'}
+                </button>
+              </div>
+              {pinPanelOpen && (
+                <div className="px-4 pb-3">
+                  <div className="flex gap-2">
+                    <Input
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="6-digit PIN code"
+                      value={pinInput}
+                      onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCheckPin();
+                      }}
+                      className="h-9 bg-card"
+                    />
+                    <Button
+                      type="button"
+                      className="h-9 shrink-0 bg-primary"
+                      disabled={pinChecking || pinInput.length !== 6}
+                      onClick={handleCheckPin}
+                    >
+                      {pinChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Check'}
+                    </Button>
+                  </div>
+                  {pinError && <p className="mt-1.5 text-xs text-destructive">{pinError}</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-border/60 bg-card px-4 py-2">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => scrollToSection(t.key)}
+                  className={`rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors ${
+                    activeTab === t.key
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* One long scrolling bag */}
+            <div
+              ref={scrollRef}
+              onScroll={onBagScroll}
+              className="relative flex flex-1 flex-col gap-3 overflow-y-auto bg-muted/40 p-3"
+            >
               {totalFreeUnitsUnlocked > 0 && (
                 <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3">
                   <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
@@ -428,25 +598,12 @@ export default function CartDrawer() {
                   </p>
                 </div>
               )}
-              {!user && (
-                <div className="rounded-lg border border-border/60 bg-card p-4">
-                  <p className="text-sm font-medium text-foreground">
-                    Get Started &amp; grab best offers!
-                  </p>
-                  <Link
-                    href="/login"
-                    onClick={() => setCartOpen(false)}
-                    className="mt-3 block rounded-full border border-primary/40 py-2 text-center text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
-                  >
-                    Login / Register
-                  </Link>
-                </div>
-              )}
 
-              <div className="flex flex-col gap-3">
+              {/* ---------- ITEMS ---------- */}
+              <div ref={sectionRefs.items} className="flex flex-col gap-3">
                 {items.map((item) => {
-                  const discount = discountPct(item.product.price, item.product.mrp);
                   const mrp = item.product.mrp ?? item.product.price;
+                  const rupeesOff = Math.max(0, mrp - item.product.price) * item.quantity;
                   const lineTotal = item.product.price * item.quantity;
                   const itemCouponDiscount =
                     appliedCoupon && couponDiscount > 0
@@ -454,54 +611,94 @@ export default function CartDrawer() {
                       : 0;
                   const linePriceAfterCoupon = Math.max(0, lineTotal - itemCouponDiscount);
                   // Same "is this product currently on an active, badge-eligible
-                  // BOGO promotion" check the product card / product page use —
-                  // so a shopper who adds a BOGO item to the bag keeps seeing the
-                  // exact same offer badge here, and it's simply absent for any
-                  // item that isn't part of a live offer.
+                  // BOGO promotion" check the product card / product page use.
                   const itemBogoPromotion = getVisibleBogoPromotion(item.product.id, activePromotions);
+                  const stock = item.product.stock_quantity;
+                  const maxQty = Math.max(item.quantity, Math.min(10, stock > 0 ? stock : 10));
+                  const color = item.product.colors?.[0] ?? null;
                   return (
                     <div
-                      key={`${item.product.id}-${item.size}-${item.product.colors?.[0] ?? ''}`}
-                      className="rounded-lg border border-border/60 bg-card p-4"
+                      key={`${item.product.id}-${item.size}-${color ?? ''}`}
+                      className="rounded-xl border border-border/60 bg-card p-3 shadow-sm"
                     >
                       <div className="flex gap-3">
                         <Link
                           href={`/product/${item.product.slug}`}
                           onClick={() => setCartOpen(false)}
-                          className="relative h-20 w-16 shrink-0 overflow-hidden rounded-md bg-muted"
+                          className="relative h-[104px] w-[78px] shrink-0 overflow-hidden rounded-md bg-muted"
                         >
                           <Image
-                            src={toPublicMediaUrl(item.product.images[0]) || 'https://placehold.co/64x80?text=No+Image'}
+                            src={toPublicMediaUrl(item.product.images[0]) || 'https://placehold.co/78x104?text=No+Image'}
                             alt={`${item.product.name} - ${item.product.fabric} ${item.product.category}`}
                             fill
-                            sizes="64px"
+                            sizes="78px"
                             className="object-cover"
                           />
                         </Link>
-                        <div className="flex flex-1 flex-col">
+                        <div className="flex min-w-0 flex-1 flex-col">
                           <div className="flex items-start justify-between gap-2">
                             <Link
                               href={`/product/${item.product.slug}`}
                               onClick={() => setCartOpen(false)}
-                              className="line-clamp-2 text-sm font-medium hover:text-primary"
+                              className="line-clamp-2 text-sm font-semibold leading-snug hover:text-primary"
                             >
                               {item.product.name}
                             </Link>
                             <button
-                              onClick={() =>
-                                removeItem(item.product.id, item.size, item.product.colors?.[0] ?? null)
-                              }
-                              className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                              onClick={() => removeItem(item.product.id, item.size, color)}
+                              className="-mr-1 -mt-0.5 shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-destructive"
                               aria-label="Remove item"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <X className="h-4 w-4" />
                             </button>
                           </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Size: {item.size}
-                            {item.product.colors?.[0] ? ` · ${item.product.colors[0]}` : ''}
-                          </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {item.product.fabric && (
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {item.product.fabric} {item.product.category}
+                            </p>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded border border-border bg-muted/50 px-2 py-1 text-xs font-medium">
+                              Size: {item.size}
+                            </span>
+                            <label className="relative">
+                              <span className="sr-only">Quantity</span>
+                              <select
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  updateQuantity(item.product.id, item.size, Number(e.target.value), color)
+                                }
+                                className="appearance-none rounded border border-border bg-muted/50 py-1 pl-2 pr-6 text-xs font-medium focus:border-primary focus:outline-none"
+                              >
+                                {Array.from({ length: maxQty }, (_, i) => i + 1).map((q) => (
+                                  <option key={q} value={q}>
+                                    Qty: {q}
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                            </label>
+                            {color && <span className="text-xs text-muted-foreground">{color}</span>}
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            <span className="font-serif text-base font-bold text-foreground">
+                              {formatINR(lineTotal)}
+                            </span>
+                            {mrp > item.product.price && (
+                              <span className="text-xs text-muted-foreground line-through">
+                                {formatINR(mrp * item.quantity)}
+                              </span>
+                            )}
+                            {rupeesOff > 0 && (
+                              <span className="text-xs font-semibold text-primary">
+                                {formatINR(rupeesOff)} Off
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                             <LowStockBadge stockQuantity={item.product.stock_quantity} />
                             {itemBogoPromotion && (
                               <Badge className="border-transparent bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary">
@@ -512,57 +709,10 @@ export default function CartDrawer() {
                         </div>
                       </div>
 
-                      <Separator className="my-3" />
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Quantity :</span>
-                        <div className="flex items-center rounded-md border border-border">
-                          <button
-                            onClick={() =>
-                              updateQuantity(item.product.id, item.size, item.quantity - 1, item.product.colors?.[0] ?? null)
-                            }
-                            className="p-1.5 text-muted-foreground hover:text-primary"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus className="h-3.5 w-3.5" />
-                          </button>
-                          <span className="w-7 text-center text-sm font-medium">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              updateQuantity(item.product.id, item.size, item.quantity + 1, item.product.colors?.[0] ?? null)
-                            }
-                            className="p-1.5 text-muted-foreground hover:text-primary"
-                            aria-label="Increase quantity"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <Separator className="my-3" />
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          You Pay <Info className="h-3.5 w-3.5" />
-                        </span>
-                        <span className="flex items-center gap-2">
-                          <span className="font-serif text-base font-bold text-primary">
-                            {formatINR(item.product.price * item.quantity)}
-                          </span>
-                          {mrp > item.product.price && (
-                            <span className="text-xs text-muted-foreground line-through">
-                              {formatINR(mrp * item.quantity)}
-                            </span>
-                          )}
-                          {discount > 0 && (
-                            <span className="text-xs font-semibold text-green-600">
-                              {discount}% off
-                            </span>
-                          )}
-                        </span>
-                      </div>
+                      <p className="mt-3 flex items-center gap-1.5 border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
+                        <Undo2 className="h-3.5 w-3.5" />
+                        {STORE_POLICY.returnWindowDays} days return
+                      </p>
 
                       {appliedCoupon && itemCouponDiscount > 0 && (
                         <div className="mt-2 flex items-center justify-between text-xs">
@@ -570,9 +720,7 @@ export default function CartDrawer() {
                             <Tag className="h-3 w-3" /> {appliedCoupon.code} applied — you pay
                           </span>
                           <span className="flex items-center gap-2">
-                            <span className="text-muted-foreground line-through">
-                              {formatINR(lineTotal)}
-                            </span>
+                            <span className="text-muted-foreground line-through">{formatINR(lineTotal)}</span>
                             <span className="font-serif text-sm font-bold text-primary">
                               {formatINR(linePriceAfterCoupon)}
                             </span>
@@ -584,13 +732,34 @@ export default function CartDrawer() {
                 })}
               </div>
 
-              {/* Coupons + Gift card — one combined card so the two
-                  offer rows read as a single collapsible unit instead of
-                  two separate boxes. */}
-              <div className="divide-y divide-border/60 rounded-lg border border-border/60 bg-card">
-                <div>
+              {!user && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3">
+                  <p className="text-sm text-foreground">
+                    Login to see items from your existing bag and wishlist.
+                  </p>
+                  <Link
+                    href="/login"
+                    onClick={() => setCartOpen(false)}
+                    className="shrink-0 text-xs font-bold tracking-wide text-primary"
+                  >
+                    LOGIN NOW
+                  </Link>
+                </div>
+              )}
+
+              {/* ---------- COUPONS & OFFERS ---------- */}
+              <div ref={sectionRefs.offers} className="rounded-xl border border-border/60 bg-card">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+                  <span className="text-sm font-bold">Coupons &amp; Offers</span>
+                  {!appliedCoupon && bestCouponSaving > 0 && (
+                    <span className="text-xs font-semibold text-emerald-700">
+                      Save up to {formatINR(bestCouponSaving)}
+                    </span>
+                  )}
+                </div>
+
                 {appliedCoupon ? (
-                  <div className="flex items-center justify-between p-4">
+                  <div className="flex items-center justify-between px-4 py-3">
                     <span className="flex items-center gap-1.5 text-sm font-medium text-secondary-foreground">
                       <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code} applied
                     </span>
@@ -604,98 +773,113 @@ export default function CartDrawer() {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setCouponPanelOpen((o) => !o)}
-                    className="flex w-full items-center justify-between gap-2 p-4 text-left"
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
-                        <Tag className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold">Coupons</span>
-                        <span className="block text-xs text-primary">
-                          Apply now and save extra!
-                        </span>
-                      </span>
-                    </span>
-                    {couponPanelOpen ? (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                  </button>
-                )}
-                {!appliedCoupon && couponPanelOpen && (
-                  <div className="border-t border-border/60 p-4">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Coupon code"
-                          value={couponInput}
-                          onChange={(e) => setCouponInput(e.target.value)}
-                          className="h-9"
-                        />
-                        <Button
+                  <>
+                    {availableCoupons.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="flex flex-wrap items-center gap-x-2 text-sm font-bold text-primary">
+                            <Tag className="h-3.5 w-3.5 text-secondary" />
+                            <span className="font-mono tracking-wide">{c.code}</span>
+                            <span className="text-xs font-semibold text-secondary-foreground">
+                              {c.discount_type === 'percentage'
+                                ? `${c.discount_value}% OFF`
+                                : `Extra ${formatINR(c.discount_value)} OFF`}
+                            </span>
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {c.min_order_value > 0
+                              ? `On minimum purchase of ${formatINR(c.min_order_value)}`
+                              : 'No minimum order value'}
+                          </p>
+                        </div>
+                        <button
                           type="button"
-                          variant="outline"
-                          className="h-9 shrink-0"
-                          disabled={applyingCoupon || !couponInput.trim()}
-                          onClick={handleApplyCoupon}
+                          onClick={() => handleApplyFromList(c)}
+                          disabled={applyingFromList === c.code}
+                          className="shrink-0 rounded-md border border-primary bg-background px-3.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
                         >
-                          {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                        </Button>
+                          {applyingFromList === c.code ? 'Applying…' : 'Apply'}
+                        </button>
                       </div>
-                      {couponError && <p className="text-xs text-destructive">{couponError}</p>}
-                    </div>
-                  </div>
-                )}
-                </div>
-
-                <div>
-                {appliedGiftCard ? (
-                  <div className="flex items-center justify-between p-4">
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-secondary-foreground">
-                      <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code} applied (-
-                      {formatINR(giftCardDiscount)})
-                    </span>
+                    ))}
                     <button
                       type="button"
-                      onClick={handleRemoveGiftCard}
-                      aria-label="Remove gift card"
-                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setCouponPanelOpen((o) => !o)}
+                      className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
                     >
-                      <X className="h-4 w-4" />
+                      <span className="text-sm font-medium">Have a coupon code?</span>
+                      {couponPanelOpen ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setGiftCardPanelOpen((o) => !o)}
-                    className="flex w-full items-center justify-between gap-2 p-4 text-left"
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
-                        <Gift className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold">Gift card</span>
-                        <span className="block text-xs text-primary">
-                          Redeem your gift card balance
-                        </span>
-                      </span>
-                    </span>
-                    {giftCardPanelOpen ? (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {couponPanelOpen && (
+                      <div className="flex flex-col gap-1.5 px-4 pb-3">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Coupon code"
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value)}
+                            className="h-9"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 shrink-0"
+                            disabled={applyingCoupon || !couponInput.trim()}
+                            onClick={handleApplyCoupon}
+                          >
+                            {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                          </Button>
+                        </div>
+                        {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+                      </div>
                     )}
-                  </button>
+                  </>
                 )}
-                {!appliedGiftCard && giftCardPanelOpen && (
-                  <div className="border-t border-border/60 p-4">
-                    <div className="flex flex-col gap-1.5">
+                {appliedCoupon && couponError && (
+                  <p className="px-4 pb-3 text-xs text-destructive">{couponError}</p>
+                )}
+
+                {/* Gift card */}
+                <div className="border-t border-border/60">
+                  {appliedGiftCard ? (
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-secondary-foreground">
+                        <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code} applied (-
+                        {formatINR(giftCardDiscount)})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveGiftCard}
+                        aria-label="Remove gift card"
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setGiftCardPanelOpen((o) => !o)}
+                      className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        <Gift className="h-4 w-4 text-primary" /> Redeem gift card
+                      </span>
+                      {giftCardPanelOpen ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                    </button>
+                  )}
+                  {!appliedGiftCard && giftCardPanelOpen && (
+                    <div className="flex flex-col gap-1.5 px-4 pb-3">
                       <div className="flex gap-2">
                         <Input
                           placeholder="Gift card code"
@@ -715,202 +899,125 @@ export default function CartDrawer() {
                       </div>
                       {giftCardError && <p className="text-xs text-destructive">{giftCardError}</p>}
                     </div>
-                  </div>
-                )}
+                  )}
                 </div>
               </div>
 
-              {/* Available coupons (admin-flagged "Show on Product Page"), only
-                  while nothing is applied yet — same offers a shopper would see
-                  on a product page, surfaced here too. */}
-              {!appliedCoupon && availableCoupons.length > 0 && (
-                <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-4">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold">
-                    <Tag className="h-4 w-4 text-secondary" />
-                    Available Coupons
-                  </div>
-                  {availableCoupons.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-secondary/60 bg-secondary/10 px-3 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-sm font-bold tracking-wide text-primary">
-                            {c.code}
-                          </span>
-                          <span className="text-xs font-semibold text-secondary-foreground">
-                            {c.discount_type === 'percentage'
-                              ? `${c.discount_value}% OFF`
-                              : `${formatINR(c.discount_value)} OFF`}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {c.min_order_value > 0
-                            ? `On orders above ${formatINR(c.min_order_value)}`
-                            : 'No minimum order value'}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleApplyFromList(c)}
-                        disabled={applyingFromList === c.code}
-                        className="flex shrink-0 items-center gap-1 rounded-md border border-primary bg-background px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
-                      >
-                        {applyingFromList === c.code ? 'Applying…' : 'Apply'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Price details */}
-              <div className="rounded-lg border border-border/60 bg-card">
-                <button
-                  type="button"
-                  onClick={() => setPriceDetailsOpen((o) => !o)}
-                  className="flex w-full items-center justify-between p-4 text-left"
-                >
-                  <span className="flex items-center gap-2 text-sm font-semibold">
-                    <ShoppingBag className="h-4 w-4 text-muted-foreground" /> Price details
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold">
-                      {formatINR(finalTotal)}
-                    </span>
-                    {priceDetailsOpen ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </span>
-                </button>
-                {priceDetailsOpen && (
-                  <div className="flex flex-col gap-2 border-t border-border/60 p-4 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatINR(subtotal)}</span>
-                    </div>
-                    {appliedCoupon && couponDiscount - recoveryDiscount > 0 && (
-                      <div className="flex items-center justify-between text-secondary-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code}
-                        </span>
-                        <span>-{formatINR(couponDiscount - recoveryDiscount)}</span>
-                      </div>
-                    )}
-                    {recoveryOffer && recoveryDiscount > 0 && (
-                      <div className="flex items-center justify-between font-medium text-emerald-700">
-                        <span className="flex items-center gap-1.5">
-                          <Tag className="h-3.5 w-3.5" /> Special offer {recoveryOffer.code}
-                        </span>
-                        <span>-{formatINR(recoveryDiscount)}</span>
-                      </div>
-                    )}
-                    {bogoDiscount > 0 && (
-                      <div className="flex items-center justify-between text-secondary-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Tag className="h-3.5 w-3.5" />
-                          {totalFreeUnitsUnlocked > 0
-                            ? `${totalFreeUnitsUnlocked} item${totalFreeUnitsUnlocked > 1 ? 's' : ''} discounted (BOGO)`
-                            : 'BOGO offer applied'}
-                        </span>
-                        <span>-{formatINR(bogoDiscount)}</span>
-                      </div>
-                    )}
-                    {appliedGiftCard && clampedGiftCardDiscount > 0 && (
-                      <div className="flex items-center justify-between text-secondary-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code}
-                        </span>
-                        <span>-{formatINR(clampedGiftCardDiscount)}</span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex items-center justify-between font-serif text-base font-bold text-primary">
-                      <span>Total</span>
-                      <span>{formatINR(finalTotal)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
+              {/* You may also like (admin-configured bump product; hidden when off) */}
               <CartBump compact />
+
+              {/* ---------- PRICE DETAILS ---------- */}
+              <div ref={sectionRefs.price} className="rounded-xl border border-border/60 bg-card">
+                <div className="px-4 pt-3.5 text-sm font-bold">Price Details ({count} item{count === 1 ? '' : 's'})</div>
+                <div className="flex flex-col gap-2.5 p-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total MRP</span>
+                    <span>{formatINR(totalMrp)}</span>
+                  </div>
+                  {discountOnMrp > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Discount on MRP</span>
+                      <span className="text-emerald-700">-{formatINR(discountOnMrp)}</span>
+                    </div>
+                  )}
+                  {appliedCoupon && couponDiscount - recoveryDiscount > 0 && (
+                    <div className="flex items-center justify-between text-secondary-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" /> Coupon ({appliedCoupon.code})
+                      </span>
+                      <span>-{formatINR(couponDiscount - recoveryDiscount)}</span>
+                    </div>
+                  )}
+                  {recoveryOffer && recoveryDiscount > 0 && (
+                    <div className="flex items-center justify-between font-medium text-emerald-700">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" /> Special offer {recoveryOffer.code}
+                      </span>
+                      <span>-{formatINR(recoveryDiscount)}</span>
+                    </div>
+                  )}
+                  {bogoDiscount > 0 && (
+                    <div className="flex items-center justify-between text-secondary-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" />
+                        {totalFreeUnitsUnlocked > 0
+                          ? `${totalFreeUnitsUnlocked} item${totalFreeUnitsUnlocked > 1 ? 's' : ''} discounted (BOGO)`
+                          : 'BOGO offer applied'}
+                      </span>
+                      <span>-{formatINR(bogoDiscount)}</span>
+                    </div>
+                  )}
+                  {appliedGiftCard && clampedGiftCardDiscount > 0 && (
+                    <div className="flex items-center justify-between text-secondary-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code}
+                      </span>
+                      <span>-{formatINR(clampedGiftCardDiscount)}</span>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex items-center justify-between font-serif text-base font-bold">
+                    <span>Total Amount</span>
+                    <span className="text-primary">{formatINR(finalTotal)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Shipping &amp; taxes calculated at checkout.</p>
+                </div>
+                {totalSavings > 0 && (
+                  <p className="mx-3 mb-3 rounded-lg bg-emerald-100 px-3 py-2 text-center text-sm font-semibold text-emerald-800">
+                    You&apos;re saving {formatINR(totalSavings)} on this order
+                  </p>
+                )}
+              </div>
+
+              <Link
+                href="/cart"
+                onClick={() => setCartOpen(false)}
+                className="pb-1 text-center text-xs font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                View full bag
+              </Link>
             </div>
 
-            <div className="border-t border-border/60">
-              {totalSavings > 0 && (
-                <p className="bg-secondary/15 px-5 py-2 text-center text-sm font-medium text-secondary-foreground">
-                  You are saving {formatINR(totalSavings)} on this order
-                </p>
-              )}
-              {appliedCoupon && couponDiscount > 0 && (
-                <div className="flex items-center justify-between px-5 pt-4 text-sm">
-                  <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
-                    <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code} applied — you pay
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-muted-foreground line-through">{formatINR(subtotal)}</span>
-                    <span className="font-serif text-base font-bold text-primary">
-                      {formatINR(finalTotal)}
-                    </span>
-                  </span>
-                </div>
-              )}
-              {appliedGiftCard && clampedGiftCardDiscount > 0 && (
-                <div className="flex items-center justify-between px-5 pt-4 text-sm">
-                  <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
-                    <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code} applied — you pay
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-muted-foreground line-through">{formatINR(subtotal)}</span>
-                    <span className="font-serif text-base font-bold text-primary">
-                      {formatINR(finalTotal)}
-                    </span>
-                  </span>
-                </div>
-              )}
+            {/* Sticky bottom bar */}
+            <div className="border-t border-border/60 bg-card shadow-[0_-4px_14px_rgba(0,0,0,0.06)]">
               {onlinePaymentSavings > 0 && (
-                <div className="mx-5 mt-4 flex flex-col gap-1 rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-emerald-50/60 to-white px-3.5 py-2.5 shadow-sm">
-                  <div className="flex items-baseline gap-1.5">
-                    <Wallet className="h-3.5 w-3.5 shrink-0 self-center text-emerald-600" />
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/80">
-                      Pay online &amp; get this at
-                    </span>
-                    <span className="font-serif text-base font-bold text-emerald-700">
-                      {formatINR(Math.max(0, finalTotal - onlinePaymentSavings))}
-                    </span>
-                  </div>
-                  <p className="text-[11px] leading-snug text-emerald-700/80">
-                    Extra {formatINR(onlinePaymentSavings)} ({paymentDiscount.percent}%) off with{' '}
-                    {paymentDiscount.label} — applied automatically at checkout
-                  </p>
+                <div className="flex items-center gap-1.5 border-b border-emerald-200/70 bg-emerald-50 px-4 py-1.5 text-[11px] leading-snug text-emerald-700">
+                  <Wallet className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Pay online &amp; get this at{' '}
+                    <b>{formatINR(Math.max(0, finalTotal - onlinePaymentSavings))}</b> — extra{' '}
+                    {formatINR(onlinePaymentSavings)} ({paymentDiscount.percent}%) off with{' '}
+                    {paymentDiscount.label}, applied at checkout
+                  </span>
                 </div>
               )}
-              <div className="p-5">
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Shipping &amp; taxes calculated at checkout.
-                </p>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    asChild
-                    className="bg-primary"
-                    onClick={() => {
-                      setCartOpen(false);
-                      clearBuyNow();
-                      markCheckoutEntry();
-                    }}
-                  >
-                    <Link href="/checkout">Checkout</Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCartOpen(false)}
-                    asChild
-                  >
-                    <Link href="/cart">View Bag</Link>
-                  </Button>
-                </div>
+              <div className="flex items-center gap-3 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('price')}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <span className="flex items-baseline gap-1.5">
+                    {totalMrp > finalTotal && (
+                      <span className="text-xs text-muted-foreground line-through">{formatINR(totalMrp)}</span>
+                    )}
+                    <span className="font-serif text-lg font-bold text-primary">{formatINR(finalTotal)}</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline">
+                    View price details
+                  </span>
+                </button>
+                <Button
+                  asChild
+                  className="h-11 flex-1 bg-primary text-base font-semibold"
+                  onClick={() => {
+                    setCartOpen(false);
+                    clearBuyNow();
+                    markCheckoutEntry();
+                  }}
+                >
+                  <Link href="/checkout">Checkout</Link>
+                </Button>
               </div>
             </div>
           </>
