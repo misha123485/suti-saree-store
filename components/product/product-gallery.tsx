@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Star, X, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, LayoutGrid, Star, X, ZoomIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { preloadImages } from '@/lib/preload-image';
@@ -41,6 +41,8 @@ interface ProductGalleryProps {
   rating?: number;
   ratingsCount?: number;
   onRatingClick?: () => void;
+  /** Shows a "View Similar" button on the bottom-left of the main photo. */
+  onViewSimilar?: () => void;
 }
 
 /**
@@ -116,6 +118,7 @@ export default function ProductGallery({
   rating,
   ratingsCount,
   onRatingClick,
+  onViewSimilar,
 }: ProductGalleryProps) {
   // Memoized so this array is referentially stable across renders (it's a
   // dependency of the preload effect below) -- without this, a brand new
@@ -386,6 +389,24 @@ export default function ProductGallery({
               <Badge className="absolute left-4 top-4 bg-secondary text-secondary-foreground">
                 {discount}% OFF
               </Badge>
+            )}
+
+            {onViewSimilar && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewSimilar();
+                }}
+                className={cn(
+                  'absolute left-3 z-20 inline-flex items-center gap-1.5 rounded-lg bg-background/95 px-3 py-2 text-xs font-semibold text-foreground shadow-md backdrop-blur transition-transform active:scale-95',
+                  // sit above the floating video preview when there is one
+                  videoUrl && productId && productSlug ? 'bottom-[6.75rem] sm:bottom-[7.75rem]' : 'bottom-3'
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                View Similar
+              </button>
             )}
 
             {typeof rating === 'number' && (ratingsCount ?? 0) > 0 && (

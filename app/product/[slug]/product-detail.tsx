@@ -72,6 +72,7 @@ import LazyOnView from '@/components/lazy-on-view';
 const ReviewsSection = dynamic(() => import('@/components/product/reviews-section'), { ssr: false });
 const BogoOfferSheet = dynamic(() => import('@/components/product/bogo-offer-sheet'), { ssr: false });
 const SizeChart = dynamic(() => import('@/components/product/size-chart'), { ssr: false });
+const SimilarProductsSheet = dynamic(() => import('@/components/product/similar-products-sheet'), { ssr: false });
 const RelatedProducts = dynamic(() => import('@/components/product/related-products'), { ssr: false });
 const VendorCollection = dynamic(() => import('@/components/product/vendor-collection'), { ssr: false });
 const RecentlyViewedSection = dynamic(() => import('@/components/product/recently-viewed'), { ssr: false });
@@ -195,6 +196,7 @@ export default function ProductDetail({
   // until the product has at least one real approved rating, so brand-new
   // listings still show their seeded social-proof numbers.
   const [liveSummary, setLiveSummary] = useState<RatingSummary | null>(null);
+  const [similarOpen, setSimilarOpen] = useState(false);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
   const [loyaltyBalance, setLoyaltyBalance] = useState(0);
   useEffect(() => {
@@ -816,6 +818,7 @@ export default function ProductDetail({
               rating={displayRating}
               ratingsCount={displayRatingsCount}
               onRatingClick={goToReviews}
+              onViewSimilar={() => setSimilarOpen(true)}
             />
           </div>
           <div className="min-w-0 px-4 sm:px-0">
@@ -863,6 +866,10 @@ export default function ProductDetail({
           }}
         />
       </div>
+
+      {similarOpen && (
+        <SimilarProductsSheet current={product} allProducts={products} onClose={() => setSimilarOpen(false)} />
+      )}
 
       {/* Desktop only: reviews sit full-width right above "You may also like". */}
       {isDesktop === true && <div className="mt-8">{reviewsBlock}</div>}
