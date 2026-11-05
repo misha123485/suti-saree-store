@@ -1,5 +1,6 @@
 'use client';
 
+import { useScrollHide } from '@/lib/use-scroll-hide';
 import { useMemo, useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -99,6 +100,8 @@ function ShopContentInner({
   // path we're actually on instead of a hardcoded '/shop'.
   const pathname = usePathname();
   const isSearchPage = pathname === '/search';
+  // Category circles: slide away while scrolling down, come back on scroll up.
+  const hideCategoryRow = useScrollHide();
 
   // Set by the header's "search by image" camera button: it ranks the
   // catalog by visual similarity client-side (lib/image-search.ts) and
@@ -786,7 +789,11 @@ function ShopContentInner({
   return (
     <div className="container-boutique py-8 pb-24 md:pb-8">
       {hasCategoryRow && (
-        <div className="sticky top-12 z-30 -mx-4 border-b border-border/60 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-sm sm:mx-0 sm:px-0">
+        <div
+          className={`sticky top-12 z-30 -mx-4 border-b border-border/60 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-sm transition-all duration-300 ease-out sm:mx-0 sm:px-0 ${
+            hideCategoryRow ? 'pointer-events-none -translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+          }`}
+        >
         {/* Shop by Category — horizontally scrollable circular thumbnails,
           only on the plain browsing view (hidden on an active text search,
           where it would just add noise above the actual results). Tapping

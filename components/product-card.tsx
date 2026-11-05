@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, ShoppingBag, Star, Zap } from 'lucide-react';
+import { Bell, Check, ShoppingBag, Star } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { formatINR, discountPct } from '@/lib/format';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
@@ -96,21 +96,7 @@ export default function ProductCard({
     setSizeOpen(true);
   };
 
-  // The category and collection labels sit inside the card's outer <Link>,
-  // so a nested <a> isn't valid HTML -- instead these stop the click from
-  // bubbling to the card link and navigate imperatively themselves.
-  const goToCategory = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    router.push(`/shop?category=${encodeURIComponent(product.category)}`);
-  };
-  const goToCollection = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (product.collection) router.push(`/collection/${product.collection.slug}`);
-  };
-  // Same nested-inside-<Link> constraint as goToCategory/goToCollection
-  // above -- stop the click from following the card's own href (which
+  // The swatch dots sit inside the card's outer <Link> -- stop the click from following the card's own href (which
   // points at the default variant) and send it straight to the colour
   // that was actually clicked.
   const goToVariant = (e: React.MouseEvent, variant: (typeof swatchVariants)[number]) => {
@@ -211,6 +197,15 @@ export default function ProductCard({
   // the page transition completes.
   const startPreloadImmediate = () => preloadImages(detailPagePreloadImages);
 
+  const fmtCount = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n));
+  const ratingStar =
+    product.rating >= 3.5
+      ? 'fill-emerald-600 text-emerald-600'
+      : product.rating >= 2.5
+      ? 'fill-amber-500 text-amber-500'
+      : 'fill-red-500 text-red-500';
+  const subtitle = [product.fabric, product.category].filter(Boolean).join(' ');
+
   return (
     <>
     <Link
@@ -219,9 +214,9 @@ export default function ProductCard({
       onMouseLeave={cancelHoverPreload}
       onTouchStart={startPreloadImmediate}
       onFocus={startPreload}
-      className="group relative flex flex-col overflow-hidden rounded-2xl bg-card shadow-sm transition-shadow duration-300 hover:shadow-lg product-card-hover"
+      className="group relative flex flex-col product-card-hover"
     >
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-2xl bg-muted">
         <CatalogCardMedia
           img={img}
           hoverImg={hoverImg}
@@ -233,32 +228,24 @@ export default function ProductCard({
           blurDataUrl={blurDataUrl}
           hoverBlurDataUrl={hoverBlurDataUrl}
         />
-        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
-          {/* Admin toggles "Featured" per product in the dashboard — shown
-              here as a Bestseller tag, so it updates the moment they flip it. */}
+        <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
           {!inStock && (
-            <Badge className="gap-1.5 border-white/10 bg-gradient-to-r from-neutral-900 to-neutral-700 tracking-wide text-white shadow-md hover:from-neutral-900 hover:to-neutral-700">
+            <Badge className="gap-1.5 border-white/10 bg-gradient-to-r from-neutral-900 to-neutral-700 px-2 py-0.5 text-[10px] tracking-wide text-white shadow-md hover:from-neutral-900 hover:to-neutral-700">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-400" />
               Out of Stock
             </Badge>
           )}
           {inStock && product.featured && (
-            <Badge className="bg-emerald-600 text-white shadow-sm hover:bg-emerald-600">
+            <Badge className="bg-emerald-600 px-2 py-0.5 text-[10px] text-white shadow-sm hover:bg-emerald-600">
               Bestseller
             </Badge>
           )}
-          {inStock && discount > 0 && (
-            <Badge className="border-transparent bg-rose-500 text-white shadow-sm hover:bg-rose-500">
-              {discount}% OFF
-            </Badge>
-          )}
           {bogoPromotion && (
-            <Badge className="border-transparent bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary">
+            <Badge className="border-transparent bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground shadow-sm hover:bg-secondary">
               {formatBogoLabel(bogoPromotion)}
             </Badge>
           )}
         </div>
-        <WishlistButton productId={product.id} className="absolute right-3 top-3" />
         {!inStock && (
           <div className="pointer-events-none absolute inset-0 bg-background/55" />
         )}
@@ -281,81 +268,65 @@ export default function ProductCard({
             aria-label={`Rated ${product.rating.toFixed(1)} out of 5 from ${product.reviews} reviews`}
           >
             {product.rating.toFixed(1)}
-            <Star
-              className={`h-3 w-3 ${
-                product.rating >= 3.5
-                  ? 'fill-emerald-600 text-emerald-600'
-                  : product.rating >= 2.5
-                  ? 'fill-amber-500 text-amber-500'
-                  : 'fill-red-500 text-red-500'
-              }`}
-            />
+            <Star className={`h-3 w-3 ${ratingStar}`} />
+            <span className="h-3 w-px bg-border" />
+            <span className="font-medium text-muted-foreground">{fmtCount(product.reviews)}</span>
           </span>
         )}
       </div>
 
-      <div className={`flex flex-1 flex-col gap-1 ${compact ? 'p-2.5' : 'p-4'}`}>
-        <div className="flex flex-col gap-0.5">
-          <p className="flex flex-wrap items-center gap-x-1.5 text-[11px] font-semibold uppercase tracking-wider text-secondary">
-            <span
-              onClick={goToCategory}
-              className="cursor-pointer hover:underline"
-            >
-              {product.category}
-            </span>
-            {product.collection && (
-              <>
-                <span className="text-secondary/40">·</span>
-                <span
-                  onClick={goToCollection}
-                  className="cursor-pointer text-foreground/60 hover:underline"
-                >
-                  {product.collection.name}
-                </span>
-              </>
-            )}
-          </p>
-          <span className="flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-            <Truck className="h-3 w-3" />
-            Free Delivery
-          </span>
+      <div className={`flex flex-1 flex-col ${compact ? 'gap-0.5 pt-2' : 'gap-1 pt-2.5'}`}>
+        {/* Title + wishlist heart on one row */}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className={`line-clamp-1 min-w-0 font-serif font-semibold leading-snug text-foreground ${compact ? 'text-[13px]' : 'text-[15px]'}`}>
+            {displayName}
+          </h3>
+          <WishlistButton
+            productId={product.id}
+            className="-mr-1 -mt-0.5 h-7 w-7 shrink-0 bg-transparent shadow-none hover:bg-muted"
+          />
         </div>
-        <h3 className={`line-clamp-1 font-serif font-semibold leading-snug text-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
-          {displayName}
-        </h3>
+
+        {subtitle && (
+          <p className={`line-clamp-1 text-muted-foreground ${compact ? 'text-[11px]' : 'text-xs'}`}>{subtitle}</p>
+        )}
+
         {hasVariation && cardColor && (
           <p className={`line-clamp-1 text-muted-foreground ${compact ? 'text-[10px]' : 'text-xs'}`}>
             Colour: <span className="font-semibold text-foreground/80">{cardColor}</span>
             {moreColors > 0 && <span> · +{moreColors} more</span>}
           </p>
         )}
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className={`font-serif font-bold text-primary ${compact ? 'text-sm' : 'text-base'}`}>
+
+        {/* Price */}
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
+          <span className={`font-bold text-foreground ${compact ? 'text-[15px]' : 'text-lg'}`}>
             {formatINR(product.price)}
           </span>
           {product.mrp && product.mrp > product.price && (
             <>
-              <span className="text-xs text-muted-foreground line-through">
-                {formatINR(product.mrp)}
-              </span>
-              <span className="text-xs font-semibold text-emerald-600">
-                {discount}% off
-              </span>
+              <span className="text-xs text-muted-foreground line-through">{formatINR(product.mrp)}</span>
+              <span className="text-xs font-bold text-emerald-600">{discount}% OFF</span>
             </>
           )}
         </div>
 
         {onlinePaymentSavings > 0 && (
-          <div className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-            <Zap className="h-3 w-3 shrink-0 fill-emerald-600 text-emerald-600" />
-            <span>
-              Get this at {formatINR(Math.max(0, product.price - onlinePaymentSavings))} online
-            </span>
-          </div>
+          <p className="line-clamp-1 text-[11px] leading-tight">
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+              Best Price {formatINR(Math.max(0, product.price - onlinePaymentSavings))}
+            </span>{' '}
+            <span className="text-muted-foreground">with online payment</span>
+          </p>
         )}
 
+        <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+          <Truck className="h-3 w-3 text-emerald-600" />
+          Free Delivery
+        </span>
+
         {swatchVariants.length > 1 && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             {swatchVariants.map((v) => (
               <button
                 key={v.slug}
