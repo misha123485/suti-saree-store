@@ -790,9 +790,6 @@ export default function ProductDetail({
 
   const reviewsBlock = (
     <div id="product-reviews" className={`scroll-mt-24${isDesktop === null ? ' lg:hidden' : ''}`}>
-      <h2 className="mb-3 text-sm font-semibold text-foreground">
-        Reviews ({displayRatingsCount})
-      </h2>
       <LazyOnView minHeight={240}>
         <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
       </LazyOnView>
