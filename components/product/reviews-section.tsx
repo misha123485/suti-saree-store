@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Star, CheckCircle2, ImagePlus, X, Loader2, ThumbsUp, ChevronLeft, ChevronRight, ChevronDown, Camera, Pin, ArrowUpDown } from 'lucide-react';
+import { Star, CheckCircle2, ImagePlus, X, Loader2, ThumbsUp, ChevronLeft, ChevronRight, ChevronDown, Camera, Pin, ArrowUpDown, BadgeCheck } from 'lucide-react';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -449,12 +449,27 @@ function ReviewPreviewCard({ r, onOpen, onOpenPhoto }: { r: Review; onOpen: () =
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CheckCircle2 className={`h-3.5 w-3.5 ${r.verified_purchase ? 'text-emerald-600' : 'text-muted-foreground/50'}`} />
-          <span className="truncate font-medium">{firstName(r.customer_name)}</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="truncate font-medium text-foreground/80">{firstName(r.customer_name)}</span>
+          {r.verified_purchase && <VerifiedBadge />}
         </div>
       </div>
     </li>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Verified purchase badge                                            */
+/* ------------------------------------------------------------------ */
+
+function VerifiedBadge({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400 ${className}`}
+    >
+      <BadgeCheck className="h-3.5 w-3.5" />
+      Verified Purchase
+    </span>
   );
 }
 
@@ -539,10 +554,9 @@ function SheetReviewItem({
       )}
 
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${r.verified_purchase ? 'text-emerald-600' : 'text-muted-foreground/50'}`} />
-          <span className="truncate font-medium">{firstName(r.customer_name)}</span>
-          {r.verified_purchase && <span className="shrink-0 text-emerald-700 dark:text-emerald-400">· Verified Purchase</span>}
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="truncate font-medium text-foreground/80">{firstName(r.customer_name)}</span>
+          {r.verified_purchase && <VerifiedBadge />}
         </span>
         <button
           type="button"
