@@ -9,6 +9,7 @@ import { Product } from '@/lib/types';
 import { formatINR, discountPct } from '@/lib/format';
 import { useCart } from '@/lib/cart-context';
 import SizePickerSheet from '@/components/product/size-picker-sheet';
+import { toCartProduct, isInBag, type CardVariant } from '@/lib/card-cart-product';
 import { useTopVariants } from '@/lib/top-variant-api';
 import { toPublicMediaUrl } from '@/lib/media-url';
 
@@ -40,6 +41,14 @@ export default function SimilarProductsSheet({
 }) {
   const { addItem, items: cartItems } = useCart();
   const [sizeFor, setSizeFor] = useState<Product | null>(null);
+
+  /** The colour variation a card shows: the top-performing one when known. */
+  const variantOf = (p: Product): CardVariant | null => {
+    const top = topVariants[p.id];
+    if (!top?.slug) return null;
+    const v = p.variant_list?.find((x) => x.slug === top.slug);
+    return v ? { slug: v.slug, color: v.color, image: top.image || v.image } : null;
+  };
   const topVariants = useTopVariants();
   const [shown, setShown] = useState(false);
   const [dragY, setDragY] = useState(0);
@@ -174,6 +183,11 @@ export default function SimilarProductsSheet({
                         <Link href={`/product/${slug}`} onClick={close} className="min-w-0">
                           <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{p.name}</p>
                           {p.fabric && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{p.fabric}</p>}
+                          {(variantOf(p)?.color || (p.variant_list?.length ?? 0) > 0) && (
+                            <p className="line-clamp-1 text-xs text-muted-foreground">
+                              Colour: <span className="font-semibold text-foreground/80">{variantOf(p)?.color || p.colors?.[0]}</span>
+                            </p>
+                          )}
                         </Link>
                         <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                           <span className="text-base font-bold text-foreground">{formatINR(p.price)}</span>
@@ -189,13 +203,13 @@ export default function SimilarProductsSheet({
                             type="button"
                             onClick={() => (p.sizes.length > 0 ? setSizeFor(p) : close())}
                             className={`mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 text-sm font-semibold transition-colors active:scale-[0.98] ${
-                              cartItems.some((i) => i.product.id === p.id)
+                              isInBag(cartItems, toCartProduct(p, variantOf(p)))
                                 ? 'border-emerald-600/50 bg-emerald-50 text-emerald-700'
                                 : 'border-primary/60 text-primary hover:bg-primary/5'
                             }`}
                           >
-                            {cartItems.some((i) => i.product.id === p.id) ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
-                            {cartItems.some((i) => i.product.id === p.id) ? 'Added to Bag' : 'Add to Bag'}
+                            {isInBag(cartItems, toCartProduct(p, variantOf(p))) ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+                            {isInBag(cartItems, toCartProduct(p, variantOf(p))) ? 'Added to Bag' : 'Add to Bag'}
                           </button>
                         ) : (
                           <Link
@@ -236,17 +250,22 @@ export default function SimilarProductsSheet({
           )}
         </div>
       </div>
-      {sizeFor && (
-        <SizePickerSheet
-          name={sizeFor.name}
-          image={toPublicMediaUrl(topVariants[sizeFor.id]?.image || sizeFor.images[0]) || sizeFor.images[0]}
-          price={sizeFor.price}
-          mrp={sizeFor.mrp}
-          sizes={sizeFor.sizes}
-          onDone={(size) => addItem(sizeFor, size, 1)}
-          onClose={() => setSizeFor(null)}
-        />
-      )}
+      {sizeFor && (() => {
+        const cp = toCartProduct(sizeFor, variantOf(sizeFor));
+        const hasVar = (sizeFor.variant_list?.length ?? 0) > 0;
+        return (
+          <SizePickerSheet
+            name={cp.name}
+            image={toPublicMediaUrl(cp.images[0]) || cp.images[0]}
+            price={cp.price}
+            mrp={cp.mrp}
+            sizes={cp.sizes}
+            color={hasVar ? cp.colors?.[0] ?? null : null}
+            onDone={(size) => addItem(cp, size, 1)}
+            onClose={() => setSizeFor(null)}
+          />
+        );
+      })()}
     </div>,
     document.body
   );

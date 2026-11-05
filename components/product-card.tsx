@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import WishlistButton from '@/components/wishlist-button';
 import NotifyMeDialog from '@/components/product/notify-me-dialog';
 import SizePickerSheet from '@/components/product/size-picker-sheet';
+import { cardColorOf, isInBag, toCartProduct } from '@/lib/card-cart-product';
 import CatalogCardMedia from '@/components/catalog-card-media';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import { preloadImages, preloadImagesOnHover, cancelHoverPreload } from '@/lib/preload-image';
@@ -82,9 +83,6 @@ export default function ProductCard({
     e.stopPropagation();
     setNotifyOpen(true);
   };
-
-  // True once any size of this product is in the bag -> button turns into "Added to Bag".
-  const inBag = cartItems.some((i) => i.product.id === product.id);
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -180,6 +178,20 @@ export default function ProductCard({
   // actually on screen instead of contradicting it.
   const displayName = getVariantDisplayName(product.name, product.colors?.[0], product.default_variant_color);
   const altText = `${displayName} - ${product.fabric} ${product.category} from ${product.origin}`;
+
+  // Exactly what this card adds to the bag: the colour it is showing (default
+  // variant, or the exploded colour card's own colour) -- not always the base
+  // colour. "Added to Bag" is also per colour, so adding Red no longer marks
+  // the Green/Black cards of the same product as added.
+  const cardVariant = product.default_variant_color
+    ? { slug: product.default_variant_slug, color: product.default_variant_color, image: product.default_variant_image }
+    : null;
+  const cartProduct = toCartProduct(product, cardVariant);
+  const cardColor = cardColorOf(product, cardVariant);
+  const inBag = isInBag(cartItems, cartProduct);
+  const hasVariation =
+    swatchVariants.length > 1 || (product.variant_list?.length ?? 0) > 0 || !!(product as { isVariantCard?: boolean }).isVariantCard;
+  const moreColors = Math.max(0, swatchVariants.length - 1);
 
   // The product-detail page opens straight into these images (its gallery's
   // first slide, or the swapped-in variant photo the card already shows), so
@@ -311,6 +323,12 @@ export default function ProductCard({
         <h3 className={`line-clamp-1 font-serif font-semibold leading-snug text-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
           {displayName}
         </h3>
+        {hasVariation && cardColor && (
+          <p className={`line-clamp-1 text-muted-foreground ${compact ? 'text-[10px]' : 'text-xs'}`}>
+            Colour: <span className="font-semibold text-foreground/80">{cardColor}</span>
+            {moreColors > 0 && <span> · +{moreColors} more</span>}
+          </p>
+        )}
         <div className="mt-1 flex items-baseline gap-2">
           <span className={`font-serif font-bold text-primary ${compact ? 'text-sm' : 'text-base'}`}>
             {formatINR(product.price)}
@@ -384,12 +402,13 @@ export default function ProductCard({
     </Link>
     {sizeOpen && inStock && (
       <SizePickerSheet
-        name={displayName}
+        name={cartProduct.name}
         image={img}
         price={product.price}
         mrp={product.mrp}
         sizes={product.sizes}
-        onDone={(size) => addItem(product, size, 1)}
+        color={hasVariation ? cardColor : null}
+        onDone={(size) => addItem(cartProduct, size, 1)}
         onClose={() => setSizeOpen(false)}
       />
     )}

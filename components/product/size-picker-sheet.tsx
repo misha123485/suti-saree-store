@@ -20,6 +20,7 @@ export default function SizePickerSheet({
   price,
   mrp,
   sizes,
+  color,
   onDone,
   onClose,
 }: {
@@ -28,6 +29,8 @@ export default function SizePickerSheet({
   price: number;
   mrp?: number | null;
   sizes: string[];
+  /** Colour of the variation being added -- shown so the shopper can confirm it. */
+  color?: string | null;
   onDone: (size: string) => void;
   onClose: () => void;
 }) {
@@ -89,6 +92,11 @@ export default function SizePickerSheet({
           )}
           <div className="min-w-0 flex-1">
             <p className="line-clamp-1 text-sm font-semibold text-foreground">{name}</p>
+            {color && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Colour: <span className="font-semibold text-foreground">{color}</span>
+              </p>
+            )}
             <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
               <span className="text-base font-bold text-foreground">{formatINR(price)}</span>
               {discount > 0 && mrp && (
