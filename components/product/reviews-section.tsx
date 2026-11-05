@@ -141,21 +141,45 @@ function PhotoThumb({ src, alt, className }: { src: string; alt: string; classNa
   );
 }
 
-/** Full-screen photo viewer with previous / next, keyboard and swipe. */
+/** Full-screen photo viewer: a swipeable / scrollable strip of every customer
+ *  photo (scroll-snap), with arrows + keyboard on desktop. */
 function PhotoLightbox({
   items,
   index,
   onIndex,
   onClose,
+  onSeeAll,
 }: {
   items: PhotoItem[];
   index: number;
   onIndex: (i: number) => void;
   onClose: () => void;
+  /** Optional "see all reviews" shortcut shown under the photo. */
+  onSeeAll?: () => void;
 }) {
-  const [touchX, setTouchX] = useState<number | null>(null);
+  const scroller = useRef<HTMLDivElement | null>(null);
   const item = items[index];
-  const go = (dir: -1 | 1) => onIndex((index + dir + items.length) % items.length);
+
+  const scrollToIndex = (i: number, smooth = true) => {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
+  };
+  const go = (dir: -1 | 1) => scrollToIndex(Math.min(items.length - 1, Math.max(0, index + dir)));
+
+  // Open exactly on the photo that was tapped.
+  useEffect(() => {
+    scrollToIndex(index, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -170,17 +194,7 @@ function PhotoLightbox({
 
   if (!item) return null;
   return createPortal(
-    <div
-      className="fixed inset-0 z-[70] flex flex-col bg-black/95"
-      onClick={onClose}
-      onTouchStart={(e) => setTouchX(e.touches[0].clientX)}
-      onTouchEnd={(e) => {
-        if (touchX === null) return;
-        const dx = e.changedTouches[0].clientX - touchX;
-        setTouchX(null);
-        if (Math.abs(dx) > 50 && items.length > 1) go(dx > 0 ? -1 : 1);
-      }}
-    >
+    <div className="fixed inset-0 z-[70] flex flex-col bg-black/95" onClick={onClose}>
       <div className="flex items-center justify-between px-4 py-3 text-white/80">
         <span className="text-xs font-medium tracking-wide">
           {index + 1} / {items.length}
@@ -195,8 +209,33 @@ function PhotoLightbox({
         </button>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 sm:px-14">
-        {items.length > 1 && (
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scroller}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+            if (i !== index && i >= 0 && i < items.length) onIndex(i);
+          }}
+          className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {items.map((it, i) => (
+            <div key={`${it.reviewId}-${i}`} className="flex h-full w-full shrink-0 snap-center items-center justify-center px-2 sm:px-16">
+              {Math.abs(i - index) <= 2 && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={toPublicMediaUrl(it.src) || it.src}
+                  alt={`Photo from ${it.name}'s review`}
+                  draggable={false}
+                  className="max-h-full max-w-full select-none rounded-xl object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {items.length > 1 && index > 0 && (
           <button
             type="button"
             aria-label="Previous photo"
@@ -204,19 +243,12 @@ function PhotoLightbox({
               e.stopPropagation();
               go(-1);
             }}
-            className="absolute left-2 z-10 hidden rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20 sm:block"
+            className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20 sm:block"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
         )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={toPublicMediaUrl(item.src) || item.src}
-          alt={`Photo from ${item.name}'s review`}
-          className="max-h-full max-w-full rounded-xl object-contain"
-          onClick={(e) => e.stopPropagation()}
-        />
-        {items.length > 1 && (
+        {items.length > 1 && index < items.length - 1 && (
           <button
             type="button"
             aria-label="Next photo"
@@ -224,7 +256,7 @@ function PhotoLightbox({
               e.stopPropagation();
               go(1);
             }}
-            className="absolute right-2 z-10 hidden rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20 sm:block"
+            className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white hover:bg-white/20 sm:block"
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -239,6 +271,15 @@ function PhotoLightbox({
           </div>
           {item.comment && <p className="line-clamp-2 text-xs leading-relaxed text-white/70">{item.comment}</p>}
           {items.length > 1 && <p className="text-[11px] text-white/40 sm:hidden">Swipe left or right for more photos</p>}
+          {onSeeAll && (
+            <button
+              type="button"
+              onClick={onSeeAll}
+              className="mt-1.5 rounded-full border border-white/30 px-4 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+            >
+              View all reviews
+            </button>
+          )}
         </div>
       </div>
     </div>,
@@ -340,7 +381,7 @@ function helpfulScore(r: Review, votes: Record<string, number>) {
 /*  Inline (on-page) compact review card -- tap opens the popup        */
 /* ------------------------------------------------------------------ */
 
-function ReviewPreviewCard({ r, onOpen }: { r: Review; onOpen: () => void }) {
+function ReviewPreviewCard({ r, onOpen, onOpenPhoto }: { r: Review; onOpen: () => void; onOpenPhoto: (src: string) => void }) {
   const photos = (r.photos ?? []).filter(Boolean);
   const hasText = !!(r.title || r.comment);
   return (
@@ -382,7 +423,15 @@ function ReviewPreviewCard({ r, onOpen }: { r: Review; onOpen: () => void }) {
             )}
           </div>
           {photos.length > 0 && (
-            <div className="relative mr-1 mt-0.5 h-16 w-16 shrink-0">
+            <button
+              type="button"
+              aria-label={`Open photos from ${firstName(r.customer_name)}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenPhoto(photos[0]);
+              }}
+              className="relative mr-1 mt-0.5 h-16 w-16 shrink-0"
+            >
               {photos.length > 1 && (
                 <span className="absolute inset-0 rotate-6 rounded-lg border border-border/60 bg-muted" />
               )}
@@ -396,7 +445,7 @@ function ReviewPreviewCard({ r, onOpen }: { r: Review; onOpen: () => void }) {
                   +{photos.length - 1}
                 </span>
               )}
-            </div>
+            </button>
           )}
         </div>
 
@@ -1245,7 +1294,7 @@ export default function ReviewsSection({
                       <button
                         key={`${ph.reviewId}-${i}`}
                         type="button"
-                        onClick={() => openSheet()}
+                        onClick={() => setLightboxIndex(i)}
                         aria-label={isLast ? `See ${hiddenPhotoCount} more photos` : `Open customer photo ${i + 1}`}
                         className="relative aspect-square overflow-hidden rounded-xl border border-border/60 transition-transform active:scale-95"
                       >
@@ -1403,7 +1452,7 @@ export default function ReviewsSection({
 
               <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-2 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:[&>li:nth-child(n+5)]:hidden">
                 {previewReviews.map((r) => (
-                  <ReviewPreviewCard key={r.id} r={r} onOpen={() => openSheet({ focusId: r.id })} />
+                  <ReviewPreviewCard key={r.id} r={r} onOpen={() => openSheet({ focusId: r.id })} onOpenPhoto={(src) => openPhotoOfReview(r.id, src)} />
                 ))}
               </ul>
 
@@ -1474,6 +1523,14 @@ export default function ReviewsSection({
           index={Math.min(lightboxIndex, allPhotos.length - 1)}
           onIndex={setLightboxIndex}
           onClose={() => setLightboxIndex(null)}
+          onSeeAll={
+            sheetOpen
+              ? undefined
+              : () => {
+                  setLightboxIndex(null);
+                  openSheet();
+                }
+          }
         />
       )}
     </div>

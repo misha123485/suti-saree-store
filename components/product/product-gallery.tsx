@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Star, X, ZoomIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { preloadImages } from '@/lib/preload-image';
@@ -35,6 +35,12 @@ interface ProductGalleryProps {
    *  image not present in this map — never a blank/broken state either
    *  way. Optional so existing callers without it are unaffected. */
   blurPreviews?: Record<string, string>;
+  /** Average rating + number of ratings -- shown as a small "3.9 ★ | 147"
+   *  pill on the bottom-right of the main photo. Tapping it jumps to the
+   *  reviews. Hidden when there are no ratings. */
+  rating?: number;
+  ratingsCount?: number;
+  onRatingClick?: () => void;
 }
 
 /**
@@ -107,6 +113,9 @@ export default function ProductGallery({
   productPrice,
   productMrp,
   blurPreviews,
+  rating,
+  ratingsCount,
+  onRatingClick,
 }: ProductGalleryProps) {
   // Memoized so this array is referentially stable across renders (it's a
   // dependency of the preload effect below) -- without this, a brand new
@@ -377,6 +386,28 @@ export default function ProductGallery({
               <Badge className="absolute left-4 top-4 bg-secondary text-secondary-foreground">
                 {discount}% OFF
               </Badge>
+            )}
+
+            {typeof rating === 'number' && (ratingsCount ?? 0) > 0 && (
+              <button
+                type="button"
+                aria-label={`Rated ${rating.toFixed(1)} out of 5 by ${ratingsCount} customers. See reviews`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRatingClick?.();
+                }}
+                className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-background/95 px-2.5 py-1 text-xs font-semibold text-foreground shadow-md backdrop-blur transition-transform active:scale-95"
+              >
+                <span>{rating.toFixed(1)}</span>
+                <Star
+                  className={cn(
+                    'h-3.5 w-3.5',
+                    rating >= 3.5 ? 'fill-emerald-600 text-emerald-600' : rating >= 2.5 ? 'fill-amber-500 text-amber-500' : 'fill-red-500 text-red-500'
+                  )}
+                />
+                <span className="h-3 w-px bg-border" />
+                <span className="font-medium text-muted-foreground">{ratingsCount}</span>
+              </button>
             )}
 
             {valid.length > 1 && (
