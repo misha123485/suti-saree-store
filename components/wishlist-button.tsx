@@ -59,7 +59,7 @@ export default function WishlistButton({
         // Best-effort — lets Admin > WooCommerce Import show a "Wishlist"
         // audience segment (customers who clicked in from a campaign email
         // and then saved something), same mechanism as add_to_cart/purchase.
-        trackEvent('wishlist', { productId, userId: user?.id ?? null, color: color ?? null });
+        trackEvent('wishlist', { productId, userId: user?.id ?? null });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong');
