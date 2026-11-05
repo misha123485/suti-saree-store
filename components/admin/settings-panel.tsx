@@ -58,6 +58,9 @@ import {
   BlurPlaceholderSettings,
   fetchBlurPlaceholderSettings,
   saveBlurPlaceholderSettings,
+  ProductPageDisplaySettings,
+  fetchProductPageDisplaySettings,
+  saveProductPageDisplaySettings,
 } from '@/lib/settings-api';
 import {
   DEFAULT_PAYMENT_GATEWAY_SETTINGS,
@@ -153,6 +156,8 @@ export default function SettingsPanel() {
   const [savingCatalogVideo, setSavingCatalogVideo] = useState(false);
   const [catalogListingForm, setCatalogListingForm] = useState<CatalogListingSettings | null>(null);
   const [savingCatalogListing, setSavingCatalogListing] = useState(false);
+  const [productPageForm, setProductPageForm] = useState<ProductPageDisplaySettings | null>(null);
+  const [savingProductPage, setSavingProductPage] = useState(false);
   const [refundAutomationForm, setRefundAutomationForm] = useState<RefundAutomationSettings | null>(null);
   const [savingRefundAutomation, setSavingRefundAutomation] = useState(false);
   const [mediaDeliveryForm, setMediaDeliveryForm] = useState<MediaDeliverySettings | null>(null);
@@ -251,6 +256,10 @@ export default function SettingsPanel() {
     fetchCatalogListingSettings()
       .then(setCatalogListingForm)
       .catch(() => toast.error('Failed to load catalog listing settings'));
+
+    fetchProductPageDisplaySettings()
+      .then(setProductPageForm)
+      .catch(() => toast.error('Failed to load product page settings'));
 
     fetchRefundAutomationSettings()
       .then(setRefundAutomationForm)
@@ -512,6 +521,22 @@ export default function SettingsPanel() {
       toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSavingCatalogListing(false);
+    }
+  };
+
+  const onToggleShowRatings = async (checked: boolean) => {
+    if (!productPageForm) return;
+    const next = { ...productPageForm, show_ratings: checked };
+    setProductPageForm(next); // update immediately so the switch feels responsive
+    setSavingProductPage(true);
+    try {
+      await saveProductPageDisplaySettings(next);
+      toast.success(checked ? 'Ratings & reviews line is now shown' : 'Ratings & reviews line is now hidden');
+    } catch (err) {
+      setProductPageForm(productPageForm); // revert the switch on failure
+      toast.error(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSavingProductPage(false);
     }
   };
 
@@ -2104,6 +2129,36 @@ export default function SettingsPanel() {
               </Button>
             </div>
           </form>
+        </div>
+      )}
+
+      <div className="mt-8">
+        <h2 className="font-serif text-2xl font-bold text-primary">Product Page</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Choose which optional details are shown on the product page.
+        </p>
+      </div>
+
+      {!productPageForm ? (
+        <p className="py-4 text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <div className="mt-4 flex max-w-xl items-center justify-between gap-4 rounded-lg border border-border/60 bg-card p-5">
+          <div>
+            <Label htmlFor="product-page-show-ratings">
+              Ratings &amp; reviews line {productPageForm.show_ratings ? '(shown)' : '(hidden)'}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {productPageForm.show_ratings
+                ? 'On: the \u201c4.9 \u00b7 13 ratings \u00b7 13 reviews\u201d line is shown under the product title.'
+                : 'Off: the stars / ratings / reviews line is hidden on every product page.'}
+            </p>
+          </div>
+          <Switch
+            id="product-page-show-ratings"
+            checked={productPageForm.show_ratings}
+            disabled={savingProductPage}
+            onCheckedChange={onToggleShowRatings}
+          />
         </div>
       )}
 

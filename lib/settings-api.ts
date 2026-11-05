@@ -363,6 +363,37 @@ export async function savePaymentDiscountSettings(settings: PaymentDiscountSetti
 }
 
 // ---------------------------------------------------------------------
+// Product page display -- admin on/off switches for optional bits of the
+// product detail page. `show_ratings` controls the "4.9 · 13 ratings ·
+// 13 reviews" line under the product title. Stored in the key/value
+// `settings` table under 'product_page_display'; default = shown.
+// ---------------------------------------------------------------------
+export interface ProductPageDisplaySettings {
+  show_ratings: boolean;
+}
+
+export const DEFAULT_PRODUCT_PAGE_DISPLAY_SETTINGS: ProductPageDisplaySettings = {
+  show_ratings: true,
+};
+
+export async function fetchProductPageDisplaySettings(): Promise<ProductPageDisplaySettings> {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'product_page_display')
+    .maybeSingle();
+  if (error || !data) return DEFAULT_PRODUCT_PAGE_DISPLAY_SETTINGS;
+  return { ...DEFAULT_PRODUCT_PAGE_DISPLAY_SETTINGS, ...(data.value as Partial<ProductPageDisplaySettings>) };
+}
+
+export async function saveProductPageDisplaySettings(settings: ProductPageDisplaySettings) {
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key: 'product_page_display', value: settings }, { onConflict: 'key' });
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------
 // Refund automation — controls whether a customer self-cancelling a
 // paid-online order gets an automatic Razorpay refund (see
 // app/api/orders/[id]/cancel/route.ts), or whether it's left for the

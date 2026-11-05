@@ -50,6 +50,7 @@ import MobileStickyCartBar from '@/components/product/mobile-sticky-cart-bar';
 import LowStockBadge from '@/components/growth/low-stock-badge';
 import LiveViewersBadge from '@/components/growth/live-viewers-badge';
 import WishlistButton from '@/components/wishlist-button';
+import { fetchProductPageDisplaySettings } from '@/lib/settings-api';
 import ShareButton from '@/components/share-button';
 import { Coupon, validateCoupon } from '@/lib/coupons-api';
 import {
@@ -1001,6 +1002,9 @@ export default function ProductDetail({
 }
 
 
+// Module-level so it survives navigating between product pages.
+let cachedShowRatings: boolean | null = null;
+
 function ProductInfo({
   reviewsSlot,
   product,
@@ -1058,6 +1062,24 @@ function ProductInfo({
   loyaltyBalance: number;
 }) {
   const discount = discountPct(selectedSizePrice, product.mrp);
+  // Admin > Settings > Product Page: show/hide the "4.9 · 13 ratings · 13 reviews" line.
+  // Stays hidden until the setting loads (so an admin who turned it off never sees a
+  // flash of it); remembered for the session so later product pages show it instantly.
+  const [showRatings, setShowRatings] = useState<boolean>(() => cachedShowRatings ?? false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchProductPageDisplaySettings()
+      .then((st) => {
+        cachedShowRatings = st.show_ratings;
+        if (!cancelled) setShowRatings(st.show_ratings);
+      })
+      .catch(() => {
+        if (!cancelled) setShowRatings(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const { paymentDiscount } = usePaymentDiscount();
   const { activePromotions } = useCart();
   // Same rule the shop-grid product card and the cart use to decide
@@ -1114,7 +1136,7 @@ function ProductInfo({
             <ShareButton title={displayName} text={`Check out ${displayName} on Sutisaree`} />
           </div>
         </div>
-        {displayRatingsCount > 0 && (
+        {showRatings && displayRatingsCount > 0 && (
           <button
             type="button"
             onClick={onReviewsClick}
