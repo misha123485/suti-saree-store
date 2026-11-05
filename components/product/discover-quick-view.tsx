@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { formatINR, discountPct } from '@/lib/format';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
@@ -12,7 +12,7 @@ import { fetchVariantBySlug, VariantWithSizes } from '@/lib/variants-api';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { Button } from '@/components/ui/button';
 import WishlistButton from '@/components/wishlist-button';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 
 interface DiscoverQuickViewProps {
   product: Product;
@@ -138,6 +138,8 @@ export default function DiscoverQuickView({ product, onClose }: DiscoverQuickVie
   // ignored entirely once the sheet content itself has been scrolled
   // down, so it doesn't fight the scroll.
   const panelRef = useRef<HTMLDivElement | null>(null);
+  // The scrollable middle part of the sheet (the header X and the action bar stay put).
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -148,8 +150,8 @@ export default function DiscoverQuickView({ product, onClose }: DiscoverQuickVie
   } | null>(null);
 
   const onTouchStart = (e: React.TouchEvent) => {
-    const panel = panelRef.current;
-    if (panel && panel.scrollTop > 0) return;
+    const scroller = scrollRef.current;
+    if (scroller && scroller.scrollTop > 0) return;
     const t = e.touches[0];
     dragRef.current = {
       startX: t.clientX,
@@ -218,17 +220,27 @@ export default function DiscoverQuickView({ product, onClose }: DiscoverQuickVie
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
-        className="inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl p-0 sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:max-h-[85vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:shadow-xl sm:data-[state=open]:slide-in-from-bottom-0"
+        hideClose
+        className="inset-x-0 bottom-0 flex max-h-[88vh] flex-col overflow-hidden rounded-t-2xl p-0 sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:max-h-[85vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:shadow-xl sm:data-[state=open]:slide-in-from-bottom-0"
       >
         {/* Drag handle — a visual affordance on mobile signalling the sheet
             can be dragged closed, matching the pattern shoppers already
             know from native bottom sheets. Hidden on desktop, where this
             renders as a centred dialog instead. */}
-        <div className="flex justify-center pb-1 pt-2 sm:hidden">
+        <div className="flex shrink-0 justify-center pb-1 pt-2 sm:hidden">
           <span className="h-1 w-10 rounded-full bg-border" />
         </div>
-        <div className="flex flex-col">
-          <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
+        {/* Close button lives outside the scrolling area, so it stays pinned
+            in the top-right corner no matter how far the shopper scrolls. */}
+        <SheetClose
+          aria-label="Close"
+          className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-background/90 text-foreground shadow-md backdrop-blur-sm transition-colors hover:bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <X className="h-5 w-5" />
+        </SheetClose>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex flex-col">
+          <div className="relative aspect-[4/5] max-h-[52vh] w-full overflow-hidden bg-muted">
             <Image
               src={img}
               alt={`${displayName} - ${product.fabric} ${product.category}`}
@@ -348,28 +360,34 @@ export default function DiscoverQuickView({ product, onClose }: DiscoverQuickVie
               </div>
             )}
 
-            <div className="mt-1 flex items-center gap-2">
-              <Button
-                onClick={handleAddToCart}
-                disabled={!activeProduct.inStock}
-                className="flex-1"
-              >
-                {activeProduct.inStock ? 'Add to Cart' : 'Out of Stock'}
-              </Button>
-              <WishlistButton
-                productId={activeProduct.id}
-                color={activeProduct.colors?.[0] ?? null}
-                className="static h-10 w-10 border border-border/60"
-              />
-            </div>
+          </div>
+          </div>
+        </div>
 
-            <Link
-              href={`/product/${activeProduct.slug}`}
-              onClick={onClose}
-              className="mt-1 text-center text-sm font-medium text-primary hover:underline"
+        {/* Sticky action bar: always visible, so nobody has to scroll down
+            to add to bag or open the full product page. */}
+        <div
+          className="shrink-0 border-t border-border bg-background px-4 pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="h-11 flex-1 border-primary px-2 text-[13px] font-semibold text-primary">
+              <Link href={`/product/${activeProduct.slug}`} onClick={onClose}>
+                View Details
+              </Link>
+            </Button>
+            <Button
+              onClick={handleAddToCart}
+              disabled={!activeProduct.inStock}
+              className="h-11 flex-1 px-2 text-[13px] font-semibold"
             >
-              View full details →
-            </Link>
+              {activeProduct.inStock ? 'Add to Bag' : 'Out of Stock'}
+            </Button>
+            <WishlistButton
+              productId={activeProduct.id}
+              color={activeProduct.colors?.[0] ?? null}
+              className="static h-11 w-11 shrink-0 border border-border/60"
+            />
           </div>
         </div>
       </SheetContent>
