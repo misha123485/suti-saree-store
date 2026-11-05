@@ -4,17 +4,20 @@ import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { addToWishlist, removeFromWishlist, fetchWishlistProductIds } from '@/lib/wishlist-api';
+import { addToWishlist, removeFromWishlist, fetchWishlistKeys, normColor } from '@/lib/wishlist-api';
 import { trackEvent } from '@/lib/track-api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function WishlistButton({
   productId,
+  color,
   className,
   showLabel = false,
 }: {
   productId: string;
+  /** Colour this heart belongs to (variation products). Hearts are per colour. */
+  color?: string | null;
   className?: string;
   showLabel?: boolean;
 }) {
@@ -28,10 +31,11 @@ export default function WishlistButton({
       setSaved(false);
       return;
     }
-    fetchWishlistProductIds()
-      .then((ids) => setSaved(ids.includes(productId)))
+    const c = normColor(color);
+    fetchWishlistKeys()
+      .then((keys) => setSaved(keys.some((k) => k.product_id === productId && k.color === c)))
       .catch(() => {});
-  }, [user, productId]);
+  }, [user, productId, color]);
 
   const toggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,16 +50,16 @@ export default function WishlistButton({
     setBusy(true);
     try {
       if (saved) {
-        await removeFromWishlist(productId);
+        await removeFromWishlist(productId, color);
         setSaved(false);
       } else {
-        await addToWishlist(productId);
+        await addToWishlist(productId, color);
         setSaved(true);
         toast.success('Saved to wishlist');
         // Best-effort — lets Admin > WooCommerce Import show a "Wishlist"
         // audience segment (customers who clicked in from a campaign email
         // and then saved something), same mechanism as add_to_cart/purchase.
-        trackEvent('wishlist', { productId, userId: user?.id ?? null });
+        trackEvent('wishlist', { productId, userId: user?.id ?? null, color: color ?? null });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong');

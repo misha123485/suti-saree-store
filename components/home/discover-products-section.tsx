@@ -300,7 +300,7 @@ function DiscoverProductCard({
             {discount}% OFF
           </span>
         )}
-        <WishlistButton productId={product.id} className="absolute right-2 top-2" />
+        <WishlistButton productId={product.id} color={product.colors?.[0] ?? null} className="absolute right-2 top-2" />
         {!product.inStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/60">
             <span className="rounded bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">

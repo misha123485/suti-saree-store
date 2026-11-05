@@ -38,14 +38,38 @@ export default async function WishlistPage() {
 
   const { data } = await supabase
     .from('wishlist')
-    .select('id, products(*)')
+    .select('id, color, products(*)')
     .eq('user_id', user!.id)
     .order('created_at', { ascending: false });
 
-  const products = (data ?? [])
-    .map((row: any) => row.products)
-    .filter(Boolean)
-    .map(mapRow);
+  // One card per saved (product, colour). For a saved colour variant, swap in
+  // that colour's own slug/photo so the card matches what was hearted.
+  const rows = (data ?? []).filter((row: any) => row.products);
+  const variantIds = Array.from(
+    new Set(rows.filter((r: any) => r.color).map((r: any) => r.products.id as string)),
+  );
+  const { data: variantRows } = variantIds.length
+    ? await supabase.from('product_variants').select('product_id, color, slug, images').in('product_id', variantIds)
+    : { data: [] as any[] };
+
+  const products = rows.map((row: any) => {
+    const base = mapRow(row.products);
+    const color = ((row.color as string) ?? '').trim();
+    if (!color) return { product: base, key: base.id };
+    const v = (variantRows ?? []).find(
+      (x: any) => x.product_id === base.id && String(x.color).trim().toLowerCase() === color.toLowerCase(),
+    );
+    if (!v) return { product: base, key: `${base.id}-${color}` };
+    return {
+      key: `${base.id}-${color}`,
+      product: {
+        ...base,
+        slug: v.slug,
+        colors: [v.color],
+        images: v.images?.length ? v.images : base.images,
+      } as Product,
+    };
+  });
 
   return (
     <div>
@@ -61,8 +85,8 @@ export default async function WishlistPage() {
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
+          {products.map(({ product, key }) => (
+            <ProductCard key={key} product={product} />
           ))}
         </div>
       )}

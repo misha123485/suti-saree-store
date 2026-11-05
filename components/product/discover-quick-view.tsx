@@ -358,6 +358,7 @@ export default function DiscoverQuickView({ product, onClose }: DiscoverQuickVie
               </Button>
               <WishlistButton
                 productId={activeProduct.id}
+                color={activeProduct.colors?.[0] ?? null}
                 className="static h-10 w-10 border border-border/60"
               />
             </div>

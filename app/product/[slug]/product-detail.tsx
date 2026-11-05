@@ -1110,7 +1110,7 @@ function ProductInfo({
             </h1>
           </div>
           <div className="flex shrink-0 items-start gap-4 pt-1">
-            <WishlistButton productId={product.id} showLabel />
+            <WishlistButton productId={product.id} color={product.colors?.[0] ?? null} showLabel />
             <ShareButton title={displayName} text={`Check out ${displayName} on Sutisaree`} />
           </div>
         </div>

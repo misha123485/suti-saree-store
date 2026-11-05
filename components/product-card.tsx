@@ -96,15 +96,6 @@ export default function ProductCard({
     setSizeOpen(true);
   };
 
-  // The swatch dots sit inside the card's outer <Link> -- stop the click from following the card's own href (which
-  // points at the default variant) and send it straight to the colour
-  // that was actually clicked.
-  const goToVariant = (e: React.MouseEvent, variant: (typeof swatchVariants)[number]) => {
-    e.preventDefault();
-    e.stopPropagation();
-    router.push(`/product/${variant.slug}`);
-  };
-
   const discount = discountPct(product.price, product.mrp);
   // Same "pay online, save X%" banner shown on the product page (see
   // app/product/[slug]/product-detail.tsx) -- short/no-dialog version for
@@ -283,6 +274,7 @@ export default function ProductCard({
           </h3>
           <WishlistButton
             productId={product.id}
+            color={hasVariation ? cardColor : null}
             className="-mr-1 -mt-0.5 h-7 w-7 shrink-0 bg-transparent shadow-none hover:bg-muted"
           />
         </div>
@@ -324,30 +316,6 @@ export default function ProductCard({
           <Truck className="h-3 w-3 text-emerald-600" />
           Free Delivery
         </span>
-
-        {swatchVariants.length > 1 && (
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            {swatchVariants.map((v) => (
-              <button
-                key={v.slug}
-                type="button"
-                title={v.color}
-                aria-label={`View in ${v.color}`}
-                onClick={(e) => goToVariant(e, v)}
-                onMouseEnter={() => setPreviewVariant(v)}
-                onMouseLeave={() => setPreviewVariant(null)}
-                onFocus={() => setPreviewVariant(v)}
-                onBlur={() => setPreviewVariant(null)}
-                className={`h-3.5 w-3.5 shrink-0 rounded-full border transition-transform hover:scale-125 ${
-                  previewVariant?.slug === v.slug
-                    ? 'border-primary ring-1 ring-primary ring-offset-1'
-                    : 'border-border/70'
-                }`}
-                style={{ backgroundColor: v.color.toLowerCase().replace(/\s+/g, '') }}
-              />
-            ))}
-          </div>
-        )}
 
         <div className="mt-auto pt-2">
           {inStock ? (
