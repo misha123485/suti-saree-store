@@ -32,15 +32,15 @@ export default function MobileStickyCartBar({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur-sm md:hidden"
-      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      className="fixed inset-x-0 bottom-0 z-30 bg-background md:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {hasCoupon && (
         <p className="bg-green-50 px-4 py-1 text-center text-xs font-medium text-green-700">
           🎉 Congratulations! You saved {formatINR(couponDiscount)} with code &quot;{couponCode}&quot;
         </p>
       )}
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span
