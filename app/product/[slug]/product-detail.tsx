@@ -61,6 +61,8 @@ import {
 import { addRecentlyViewed } from '@/lib/recently-viewed';
 import { trackEvent } from '@/lib/track-api';
 import { useAuth } from '@/lib/auth-context';
+import { fetchOfferDisplaySettings, DEFAULT_OFFER_DISPLAY_SETTINGS, OfferDisplaySettings } from '@/lib/offer-display-settings';
+import MegaDealOffers from '@/components/product/mega-deal-offers';
 import { toast } from 'sonner';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
@@ -1062,6 +1064,10 @@ function ProductInfo({
   // whether/which "Buy X Get Y" badge applies -- see
   // getVisibleBogoPromotion in lib/cart-context.tsx.
   const bogoPromotion = getVisibleBogoPromotion(product.id, activePromotions);
+  const [offerDisplay, setOfferDisplay] = useState<OfferDisplaySettings>(DEFAULT_OFFER_DISPLAY_SETTINGS);
+  useEffect(() => {
+    fetchOfferDisplaySettings().then(setOfferDisplay).catch(() => {});
+  }, []);
   const priceAfterCoupon = appliedCoupon ? Math.max(0, selectedSizePrice - couponDiscount) : selectedSizePrice;
   const onlinePaymentSavings =
     paymentDiscount.enabled && paymentDiscount.percent > 0
@@ -1155,7 +1161,22 @@ function ProductInfo({
         <BogoOfferSheet promotion={bogoPromotion} collectionName={product.collection?.name} />
       )}
 
-      {onlinePaymentSavings > 0 && (
+      {offerDisplay.enabled && (
+        <MegaDealOffers
+          settings={offerDisplay}
+          price={selectedSizePrice}
+          appliedCoupon={appliedCoupon}
+          couponDiscount={couponDiscount}
+          onCouponApply={onCouponApply}
+          onCouponRemove={onCouponRemove}
+          paymentDiscount={paymentDiscount}
+          isLoggedIn={isLoggedIn}
+          loyaltyBalance={loyaltyBalance}
+          loyaltySettings={loyaltySettings}
+        />
+      )}
+
+      {!offerDisplay.enabled && onlinePaymentSavings > 0 && (
         <Dialog>
           <DialogTrigger asChild>
             <button
@@ -1269,12 +1290,14 @@ function ProductInfo({
         </p>
       )}
 
-      <CouponList
-        productPrice={selectedSizePrice}
-        appliedCode={appliedCoupon?.code ?? null}
-        onApply={onCouponApply}
-        onRemove={onCouponRemove}
-      />
+      {!(offerDisplay.enabled && offerDisplay.show_coupons) && (
+        <CouponList
+          productPrice={selectedSizePrice}
+          appliedCode={appliedCoupon?.code ?? null}
+          onApply={onCouponApply}
+          onRemove={onCouponRemove}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <LowStockBadge stockQuantity={selectedSizeStock} />
