@@ -45,6 +45,7 @@ import VariantSwatches from '@/components/product/variant-swatches';
 import ProductHighlights from '@/components/product/product-highlights';
 import PriceQuickBrowseBar from '@/components/product/price-quick-browse-bar';
 import ProductGallery from '@/components/product/product-gallery';
+import type { GalleryOverlaySettings } from '@/lib/gallery-overlay-settings';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import MobileStickyCartBar from '@/components/product/mobile-sticky-cart-bar';
 import LowStockBadge from '@/components/growth/low-stock-badge';
@@ -100,6 +101,7 @@ export default function ProductDetail({
   initialProduct = null,
   initialVariant = null,
   blurPreviews,
+  galleryOverlays,
   initialVariants,
 }: {
   initialProduct?: Product | null;
@@ -109,6 +111,8 @@ export default function ProductDetail({
    *  lib/blur-preview.ts. Optional -- ProductGallery falls back to the
    *  generic shimmer for any image not present here. */
   blurPreviews?: Record<string, string>;
+  /** Admin toggles for the labels on the main photo (48% OFF, 1/2, zoom). */
+  galleryOverlays?: GalleryOverlaySettings;
   /** Colour swatches fetched on the server so they're in the first HTML
    *  (no pop-in / layout shift). Optional -- falls back to a client fetch. */
   initialVariants?: ProductVariant[];
@@ -809,6 +813,7 @@ export default function ProductDetail({
             <ProductGallery
               images={toPublicMediaUrls(product.images)}
               blurPreviews={blurPreviews}
+              overlays={galleryOverlays}
               alt={seoAltText}
               discount={discount}
               videoUrl={toPublicMediaUrl(product.video_url)}

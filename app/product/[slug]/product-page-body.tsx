@@ -22,6 +22,7 @@ import { generateVariantSeoContent } from '@/lib/variant-seo-content';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import { getBlurPreviews } from '@/lib/blur-preview';
+import { getGalleryOverlaySettingsServer } from '@/lib/gallery-overlay-settings';
 import ProductDetail from './product-detail';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
@@ -196,6 +197,7 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
   // state. See lib/blur-preview.ts (Part 1) and components/product/
   // product-gallery.tsx (Part 2).
   const blurPreviews = Object.fromEntries(await getBlurPreviews(videoThumbnails));
+  const galleryOverlays = await getGalleryOverlaySettingsServer();
 
   // Colour swatches, fetched here on the server (same query the browser used
   // to run after load) so they are part of the first HTML and the page
@@ -332,6 +334,7 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
           initialProduct={product}
           initialVariant={variant}
           blurPreviews={blurPreviews}
+          galleryOverlays={galleryOverlays}
           initialVariants={initialVariants}
         />
       </ProductsProvider>

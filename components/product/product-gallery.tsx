@@ -8,13 +8,10 @@ import { cn } from '@/lib/utils';
 import { preloadImages } from '@/lib/preload-image';
 import { GALLERY_BLUR_DATA_URL, THUMB_BLUR_DATA_URL, resolveBlurDataUrl } from '@/lib/image-placeholder';
 import ProductVideoPeek from './product-video-peek';
-import {
-  DEFAULT_GALLERY_DISPLAY_SETTINGS,
-  fetchGalleryDisplaySettings,
-  getCachedGalleryDisplaySettings,
-} from '@/lib/gallery-display-settings';
 
 interface ProductGalleryProps {
+  /** Admin toggles (Admin > Settings > Product Photo Overlays). Missing = all shown. */
+  overlays?: { show_discount_badge: boolean; show_image_counter: boolean; show_zoom_icon: boolean };
   images: string[];
   alt: string;
   discount: number;
@@ -109,6 +106,7 @@ function angleLabel(idx: number): string {
  *   pans the page vertically or scrolls the strip horizontally.
  */
 export default function ProductGallery({
+  overlays,
   images,
   alt,
   discount,
@@ -129,22 +127,6 @@ export default function ProductGallery({
   // dependency of the preload effect below) -- without this, a brand new
   // array would be created every render and defeat that effect's guard.
   const valid = useMemo(() => (images.length > 0 ? images : [PLACEHOLDER]), [images]);
-
-  // Admin switches (Admin > Settings > Product Photo Overlays) for the
-  // discount badge / photo counter / zoom button. Defaults to everything
-  // visible until the setting has loaded, and is cached after first load.
-  const [overlay, setOverlay] = useState(
-    () => getCachedGalleryDisplaySettings() ?? DEFAULT_GALLERY_DISPLAY_SETTINGS
-  );
-  useEffect(() => {
-    let alive = true;
-    fetchGalleryDisplaySettings()
-      .then((s) => alive && setOverlay(s))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const [active, setActive] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -406,7 +388,7 @@ export default function ProductGallery({
               />
             )}
 
-            {discount > 0 && overlay.show_discount_badge && (
+            {discount > 0 && overlays?.show_discount_badge !== false && (
               <Badge className="absolute left-4 top-4 bg-secondary text-secondary-foreground">
                 {discount}% OFF
               </Badge>
@@ -452,24 +434,24 @@ export default function ProductGallery({
               </button>
             )}
 
-            {valid.length > 1 && overlay.show_image_counter && (
+            {valid.length > 1 && overlays?.show_image_counter !== false && (
               <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground shadow-sm sm:hidden">
                 {active + 1} / {valid.length}
               </span>
             )}
 
-            {overlay.show_zoom_button && (
-              <button
-                type="button"
-                aria-label="Zoom image"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxOpen(true);
-                }}
-                className="absolute right-3 top-12 flex items-center gap-1 rounded-full bg-background/90 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-md hover:bg-background sm:top-3 sm:opacity-0 sm:transition-opacity sm:duration-150 sm:group-hover/stage:opacity-100"
-              >
-                <ZoomIn className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Click to zoom</span>
-              </button>
+            {overlays?.show_zoom_icon !== false && (
+            <button
+              type="button"
+              aria-label="Zoom image"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxOpen(true);
+              }}
+              className="absolute right-3 top-12 flex items-center gap-1 rounded-full bg-background/90 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-md hover:bg-background sm:top-3 sm:opacity-0 sm:transition-opacity sm:duration-150 sm:group-hover/stage:opacity-100"
+            >
+              <ZoomIn className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Click to zoom</span>
+            </button>
             )}
 
             {videoUrl && productId && productSlug && (

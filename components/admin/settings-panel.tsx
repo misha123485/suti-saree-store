@@ -90,7 +90,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import OfferDisplayPanel from '@/components/admin/offer-display-panel';
-import GalleryDisplayPanel from '@/components/admin/gallery-display-panel';
+import GalleryOverlaysCard from '@/components/admin/gallery-overlays-card';
 import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
 import {
   Select,
@@ -1786,15 +1786,6 @@ export default function SettingsPanel() {
       </div>
 
       <div className="mt-8">
-        <h2 className="font-serif text-2xl font-bold text-primary">Product Photo Overlays</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Show or hide the small items on top of the main product photo: the &quot;% OFF&quot; badge,
-          the photo counter (1 / 2) and the zoom button.
-        </p>
-        <GalleryDisplayPanel />
-      </div>
-
-      <div className="mt-8">
         <h2 className="font-serif text-2xl font-bold text-primary">Payment Gateways</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Turn Razorpay and Cashfree on or off, or switch off ALL online payments at once (customers
@@ -2365,6 +2356,8 @@ export default function SettingsPanel() {
           </div>
         )}
       </div>
+
+      <GalleryOverlaysCard />
 
       {/* Responsive Images — mobile/desktop get right-sized images instead of the full 1600px file */}
       <div className="mt-8">
