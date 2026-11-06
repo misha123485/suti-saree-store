@@ -79,7 +79,9 @@ export default function StickyOrderBar({
     <div
       ref={barRef}
       style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
-      className="sticky top-12 z-30 -mx-4 mb-6 border-b border-border/60 bg-background/95 shadow-sm backdrop-blur-md sm:mx-0 sm:rounded-lg sm:border"
+      className={`sticky top-12 z-30 -mx-4 mb-6 border-b border-border/60 shadow-sm backdrop-blur-md transition-colors sm:mx-0 sm:rounded-lg sm:border ${
+        open ? 'bg-card shadow-md ring-1 ring-primary/15' : 'bg-background/95'
+      }`}
     >
       <button
         type="button"
@@ -183,21 +185,33 @@ export default function StickyOrderBar({
           </ul>
 
           {(discountBreakdown.length > 0 || onlineDiscountAmount > 0) && (
-            <div className="mt-3 flex flex-col gap-1.5 rounded-md bg-secondary/10 px-3 py-2 text-xs">
-              {discountBreakdown.map((d) => (
-                <div key={d.label} className="flex justify-between font-medium text-secondary-foreground">
-                  <span>{d.label}</span>
-                  <span>-{formatINR(d.amount)}</span>
+            <div className="mt-3 flex flex-col gap-2">
+              {/* Discounts that are ACTUALLY applied right now (coupon, BOGO,
+                  gift card, loyalty, and the online-payment discount once
+                  Pay Online is chosen) use the exact same green as the
+                  "You save" pill above, so green always means "money saved". */}
+              {(discountBreakdown.length > 0 || (paymentMethod === 'online' && onlineDiscountAmount > 0)) && (
+                <div className="flex flex-col gap-1.5 rounded-md bg-green-100 px-3 py-2 text-xs text-green-700">
+                  {discountBreakdown.map((d) => (
+                    <div key={d.label} className="flex justify-between font-semibold">
+                      <span>{d.label}</span>
+                      <span>-{formatINR(d.amount)}</span>
+                    </div>
+                  ))}
+                  {paymentMethod === 'online' && onlineDiscountAmount > 0 && (
+                    <div className="flex justify-between font-semibold">
+                      <span>Online payment discount</span>
+                      <span>-{formatINR(onlineDiscountAmount)}</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-              {onlineDiscountAmount > 0 && (
-                <div className="flex justify-between font-medium text-secondary-foreground">
-                  <span>
-                    {paymentMethod === 'online'
-                      ? 'Online payment discount'
-                      : `Pay online to save an extra`}
-                  </span>
-                  <span>{paymentMethod === 'online' ? '-' : ''}{formatINR(onlineDiscountAmount)}</span>
+              )}
+              {/* Not applied yet (COD / partial): stays the old neutral look,
+                  turning green only once the discount is really given. */}
+              {paymentMethod !== 'online' && onlineDiscountAmount > 0 && (
+                <div className="flex justify-between rounded-md bg-secondary/10 px-3 py-2 text-xs font-medium text-secondary-foreground">
+                  <span>Pay online to save an extra</span>
+                  <span>{formatINR(onlineDiscountAmount)}</span>
                 </div>
               )}
             </div>
