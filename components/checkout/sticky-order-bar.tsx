@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronDown } from 'lucide-react';
@@ -48,6 +48,20 @@ export default function StickyOrderBar({
 }: StickyOrderBarProps) {
   const [open, setOpen] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
+
+  // Auto-close while the shopper scrolls the page: once the summary is open,
+  // any real scroll (up or down) folds it back up so it never sits on top of
+  // the form they're filling in. A small threshold keeps the tiny layout
+  // shift that happens when the bar itself opens from closing it instantly.
+  useEffect(() => {
+    if (!open) return;
+    const startY = window.scrollY;
+    const onScroll = () => {
+      if (Math.abs(window.scrollY - startY) > 24) setOpen(false);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [open]);
 
   // See hooks/use-force-mobile-repaint.ts — without this, switching
   // Pay Online <-> Cash on Delivery updates this bar's price instantly in
