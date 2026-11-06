@@ -1,6 +1,4 @@
-Replace karo (project root me extract):
-  components/providers.tsx                    (sirf 1 line badli: Toaster import)
-  components/coupon-celebration-toaster.tsx   (nayi)
-  components/coupon-celebration.css           (nayi)
-Agar providers.tsx tumne pehle edit ki hai to replace mat karo, bas us file me ye ek line badlo:
-  import { Toaster } from 'sonner';   -->   import { Toaster } from './coupon-celebration-toaster';
+1. PEHLE apni purani app/checkout/page.tsx aur components/providers.tsx ka backup copy kar lo.
+2. Zip ko project root me extract karke replace karo (6 files).
+3. npm run dev me checkout par coupon laga ke dekho, phir git push.
+Agar Vercel build fail ho to live site nahi badlegi; backup wapas rakh do.
