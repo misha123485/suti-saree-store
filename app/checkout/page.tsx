@@ -641,9 +641,11 @@ export default function CheckoutPage() {
   // offer (fetchCheckoutCoupons already sorts by discount_value desc),
   // and "View all coupons" expands to the full list + manual code entry.
   const [showAllCoupons, setShowAllCoupons] = useState(false);
+  // "View all coupons" now opens one bottom sheet with every coupon, gift card,
+  // reward points and payment offer (see <Sheet open={offersOpen}> below).
+  const [offersOpen, setOffersOpen] = useState(false);
 
   useEffect(() => {
-    if (appliedCoupon) return;
     let cancelled = false;
     fetchCheckoutCoupons()
       .then((c) => {
@@ -2210,7 +2212,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
-    <div className={`container-boutique py-8 max-lg:pb-40 ${phoneSheetActive ? 'hidden' : ''}`}>
+    <div className={`container-boutique pt-0 pb-8 md:py-8 max-lg:pb-40 ${phoneSheetActive ? 'hidden' : ''}`}>
       {/* Loaded only here (not site-wide in app/layout.tsx) since only the
           checkout page ever opens the Razorpay popup — this used to load
           on every single page load across the whole site for no reason. */}
@@ -2252,13 +2254,19 @@ export default function CheckoutPage() {
       </ol>
       </div>
 
-      {/* Top coupon banner — same offer shown lower down inside the Order
-          Summary card, but surfaced here too so it's visible immediately
-          on page load instead of only after scrolling past the whole
-          address form (which is what used to happen on mobile, since the
-          Order Summary card sits after the form in DOM order there).
-          Stays visible after a coupon is applied too — it just switches
-          to the "applied" state instead of disappearing. */}
+      {/* Savings bar — edge to edge on mobile, always visible (it used to
+          vanish the moment a coupon was applied). Before anything is saved
+          it nudges toward the prepaid discount instead. */}
+      {(totalSavings > 0 || (paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0)) && (
+        <div className="-mx-4 mb-3 flex items-center justify-center gap-1.5 bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground sm:mx-0 sm:rounded-lg">
+          <BadgePercent className="h-3.5 w-3.5" />
+          {totalSavings > 0
+            ? `You're saving ${formatINR(totalSavings)} on this order`
+            : `Upto ${formatINR(potentialOnlinePaymentDiscount)} off on prepaid orders`}
+        </div>
+      )}
+
+      {/* Coupon card — its own card, separate from the savings bar. */}
       {appliedCoupon ? (
         <div className="mb-4 overflow-hidden rounded-lg border border-border/60">
           <div className="flex items-center justify-between gap-3 bg-card px-3 py-3">
@@ -2274,83 +2282,297 @@ export default function CheckoutPage() {
               Remove
             </button>
           </div>
-          {availableCoupons.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setShowAllCoupons((v) => !v)}
-              className="flex w-full items-center gap-0.5 border-t border-border/60 bg-card px-3 py-2 text-xs font-medium text-secondary hover:underline"
-            >
-              View all coupons <ChevronRight className="h-3 w-3" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setOffersOpen(true)}
+            className="flex w-full items-center gap-0.5 border-t border-border/60 bg-card px-3 py-2 text-xs font-medium text-secondary hover:underline"
+          >
+            View all coupons <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
       ) : (
-        (paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 || availableCoupons.length > 0 || totalSavings > 0) && (
+        availableCoupons.length > 0 && (
           <div className="mb-4 overflow-hidden rounded-lg border border-border/60">
-            {/* Single banner now doing both jobs: once any discount is
-                actually applied (coupon, BOGO, gift card, loyalty points,
-                or the online-payment discount) it shows the real combined
-                total the customer is saving; before that, it falls back to
-                nudging them toward the prepaid discount. Used to be two
-                separate banners (a green "you're saving" one up top plus
-                this one) — merged into one so only one shows at a time. */}
-            {totalSavings > 0 ? (
-              <div className="flex items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
-                <BadgePercent className="h-3.5 w-3.5" />
-                You're saving {formatINR(totalSavings)} on this order
-              </div>
-            ) : (
-              paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 && (
-                <div className="flex items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
-                  <BadgePercent className="h-3.5 w-3.5" />
-                  Upto {formatINR(potentialOnlinePaymentDiscount)} off on prepaid orders
+            <div className="flex items-center justify-between gap-3 bg-card px-3 py-3">
+              <div className="flex min-w-0 items-start gap-2.5">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
+                  <Tag className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    Save{' '}
+                    {availableCoupons[0].discount_type === 'percentage'
+                      ? `${availableCoupons[0].discount_value}%`
+                      : formatINR(availableCoupons[0].discount_value)}{' '}
+                    with &quot;{availableCoupons[0].code}&quot;
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setOffersOpen(true)}
+                    className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-secondary hover:underline"
+                  >
+                    View all coupons <ChevronRight className="h-3 w-3" />
+                  </button>
                 </div>
-              )
-            )}
-            {availableCoupons.length > 0 && (
-              <div className="flex items-center justify-between gap-3 bg-card px-3 py-3">
-                <div className="flex min-w-0 items-start gap-2.5">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
-                    <Tag className="h-3.5 w-3.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      Save{' '}
-                      {availableCoupons[0].discount_type === 'percentage'
-                        ? `${availableCoupons[0].discount_value}%`
-                        : formatINR(availableCoupons[0].discount_value)}{' '}
-                      with &quot;{availableCoupons[0].code}&quot;
-                    </p>
-                    {availableCoupons.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowAllCoupons((v) => !v)}
-                        className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-secondary hover:underline"
-                      >
-                        View all coupons <ChevronRight className="h-3 w-3" />
-                      </button>
-                    ) : (
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {availableCoupons[0].min_order_value > 0
-                          ? `On orders above ${formatINR(availableCoupons[0].min_order_value)}`
-                          : 'No minimum order value'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleApplyFromList(availableCoupons[0])}
-                  disabled={applyingFromList === availableCoupons[0].code}
-                  className="shrink-0 rounded-md border border-secondary px-3.5 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary hover:text-secondary-foreground disabled:opacity-60"
-                >
-                  {applyingFromList === availableCoupons[0].code ? 'Applying…' : 'Apply'}
-                </button>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => handleApplyFromList(availableCoupons[0])}
+                disabled={applyingFromList === availableCoupons[0].code}
+                className="shrink-0 rounded-md border border-secondary px-3.5 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary hover:text-secondary-foreground disabled:opacity-60"
+              >
+                {applyingFromList === availableCoupons[0].code ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
           </div>
         )
       )}
+
+      {/* Coupons & Offers sheet — opened by every "View all coupons" link.
+          Shows coupons, payment offer, gift card, reward points (logged-in)
+          and everything already applied to this order. */}
+      <Sheet open={offersOpen} onOpenChange={setOffersOpen}>
+        <SheetContent
+          side="bottom"
+          hideClose
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="flex max-h-[88vh] flex-col gap-0 rounded-t-2xl p-0 sm:mx-auto sm:max-w-md"
+        >
+          <SheetHeader className="border-b border-border/60 px-5 pb-3 pt-4 text-left">
+            <div className="flex items-center justify-between gap-3">
+              <SheetTitle className="font-serif text-lg font-bold text-primary">Coupons &amp; Offers</SheetTitle>
+              <SheetClose
+                aria-label="Close"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </SheetClose>
+            </div>
+            <SheetDescription className="sr-only">
+              All coupons, gift card, reward points and payment offers for this order
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
+            {!user && (
+              <button
+                type="button"
+                onClick={() => router.push('/login?next=/checkout')}
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-2.5 text-left text-sm font-medium text-primary"
+              >
+                <span>Log in to get more offers &amp; use reward points</span>
+                <ChevronRight className="h-4 w-4 shrink-0" />
+              </button>
+            )}
+
+            {(discountBreakdown.length > 0 || (paymentMethod === 'online' && potentialOnlinePaymentDiscount > 0)) && (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold">Applied on this order</h3>
+                <div className="flex flex-col gap-1.5 rounded-lg bg-green-50 px-3 py-2.5 text-xs">
+                  {discountBreakdown.map((d) => (
+                    <div key={d.label} className="flex items-center justify-between gap-3 font-medium text-green-800">
+                      <span className="flex items-center gap-1.5">
+                        <BadgeCheck className="h-3.5 w-3.5" /> {d.label}
+                      </span>
+                      <span>-{formatINR(d.amount)}</span>
+                    </div>
+                  ))}
+                  {paymentMethod === 'online' && potentialOnlinePaymentDiscount > 0 && (
+                    <div className="flex items-center justify-between gap-3 font-medium text-green-800">
+                      <span className="flex items-center gap-1.5">
+                        <BadgeCheck className="h-3.5 w-3.5" /> Online payment discount
+                      </span>
+                      <span>-{formatINR(potentialOnlinePaymentDiscount)}</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <h3 className="mb-2 text-sm font-semibold">Coupons</h3>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 text-sm">
+                  <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
+                    <BadgeCheck className="h-4 w-4 text-green-600" /> &quot;{appliedCoupon.code}&quot; applied
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="text-xs font-semibold text-muted-foreground hover:text-destructive"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    className="h-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 shrink-0"
+                    disabled={applyingCoupon || !couponInput.trim()}
+                    onClick={handleApplyCoupon}
+                  >
+                    {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                  </Button>
+                </div>
+              )}
+              {couponError && <p className="mt-1.5 text-xs text-destructive">{couponError}</p>}
+
+              {availableCoupons.length > 0 && (
+                <div className="mt-3 flex flex-col gap-2">
+                  {availableCoupons.map((c) => {
+                    const isApplied = appliedCoupon?.code === c.code;
+                    return (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-secondary/60 bg-secondary/10 px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-sm font-bold tracking-wide text-primary">{c.code}</span>
+                            <span className="text-xs font-semibold text-secondary-foreground">
+                              {c.discount_type === 'percentage' ? `${c.discount_value}% OFF` : `${formatINR(c.discount_value)} OFF`}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {c.min_order_value > 0 ? `On orders above ${formatINR(c.min_order_value)}` : 'No minimum order value'}
+                          </p>
+                        </div>
+                        {isApplied ? (
+                          <span className="shrink-0 text-xs font-semibold text-green-700">Applied</span>
+                        ) : !appliedCoupon ? (
+                          <button
+                            type="button"
+                            onClick={() => handleApplyFromList(c)}
+                            disabled={applyingFromList === c.code}
+                            className="shrink-0 rounded-md border border-primary bg-background px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+                          >
+                            {applyingFromList === c.code ? 'Applying…' : 'Apply'}
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 && (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold">Payment offers</h3>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Save {formatINR(potentialOnlinePaymentDiscount)} on online payment</p>
+                    <p className="text-xs text-muted-foreground">UPI, cards, net banking &amp; wallets</p>
+                  </div>
+                  {paymentMethod === 'online' ? (
+                    <span className="shrink-0 text-xs font-semibold text-green-700">Applied</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod('online');
+                        setOffersOpen(false);
+                      }}
+                      className="shrink-0 rounded-md border border-primary bg-background px-3 py-1.5 text-xs font-semibold text-primary"
+                    >
+                      Pay online
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <h3 className="mb-2 text-sm font-semibold">Gift card</h3>
+              {appliedGiftCard ? (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 text-sm">
+                  <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
+                    <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code} applied (-{formatINR(clampedGiftCardDiscount)})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveGiftCard}
+                    className="text-xs font-semibold text-muted-foreground hover:text-destructive"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Gift card code"
+                      value={giftCardInput}
+                      onChange={(e) => setGiftCardInput(e.target.value)}
+                      className="h-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 shrink-0"
+                      disabled={applyingGiftCard || !giftCardInput.trim()}
+                      onClick={handleApplyGiftCard}
+                    >
+                      {applyingGiftCard ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                    </Button>
+                  </div>
+                  {giftCardError && <p className="text-xs text-destructive">{giftCardError}</p>}
+                </div>
+              )}
+            </section>
+
+            {user && loyaltySettings.enabled && (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold">Reward points</h3>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1.5 text-sm font-medium">
+                      <Sparkles className="h-3.5 w-3.5 text-secondary" /> Use reward points
+                    </span>
+                    <Switch
+                      checked={redeemPoints}
+                      disabled={!canRedeemPoints}
+                      onCheckedChange={handleToggleRedeemPoints}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {pointsBalance <= 0
+                      ? 'You have no reward points yet. You earn points on every order.'
+                      : canRedeemPoints
+                        ? `You have ${pointsBalance} points (worth ${formatINR(
+                            Math.round(pointsBalance * loyaltySettings.redeem_value_per_point)
+                          )}).`
+                        : `You have ${pointsBalance} points — minimum ${loyaltySettings.min_redeem_points} needed to redeem.`}
+                  </p>
+                  {redeemPoints && canRedeemPoints && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={maxRedeemablePoints}
+                        value={pointsToRedeem}
+                        onChange={(e) =>
+                          setPointsToRedeem(Math.max(0, Math.min(maxRedeemablePoints, Number(e.target.value) || 0)))
+                        }
+                        className="h-9"
+                      />
+                      <span className="shrink-0 text-xs text-muted-foreground">= -{formatINR(loyaltyDiscount)}</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <PriceDetailsSheet
         open={priceSheetOpen}
@@ -2920,7 +3142,7 @@ export default function CheckoutPage() {
                           {availableCoupons.length > 1 ? (
                             <button
                               type="button"
-                              onClick={() => setShowAllCoupons((v) => !v)}
+                              onClick={() => setOffersOpen(true)}
                               className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-secondary hover:underline"
                             >
                               View all coupons <ChevronRight className="h-3 w-3" />
