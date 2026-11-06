@@ -1759,7 +1759,19 @@ export default function CheckoutPage() {
       // network failure, etc.) is visible in the browser console instead
       // of only ever seeing the generic "Failed to place order" toast.
       console.error('Order placement failed:', err);
-      const message = err instanceof Error ? err.message : 'Failed to place order';
+      // Supabase/Postgrest errors are plain objects (NOT `instanceof Error`),
+      // so the old check always fell back to the generic text and hid the
+      // real cause. Read `.message` from any error-like object, and show the
+      // generic text to the customer only when nothing readable exists.
+      const rawMessage =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message?: unknown }).message ?? '')
+            : typeof err === 'string'
+              ? err
+              : '';
+      const message = rawMessage || 'Failed to place order';
       if (message.includes('cancelled')) {
         toast.error('Payment was cancelled. Your order is saved as pending.');
       } else {
