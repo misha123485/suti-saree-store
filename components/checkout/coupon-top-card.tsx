@@ -7,19 +7,6 @@ import { Input } from '@/components/ui/input';
 import { formatINR } from '@/lib/format';
 import type { Coupon } from '@/lib/coupons-api';
 
-/**
- * Coupon card shown at the TOP of checkout.
- *
- *  - Before a coupon is applied: coupon-code input + Apply, best offer, and
- *    "View all coupons".
- *  - After: green "You saved ₹X" strip, "CODE applied" row with Remove, and
- *    "View all coupons".
- *
- * Replaces the old top-of-screen toast. Celebration is pure CSS
- * (transform/opacity only, ~1.1s, no JS animation loop, no library) so it
- * never slows the page down. Respects prefers-reduced-motion.
- */
-
 type Props = {
   appliedCode: string | null;
   couponSavings: number;
@@ -34,7 +21,6 @@ type Props = {
   error: string | null;
 };
 
-// Pre-computed confetti: [x px, y px, rotation deg, color, delay ms]
 const CONFETTI: Array<[number, number, number, string, number]> = [
   [-120, -34, 200, '#f59e0b', 0],
   [-90, -52, -160, '#ec4899', 30],
@@ -68,7 +54,6 @@ export function CouponTopCard({
   const [celebrateKey, setCelebrateKey] = useState(0);
   const prevCode = useRef<string | null>(appliedCode);
 
-  // Fire the celebration only when a coupon goes from "none" -> "applied".
   useEffect(() => {
     if (appliedCode && !prevCode.current) {
       setCelebrateKey((k) => k + 1);
@@ -109,19 +94,16 @@ export function CouponTopCard({
 
   return (
     <div className="relative mb-4 rounded-lg border border-border/60 bg-card">
-      {/* Savings strip — only once a coupon is on */}
       {appliedCode && couponSavings > 0 && (
         <div
           key={`strip-${celebrateKey}`}
           className="coupon-strip relative overflow-hidden rounded-t-lg bg-green-50 px-3 py-1.5 text-center text-xs font-semibold text-green-700"
         >
           You saved {formatINR(couponSavings)}
-          {/* shine sweep */}
           <span aria-hidden className="coupon-shine pointer-events-none absolute inset-y-0 left-0 w-1/3" />
         </div>
       )}
 
-      {/* Celebration burst (confetti + pop badge) */}
       {celebrateKey > 0 && appliedCode && (
         <div
           key={`burst-${celebrateKey}`}
@@ -177,7 +159,6 @@ export function CouponTopCard({
         </>
       ) : (
         <>
-          {/* Always-visible input, top of checkout */}
           <div className="flex gap-2 px-3 pt-3">
             <Input
               placeholder="Enter coupon code"
@@ -250,7 +231,6 @@ export function CouponTopCard({
         </>
       )}
 
-      {/* Full coupon list */}
       {showAll && availableCoupons.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-border/60 bg-muted/30 p-3">
           <div className="flex items-center gap-1.5 text-sm font-semibold">

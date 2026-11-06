@@ -1173,7 +1173,6 @@ export default function CheckoutPage() {
       setCouponError(result.error || 'Invalid coupon');
       return;
     }
-    // Celebration is handled by <CouponTopCard /> (no toast popup).
     setCouponInput('');
   };
 
@@ -2248,9 +2247,6 @@ export default function CheckoutPage() {
       </ol>
       </div>
 
-      {/* Top coupon card: coupon input is always visible here (before a coupon
-          is applied), and once applied it shows "You saved ₹X" + Remove with a
-          quick celebration animation instead of the old toast popup. */}
       <CouponTopCard
         appliedCode={appliedCoupon?.code ?? null}
         couponSavings={Math.max(0, couponDiscount - recoveryDiscount)}
@@ -2265,7 +2261,6 @@ export default function CheckoutPage() {
         error={couponError}
       />
 
-      {/* Total savings banner (coupon + BOGO + gift card + points + prepaid) */}
       {totalSavings > 0 ? (
         <div className="mb-4 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
           <BadgePercent className="h-3.5 w-3.5" />

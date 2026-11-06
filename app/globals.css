@@ -239,8 +239,9 @@ body[data-delivery-open] .fixed.bottom-24 {
   display: none !important;
 }
 
-/* ---- Coupon applied celebration (checkout) ----
-   GPU-friendly: only transform + opacity, total ~1.1s, no JS loop. */
+/* ---- Coupon applied celebration (checkout) ---- */
+/* Coupon applied celebration (checkout). GPU-friendly: transform + opacity
+   only, ~1.1s total, no JS animation loop. */
 @keyframes coupon-confetti-fly {
   0%   { transform: translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
   70%  { opacity: 1; }
