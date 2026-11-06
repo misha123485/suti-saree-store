@@ -8,7 +8,7 @@ import type { PaymentDiscountSettings, SiteBanner as SiteBannerSettings } from '
 import type { GrowthSettings } from '@/lib/growth-api';
 import { AuthProvider } from '@/lib/auth-context';
 import { CountryProvider, CountryRemount } from './country-provider';
-import { Toaster } from 'sonner';
+import { Toaster } from './coupon-celebration-toaster';
 import CartDrawer from './cart-drawer';
 import Header from './header';
 import FeatureStrip from './feature-strip';

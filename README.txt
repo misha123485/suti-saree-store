@@ -1,3 +1,6 @@
-1. Zip ko project root me extract karo (components/checkout/ me coupon-top-card.tsx + .css)
-2. Project root me:  node apply-coupon-patch.js
-3. npm run dev me checkout par test karo, page.tsx.bak delete karo, phir git push
+Replace karo (project root me extract):
+  components/providers.tsx                    (sirf 1 line badli: Toaster import)
+  components/coupon-celebration-toaster.tsx   (nayi)
+  components/coupon-celebration.css           (nayi)
+Agar providers.tsx tumne pehle edit ki hai to replace mat karo, bas us file me ye ek line badlo:
+  import { Toaster } from 'sonner';   -->   import { Toaster } from './coupon-celebration-toaster';
