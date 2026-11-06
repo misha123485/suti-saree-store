@@ -1081,20 +1081,6 @@ export default function CheckoutPage() {
     clampedGiftCardDiscount +
     loyaltyDiscount +
     onlinePaymentDiscount;
-  // ONE savings message, two states (used by the desktop banner and the
-  // mobile sticky bar so they never disagree):
-  //  - COD selected + an online-payment discount exists -> maroon nudge,
-  //    "Pay online & save ₹X" (tap switches to online payment).
-  //  - Otherwise, once something is actually being saved (online payment
-  //    discount, coupon, gift card, ...) -> green "You're saving ₹X".
-  const showOnlineNudge =
-    paymentMethod === 'cod' &&
-    !isIntl &&
-    !isResale &&
-    onlineAvailable &&
-    paymentDiscount.enabled &&
-    potentialOnlinePaymentDiscount > 0;
-  const showSavedBar = !showOnlineNudge && totalSavings > 0;
   const resalePriceTooLow = isResale && resaleSellingPriceNum > 0 && resaleSellingPriceNum < total;
 
   // Every individual discount that's actually active right now (coupon,
@@ -2231,7 +2217,11 @@ export default function CheckoutPage() {
       {gateway.active === 'razorpay' && (
         <NextScript src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
       )}
-      <div className="mb-3 flex items-center justify-between gap-3">
+      {/* Mobile: the header already says "Checkout" and the coupon banner
+          below takes this row's place, so the heading + progress row is
+          desktop-only. A screen-reader-only h1 keeps the page structure. */}
+      <h1 className="sr-only md:hidden">Checkout</h1>
+      <div className="mb-3 flex items-center justify-between gap-3 max-md:hidden">
       <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">
         Checkout
       </h1>
@@ -2295,30 +2285,25 @@ export default function CheckoutPage() {
           )}
         </div>
       ) : (
-        (availableCoupons.length > 0 || showOnlineNudge || showSavedBar) && (
-          <div
-            className={`mb-4 overflow-hidden rounded-lg border border-border/60${
-              availableCoupons.length === 0 ? ' max-lg:hidden' : ''
-            }`}
-          >
-            {/* One banner, shown on desktop only (phones get the same message
-                in the sticky bar above the pay button). Maroon "Pay online &
-                save" nudge while COD is selected; green "You're saving" once
-                online payment (or any other discount) is saving money. */}
-            {showOnlineNudge ? (
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('online')}
-                className="flex w-full items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground max-lg:hidden"
-              >
+        (paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 || availableCoupons.length > 0 || totalSavings > 0) && (
+          <div className="mb-4 overflow-hidden rounded-lg border border-border/60">
+            {/* Single banner now doing both jobs: once any discount is
+                actually applied (coupon, BOGO, gift card, loyalty points,
+                or the online-payment discount) it shows the real combined
+                total the customer is saving; before that, it falls back to
+                nudging them toward the prepaid discount. Used to be two
+                separate banners (a green "you're saving" one up top plus
+                this one) — merged into one so only one shows at a time. */}
+            {totalSavings > 0 ? (
+              <div className="flex items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
                 <BadgePercent className="h-3.5 w-3.5" />
-                Pay online &amp; save {formatINR(potentialOnlinePaymentDiscount)}
-              </button>
+                You're saving {formatINR(totalSavings)} on this order
+              </div>
             ) : (
-              showSavedBar && (
-                <div className="flex items-center justify-center gap-1.5 bg-green-50 px-3 py-1.5 text-center text-xs font-semibold text-green-700 max-lg:hidden">
+              paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 && (
+                <div className="flex items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
                   <BadgePercent className="h-3.5 w-3.5" />
-                  You&apos;re saving {formatINR(totalSavings)} on this order
+                  Upto {formatINR(potentialOnlinePaymentDiscount)} off on prepaid orders
                 </div>
               )
             )}
@@ -3428,26 +3413,15 @@ export default function CheckoutPage() {
                 can break position:fixed; it still submits the form via form="". */}
             {barMounted && !phoneSheetActive && createPortal(
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
-              {showOnlineNudge ? (
+              {totalSavings > 0 && (
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('online')}
-                  className="flex w-full items-center justify-center gap-1.5 bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground"
+                  onClick={() => setPriceSheetOpen(true)}
+                  className="flex w-full items-center justify-center gap-1.5 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700"
                 >
-                  <BadgePercent className="h-3.5 w-3.5" />
-                  Pay online &amp; save {formatINR(potentialOnlinePaymentDiscount)}
+                  You&apos;ll save {formatINR(totalSavings)} on this order
+                  <ChevronDown className="h-3.5 w-3.5 rotate-180" />
                 </button>
-              ) : (
-                showSavedBar && (
-                  <button
-                    type="button"
-                    onClick={() => setPriceSheetOpen(true)}
-                    className="flex w-full items-center justify-center gap-1.5 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700"
-                  >
-                    You&apos;ll save {formatINR(totalSavings)} on this order
-                    <ChevronDown className="h-3.5 w-3.5 rotate-180" />
-                  </button>
-                )
               )}
               <div className="flex items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
               <div className="shrink-0">
