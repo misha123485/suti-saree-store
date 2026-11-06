@@ -73,13 +73,42 @@ export default function StickyOrderBar({
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-3 px-4 py-2.5"
       >
-        <span className="text-xs font-medium text-muted-foreground">
-          {itemCount} item{itemCount > 1 ? 's' : ''}
-          {totalSavings > 0 && (
-            <span className="ml-2 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
-              You save {formatINR(totalSavings)}
+        <span className="flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+          {/* Collapsed only: up to 3 small photos so the shopper sees WHAT
+              they're buying without opening the bar. Once it's open, the
+              full item list below shows the photos anyway. */}
+          {!open && (
+            <span className="flex shrink-0 items-center -space-x-2" aria-hidden>
+              {items.slice(0, 3).map((item, idx) => (
+                <span
+                  key={`${item.product.id}-${item.size}-${idx}`}
+                  className="relative h-8 w-7 overflow-hidden rounded-md bg-muted ring-2 ring-background"
+                  style={{ zIndex: 3 - idx }}
+                >
+                  <Image
+                    src={toPublicMediaUrl(item.product.images?.[0]) || 'https://placehold.co/56x64?text=No+Image'}
+                    alt=""
+                    fill
+                    sizes="28px"
+                    className="object-cover"
+                  />
+                </span>
+              ))}
+              {items.length > 3 && (
+                <span className="relative z-0 flex h-8 w-7 items-center justify-center rounded-md bg-muted text-[10px] font-semibold text-foreground ring-2 ring-background">
+                  +{items.length - 3}
+                </span>
+              )}
             </span>
           )}
+          <span className="min-w-0">
+            {itemCount} item{itemCount > 1 ? 's' : ''}
+            {totalSavings > 0 && (
+              <span className="ml-2 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                You save {formatINR(totalSavings)}
+              </span>
+            )}
+          </span>
         </span>
         <span className="flex items-center gap-1.5">
           {mrpTotal > payableTotal && (
