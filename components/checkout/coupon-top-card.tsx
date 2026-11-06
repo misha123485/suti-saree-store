@@ -38,6 +38,11 @@ type Props = {
   /** Should validate + apply the code (e.g. cart-context applyCoupon). */
   onApply: (code: string) => Promise<{ ok: boolean; error?: string }>;
   onRemove: () => void;
+  /** If given, "View all coupons & Offers" calls this (e.g. opens your existing
+   *  Coupons & Offers sheet) instead of expanding a list inside the card. */
+  onViewAll?: () => void;
+  /** Optional bar shown flush on top of the card (e.g. "You're saving ₹X on this order"). */
+  topBanner?: React.ReactNode;
 };
 
 // [x px, y px, rotation deg, color, delay ms]
@@ -76,7 +81,7 @@ async function fetchCheckoutCoupons(): Promise<CheckoutCoupon[]> {
 const offerLabel = (c: CheckoutCoupon) =>
   c.discount_type === 'percentage' ? `${c.discount_value}%` : formatINR(c.discount_value);
 
-export function CouponTopCard({ appliedCode, couponSavings, onApply, onRemove }: Props) {
+export function CouponTopCard({ appliedCode, couponSavings, onApply, onRemove, onViewAll, topBanner }: Props) {
   const [coupons, setCoupons] = useState<CheckoutCoupon[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState<string | null>(null); // code being applied
@@ -157,11 +162,13 @@ export function CouponTopCard({ appliedCode, couponSavings, onApply, onRemove }:
 
   return (
     <div className="relative mb-4 rounded-lg border border-border/60 bg-card">
+      {topBanner}
+
       {/* You saved ₹X */}
       {appliedCode && couponSavings > 0 && (
         <div
           key={`strip-${celebrateKey}`}
-          className="coupon-strip relative overflow-hidden rounded-t-lg bg-green-50 px-3 py-1.5 text-center text-xs font-semibold text-green-700"
+          className={`coupon-strip relative overflow-hidden ${topBanner ? '' : 'rounded-t-lg'} bg-green-50 px-3 py-1.5 text-center text-xs font-semibold text-green-700`}
         >
           You saved {formatINR(couponSavings)}
           <span aria-hidden className="coupon-shine pointer-events-none absolute inset-y-0 left-0 w-1/3" />
@@ -281,17 +288,17 @@ export function CouponTopCard({ appliedCode, couponSavings, onApply, onRemove }:
       {coupons.length > 0 ? (
         <button
           type="button"
-          onClick={() => setShowAll((v) => !v)}
+          onClick={() => (onViewAll ? onViewAll() : setShowAll((v) => !v))}
           className="mt-1 flex w-full items-center gap-0.5 px-3 py-2.5 text-xs font-medium text-secondary hover:underline"
         >
           View all coupons &amp; Offers{' '}
-          {showAll ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {showAll && !onViewAll ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         </button>
       ) : (
         <div className="pb-3" />
       )}
 
-      {showAll && coupons.length > 0 && (
+      {showAll && !onViewAll && coupons.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-border/60 bg-muted/30 p-3">
           <div className="flex items-center gap-1.5 text-sm font-semibold">
             <Tag className="h-3.5 w-3.5 text-secondary" />

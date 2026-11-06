@@ -1,4 +1,7 @@
-1. PEHLE apni purani app/checkout/page.tsx aur components/providers.tsx ka backup copy kar lo.
-2. Zip ko project root me extract karke replace karo (6 files).
-3. npm run dev me checkout par coupon laga ke dekho, phir git push.
-Agar Vercel build fail ho to live site nahi badlegi; backup wapas rakh do.
+PEHLE (apna purana page wapas lao, jo e10e69f / 14f7cde me tha):
+  git checkout e10e69f -- app/checkout/page.tsx components/providers.tsx
+
+PHIR:
+  1. Zip ko project root me extract karo (components/ me 4 files aayengi)
+  2. node apply-coupon-patch.js
+  3. npm run dev me check karo, *.bak files delete karo, git push
