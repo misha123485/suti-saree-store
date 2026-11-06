@@ -1081,6 +1081,20 @@ export default function CheckoutPage() {
     clampedGiftCardDiscount +
     loyaltyDiscount +
     onlinePaymentDiscount;
+  // ONE savings message, two states (used by the desktop banner and the
+  // mobile sticky bar so they never disagree):
+  //  - COD selected + an online-payment discount exists -> maroon nudge,
+  //    "Pay online & save ₹X" (tap switches to online payment).
+  //  - Otherwise, once something is actually being saved (online payment
+  //    discount, coupon, gift card, ...) -> green "You're saving ₹X".
+  const showOnlineNudge =
+    paymentMethod === 'cod' &&
+    !isIntl &&
+    !isResale &&
+    onlineAvailable &&
+    paymentDiscount.enabled &&
+    potentialOnlinePaymentDiscount > 0;
+  const showSavedBar = !showOnlineNudge && totalSavings > 0;
   const resalePriceTooLow = isResale && resaleSellingPriceNum > 0 && resaleSellingPriceNum < total;
 
   // Every individual discount that's actually active right now (coupon,
@@ -1759,19 +1773,7 @@ export default function CheckoutPage() {
       // network failure, etc.) is visible in the browser console instead
       // of only ever seeing the generic "Failed to place order" toast.
       console.error('Order placement failed:', err);
-      // Supabase/Postgrest errors are plain objects (NOT `instanceof Error`),
-      // so the old check always fell back to the generic text and hid the
-      // real cause. Read `.message` from any error-like object, and show the
-      // generic text to the customer only when nothing readable exists.
-      const rawMessage =
-        err instanceof Error
-          ? err.message
-          : typeof err === 'object' && err !== null && 'message' in err
-            ? String((err as { message?: unknown }).message ?? '')
-            : typeof err === 'string'
-              ? err
-              : '';
-      const message = rawMessage || 'Failed to place order';
+      const message = err instanceof Error ? err.message : 'Failed to place order';
       if (message.includes('cancelled')) {
         toast.error('Payment was cancelled. Your order is saved as pending.');
       } else {
@@ -2293,25 +2295,30 @@ export default function CheckoutPage() {
           )}
         </div>
       ) : (
-        (paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 || availableCoupons.length > 0 || totalSavings > 0) && (
-          <div className="mb-4 overflow-hidden rounded-lg border border-border/60">
-            {/* Single banner now doing both jobs: once any discount is
-                actually applied (coupon, BOGO, gift card, loyalty points,
-                or the online-payment discount) it shows the real combined
-                total the customer is saving; before that, it falls back to
-                nudging them toward the prepaid discount. Used to be two
-                separate banners (a green "you're saving" one up top plus
-                this one) — merged into one so only one shows at a time. */}
-            {totalSavings > 0 ? (
-              <div className="flex items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
+        (availableCoupons.length > 0 || showOnlineNudge || showSavedBar) && (
+          <div
+            className={`mb-4 overflow-hidden rounded-lg border border-border/60${
+              availableCoupons.length === 0 ? ' max-lg:hidden' : ''
+            }`}
+          >
+            {/* One banner, shown on desktop only (phones get the same message
+                in the sticky bar above the pay button). Maroon "Pay online &
+                save" nudge while COD is selected; green "You're saving" once
+                online payment (or any other discount) is saving money. */}
+            {showOnlineNudge ? (
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('online')}
+                className="flex w-full items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground max-lg:hidden"
+              >
                 <BadgePercent className="h-3.5 w-3.5" />
-                You're saving {formatINR(totalSavings)} on this order
-              </div>
+                Pay online &amp; save {formatINR(potentialOnlinePaymentDiscount)}
+              </button>
             ) : (
-              paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0 && (
-                <div className="flex items-center justify-center gap-1.5 bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground">
+              showSavedBar && (
+                <div className="flex items-center justify-center gap-1.5 bg-green-50 px-3 py-1.5 text-center text-xs font-semibold text-green-700 max-lg:hidden">
                   <BadgePercent className="h-3.5 w-3.5" />
-                  Upto {formatINR(potentialOnlinePaymentDiscount)} off on prepaid orders
+                  You&apos;re saving {formatINR(totalSavings)} on this order
                 </div>
               )
             )}
@@ -3421,15 +3428,26 @@ export default function CheckoutPage() {
                 can break position:fixed; it still submits the form via form="". */}
             {barMounted && !phoneSheetActive && createPortal(
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
-              {totalSavings > 0 && (
+              {showOnlineNudge ? (
                 <button
                   type="button"
-                  onClick={() => setPriceSheetOpen(true)}
-                  className="flex w-full items-center justify-center gap-1.5 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700"
+                  onClick={() => setPaymentMethod('online')}
+                  className="flex w-full items-center justify-center gap-1.5 bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground"
                 >
-                  You&apos;ll save {formatINR(totalSavings)} on this order
-                  <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                  <BadgePercent className="h-3.5 w-3.5" />
+                  Pay online &amp; save {formatINR(potentialOnlinePaymentDiscount)}
                 </button>
+              ) : (
+                showSavedBar && (
+                  <button
+                    type="button"
+                    onClick={() => setPriceSheetOpen(true)}
+                    className="flex w-full items-center justify-center gap-1.5 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700"
+                  >
+                    You&apos;ll save {formatINR(totalSavings)} on this order
+                    <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                  </button>
+                )
               )}
               <div className="flex items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
               <div className="shrink-0">
