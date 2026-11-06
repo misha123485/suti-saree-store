@@ -53,6 +53,7 @@ export async function POST(req: Request) {
     expires_at,
     is_active,
     show_on_product_page,
+    show_on_checkout,
     show_in_google_promotions,
   } = body || {};
 
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
       expires_at: expires_at ?? null,
       is_active: is_active ?? true,
       show_on_product_page: show_on_product_page ?? false,
+      show_on_checkout: show_on_checkout ?? false,
       show_in_google_promotions: show_in_google_promotions ?? false,
     });
     if (error) throw error;

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatINR } from '@/lib/format';
-import { fetchProductPageCoupons, Coupon } from '@/lib/coupons-api';
+import { fetchCheckoutCoupons, Coupon } from '@/lib/coupons-api';
 
 // Same "apply a coupon / gift card" experience as /checkout, but for an
 // order that's ALREADY placed and waiting to be paid online (COD orders
@@ -60,7 +60,7 @@ export default function ResumeDiscountSection({
   useEffect(() => {
     if (couponCode) return; // nothing to suggest once one is already applied
     let cancelled = false;
-    fetchProductPageCoupons()
+    fetchCheckoutCoupons()
       .then((c) => {
         if (!cancelled) setAvailableCoupons(c);
       })

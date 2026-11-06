@@ -26,6 +26,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (body.expires_at !== undefined) update.expires_at = body.expires_at;
   if (body.is_active !== undefined) update.is_active = body.is_active;
   if (body.show_on_product_page !== undefined) update.show_on_product_page = body.show_on_product_page;
+  if (body.show_on_checkout !== undefined) update.show_on_checkout = body.show_on_checkout;
   if (body.show_in_google_promotions !== undefined) update.show_in_google_promotions = body.show_in_google_promotions;
 
   if (Object.keys(update).length === 0) {

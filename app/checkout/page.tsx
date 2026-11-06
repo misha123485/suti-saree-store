@@ -21,7 +21,7 @@ import { formatINR } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { validateGiftCard, GiftCard } from '@/lib/giftcards-api';
-import { computeCouponDiscount, fetchProductPageCoupons, Coupon } from '@/lib/coupons-api';
+import { computeCouponDiscount, fetchCheckoutCoupons, Coupon } from '@/lib/coupons-api';
 import { fetchAddresses } from '@/lib/addresses-api';
 import { Address } from '@/lib/types';
 import { joinResellerProgram, fetchMyResellerOverview } from '@/lib/reseller-api';
@@ -638,14 +638,14 @@ export default function CheckoutPage() {
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [applyingFromList, setApplyingFromList] = useState<string | null>(null);
   // Collapsed by default — the coupon banner shows just the single best
-  // offer (fetchProductPageCoupons already sorts by discount_value desc),
+  // offer (fetchCheckoutCoupons already sorts by discount_value desc),
   // and "View all coupons" expands to the full list + manual code entry.
   const [showAllCoupons, setShowAllCoupons] = useState(false);
 
   useEffect(() => {
     if (appliedCoupon) return;
     let cancelled = false;
-    fetchProductPageCoupons()
+    fetchCheckoutCoupons()
       .then((c) => {
         if (!cancelled) setAvailableCoupons(c);
       })

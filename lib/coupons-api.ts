@@ -12,6 +12,7 @@ export interface Coupon {
   expires_at: string | null;
   is_active: boolean;
   show_on_product_page: boolean;
+  show_on_checkout: boolean;
   show_in_google_promotions: boolean;
   created_at?: string;
 }
@@ -43,6 +44,7 @@ export interface CouponInput {
   expires_at: string | null;
   is_active: boolean;
   show_on_product_page: boolean;
+  show_on_checkout: boolean;
   show_in_google_promotions: boolean;
 }
 
@@ -85,6 +87,13 @@ export async function setCouponShowOnProductPage(id: string, show_on_product_pag
   await adminCouponRequest(`/api/admin/coupons/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ show_on_product_page }),
+  });
+}
+
+export async function setCouponShowOnCheckout(id: string, show_on_checkout: boolean) {
+  await adminCouponRequest(`/api/admin/coupons/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ show_on_checkout }),
   });
 }
 
@@ -175,6 +184,29 @@ export async function fetchProductPageCoupons(): Promise<Coupon[]> {
     .eq('show_on_product_page', true)
     .order('discount_value', { ascending: false });
   if (error) throw error;
+
+  const now = Date.now();
+  return ((data ?? []) as Coupon[]).filter(
+    (c) =>
+      (!c.expires_at || new Date(c.expires_at).getTime() > now) &&
+      (c.usage_limit === null || c.times_used < c.usage_limit)
+  );
+}
+
+/**
+ * Coupons an admin has flagged "Show on Checkout" (Admin > Coupons).
+ * Same active / not-expired / not-exhausted rules as the product page list.
+ * If the `show_on_checkout` column doesn't exist yet (migration not run),
+ * falls back to the product-page list so the checkout never loses its offers.
+ */
+export async function fetchCheckoutCoupons(): Promise<Coupon[]> {
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('*')
+    .eq('is_active', true)
+    .eq('show_on_checkout', true)
+    .order('discount_value', { ascending: false });
+  if (error) return fetchProductPageCoupons();
 
   const now = Date.now();
   return ((data ?? []) as Coupon[]).filter(
