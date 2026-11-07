@@ -137,6 +137,7 @@ export default function CartDrawer() {
     recoveryDiscount,
     applyCoupon,
     removeCoupon,
+    applyCouponIfBetter,
     bogoDiscount,
     activePromotions,
     clearBuyNow,
@@ -411,10 +412,19 @@ export default function CartDrawer() {
     if (!couponInput.trim()) return;
     setCouponError(null);
     setApplyingCoupon(true);
-    const result = await applyCoupon(couponInput);
+    // One coupon per order — keep whichever saves the customer more.
+    const result = await applyCouponIfBetter(couponInput);
     setApplyingCoupon(false);
     if (!result.ok) {
       setCouponError(result.error || 'Invalid coupon');
+      return;
+    }
+    if (result.outcome === 'kept') {
+      setCouponError(`"${result.coupon?.code}" already gives you a bigger discount, so we kept it. Only one coupon can be used per order.`);
+      return;
+    }
+    if (result.outcome === 'same') {
+      setCouponError('This coupon is already applied.');
       return;
     }
     setCouponInput('');
@@ -920,47 +930,47 @@ export default function CartDrawer() {
                         </button>
                       </div>
                     ))}
-                    <button
-                      type="button"
-                      onClick={() => setCouponPanelOpen((o) => !o)}
-                      className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-                    >
-                      <span className="flex items-center gap-2 text-sm font-semibold">
-                        <Tag className="h-4 w-4 text-primary" /> Have a coupon code?
-                      </span>
-                      {couponPanelOpen ? (
-                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      )}
-                    </button>
-                    {couponPanelOpen && (
-                      <div className="flex flex-col gap-1.5 px-4 pb-3">
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Coupon code"
-                            value={couponInput}
-                            onChange={(e) => setCouponInput(e.target.value)}
-                            className="h-9"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-9 shrink-0"
-                            disabled={applyingCoupon || !couponInput.trim()}
-                            onClick={handleApplyCoupon}
-                          >
-                            {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                          </Button>
-                        </div>
-                        {couponError && <p className="text-xs text-destructive">{couponError}</p>}
-                      </div>
-                    )}
                   </>
                 )}
-                {appliedCoupon && couponError && (
-                  <p className="px-4 pb-3 text-xs text-destructive">{couponError}</p>
+                {/* Manual code entry — stays available even after a coupon is applied,
+                    so a customer holding a different/better code can still try it. */}
+                <button
+                  type="button"
+                  onClick={() => setCouponPanelOpen((o) => !o)}
+                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                >
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <Tag className="h-4 w-4 text-primary" /> Have a coupon code?
+                  </span>
+                  {couponPanelOpen ? (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                </button>
+                {couponPanelOpen && (
+                  <div className="flex flex-col gap-1.5 px-4 pb-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Coupon code"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value)}
+                        className="h-9"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 shrink-0"
+                        disabled={applyingCoupon || !couponInput.trim()}
+                        onClick={handleApplyCoupon}
+                      >
+                        {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+                    {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+                  </div>
                 )}
+
 
                 {/* Gift card */}
                 <div className="border-t border-border/60">
