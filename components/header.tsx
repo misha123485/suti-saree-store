@@ -505,7 +505,11 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur-md">
+    <header
+      className={`sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur-md ${
+        onCheckoutPage ? 'max-md:bg-background max-md:shadow-sm max-md:backdrop-blur-none' : ''
+      }`}
+    >
       <input
         ref={imageInputRef}
         type="file"

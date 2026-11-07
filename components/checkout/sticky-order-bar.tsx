@@ -83,8 +83,11 @@ export default function StickyOrderBar({
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const firstItem = items[0];
-  const thumb = toPublicMediaUrl(firstItem?.product.images?.[0]) || 'https://placehold.co/56x64?text=No+Image';
+  // Header pill: show up to 2 product photos (overlapped) and "+N" for any more.
+  const thumbs = items
+    .slice(0, 2)
+    .map((it) => toPublicMediaUrl(it.product.images?.[0]) || 'https://placehold.co/56x64?text=No+Image');
+  const extraProducts = Math.max(0, items.length - 2);
 
   const panel = (
         <div className="border-t border-border/60 px-4 pb-4 pt-3">
@@ -181,8 +184,21 @@ export default function StickyOrderBar({
             aria-label="Order summary"
             className="flex max-w-full min-w-0 items-center gap-1.5 py-1 pl-1"
           >
-            <span className="relative h-8 w-7 shrink-0 overflow-hidden rounded bg-muted ring-1 ring-border/60">
-              <Image src={thumb} alt="" fill sizes="28px" className="object-cover" />
+            <span className="relative flex shrink-0 items-center">
+              {thumbs.map((src, i) => (
+                <span
+                  key={i}
+                  className={`relative h-8 w-7 overflow-hidden rounded bg-muted ring-2 ring-background ${i > 0 ? '-ml-2.5' : ''}`}
+                  style={{ zIndex: 2 - i }}
+                >
+                  <Image src={src} alt="" fill sizes="28px" className="object-cover" />
+                </span>
+              ))}
+              {extraProducts > 0 && (
+                <span className="absolute -bottom-1 -right-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground ring-2 ring-background">
+                  +{extraProducts}
+                </span>
+              )}
             </span>
             <span className="flex min-w-0 flex-col items-start leading-tight">
               <span className="text-[11px] font-medium text-muted-foreground">
@@ -196,7 +212,7 @@ export default function StickyOrderBar({
             </span>
             <span className="flex shrink-0 flex-col items-end leading-tight">
               {mrpTotal > payableTotal && (
-                <span className="font-serif text-[10px] text-muted-foreground line-through">{formatINR(mrpTotal)}</span>
+                <span className="font-serif text-[10px] text-muted-foreground line-through max-[379px]:hidden">{formatINR(mrpTotal)}</span>
               )}
               <span className="font-serif text-sm font-bold text-primary">{formatINR(payableTotal)}</span>
             </span>
