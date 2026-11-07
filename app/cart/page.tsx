@@ -58,6 +58,12 @@ export default function CartPage() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponPanelOpen, setCouponPanelOpen] = useState(false);
+  // A coupon can get applied from somewhere else (bag drawer, product page,
+  // auto-apply) while this panel is open — collapse it so the manual-entry
+  // box never sits next to an already-applied coupon.
+  useEffect(() => {
+    if (appliedCoupon) setCouponPanelOpen(false);
+  }, [appliedCoupon]);
 
   // Gift card — same collapsed-pill pattern as Coupons, and same
   // "checkout re-validates before actually redeeming" relationship the
@@ -452,23 +458,14 @@ export default function CartPage() {
                   <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
                     <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code} applied
                   </span>
-                  <span className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCouponPanelOpen((o) => !o)}
-                      className="text-xs font-medium text-primary hover:underline"
-                    >
-                      Try another code
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      aria-label="Remove coupon"
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    aria-label="Remove coupon"
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               ) : (
                 <button
@@ -492,7 +489,7 @@ export default function CartPage() {
                   )}
                 </button>
               )}
-              {couponPanelOpen && (
+              {!appliedCoupon && couponPanelOpen && (
                 <div className="border-t border-border/60 p-3">
                   <div className="flex flex-col gap-1.5">
                     <div className="flex gap-2">
