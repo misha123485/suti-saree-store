@@ -1281,7 +1281,6 @@ export default function CheckoutPage() {
       setCouponError(result.error || 'Invalid coupon');
       return;
     }
-    setOffersOpen(false);
     triggerCelebrate();
   };
 
@@ -1293,7 +1292,6 @@ export default function CheckoutPage() {
       if (!result.ok || !result.coupon) {
         setCouponError(result.error || 'Could not apply this coupon');
       } else {
-        setOffersOpen(false);
         triggerCelebrate();
       }
     } finally {
@@ -2428,6 +2426,14 @@ export default function CheckoutPage() {
         </div>
       ) : (
         <div className="mb-4 overflow-hidden rounded-xl border-2 border-dashed border-secondary/60 bg-gradient-to-br from-secondary/15 via-background to-background shadow-sm">
+          {availableCoupons.length === 0 && (
+            <div className="flex items-center gap-2.5 px-3 pt-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                <Gift className="h-4 w-4" />
+              </span>
+              <p className="text-sm font-bold text-primary">Have a coupon code or gift card?</p>
+            </div>
+          )}
           {availableCoupons.length > 0 && (
             <div className="flex items-center justify-between gap-3 px-3 pb-1 pt-3">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -2462,35 +2468,11 @@ export default function CheckoutPage() {
               </button>
             </div>
           )}
-          <div className="flex items-center gap-2 px-3 py-3">
-            <Input
-              placeholder="Enter coupon code"
-              value={couponInput}
-              onChange={(e) => setCouponInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (couponInput.trim() && !applyingCoupon) handleApplyCoupon();
-                }
-              }}
-              autoCapitalize="characters"
-              autoComplete="off"
-              className="h-10 flex-1 bg-background"
-            />
-            <button
-              type="button"
-              disabled={applyingCoupon || !couponInput.trim()}
-              onClick={handleApplyCoupon}
-              className="shrink-0 px-2 text-sm font-bold text-primary disabled:text-muted-foreground"
-            >
-              {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-            </button>
-          </div>
-          {couponError && <p className="px-3 pb-2 text-xs text-destructive">{couponError}</p>}
+          {couponError && <p className="px-3 pt-1 text-xs text-destructive">{couponError}</p>}
           <button
             type="button"
             onClick={() => setOffersOpen(true)}
-            className="flex w-full items-center gap-0.5 border-t border-secondary/30 px-3 py-2 text-xs font-semibold text-secondary hover:underline"
+            className="mt-2 flex w-full items-center gap-0.5 border-t border-secondary/30 px-3 py-2 text-xs font-semibold text-secondary hover:underline"
           >
             View all coupons <ChevronRight className="h-3 w-3" />
           </button>
@@ -2560,8 +2542,34 @@ export default function CheckoutPage() {
 
             <section>
               <h3 className="mb-2 text-sm font-semibold">Coupons</h3>
-              {appliedCoupon ? (
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 text-sm">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter coupon code"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (couponInput.trim() && !applyingCoupon) handleApplyCoupon();
+                    }
+                  }}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  className="h-10"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 shrink-0"
+                  disabled={applyingCoupon || !couponInput.trim()}
+                  onClick={handleApplyCoupon}
+                >
+                  {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                </Button>
+              </div>
+              {couponError && <p className="mt-1.5 text-xs text-destructive">{couponError}</p>}
+              {appliedCoupon && (
+                <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5 text-sm">
                   <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
                     <BadgeCheck className="h-4 w-4 text-green-600" /> &quot;{appliedCoupon.code}&quot; applied
                   </span>
@@ -2573,26 +2581,7 @@ export default function CheckoutPage() {
                     Remove
                   </button>
                 </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter coupon code"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    className="h-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 shrink-0"
-                    disabled={applyingCoupon || !couponInput.trim()}
-                    onClick={handleApplyCoupon}
-                  >
-                    {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                  </Button>
-                </div>
               )}
-              {couponError && <p className="mt-1.5 text-xs text-destructive">{couponError}</p>}
 
               {availableCoupons.length > 0 && (
                 <div className="mt-3 flex flex-col gap-2">
@@ -2616,7 +2605,7 @@ export default function CheckoutPage() {
                         </div>
                         {isApplied ? (
                           <span className="shrink-0 text-xs font-semibold text-green-700">Applied</span>
-                        ) : !appliedCoupon ? (
+                        ) : (
                           <button
                             type="button"
                             onClick={() => handleApplyFromList(c)}
@@ -2625,7 +2614,7 @@ export default function CheckoutPage() {
                           >
                             {applyingFromList === c.code ? 'Applying…' : 'Apply'}
                           </button>
-                        ) : null}
+                        )}
                       </div>
                     );
                   })}
