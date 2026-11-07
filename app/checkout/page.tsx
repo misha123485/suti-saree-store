@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,7 +8,7 @@ import { toPublicMediaUrl } from '@/lib/media-url';
 import NextScript from 'next/script';
 import { useRouter } from 'next/navigation';
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Lock, Loader2, CreditCard, Tag, X, AlertCircle, Wallet, Sparkles, Gift, Store, Minus, Plus, ChevronRight, ChevronDown, BadgePercent, BadgeCheck, MapPin, Phone, Pencil } from 'lucide-react';
+import { Lock, Check, Loader2, CreditCard, Tag, X, AlertCircle, Wallet, Sparkles, Gift, Store, Minus, Plus, ChevronRight, ChevronDown, BadgePercent, BadgeCheck, MapPin, Phone, Pencil } from 'lucide-react';
 import {
   useCart,
   usePaymentDiscount,
@@ -152,6 +152,90 @@ declare global {
   interface Window {
     Razorpay: any;
   }
+}
+
+// ---------------------------------------------------------------------
+// Coupon area styling + celebration — pure CSS (no library). The confetti
+// overlay is mounted for ~3s only after a coupon is applied; the idle
+// shimmer/ring animations are skipped for "reduce motion" users.
+// ---------------------------------------------------------------------
+const COUPON_CSS =
+  '@keyframes ssFall{0%{transform:translate3d(0,-30px,0) rotate(0deg);opacity:1}85%{opacity:1}100%{transform:translate3d(var(--dx),108vh,0) rotate(var(--rot));opacity:0}}' +
+  '@keyframes ssPop{0%{transform:scale(.97)}40%{transform:scale(1.03)}100%{transform:scale(1)}}' +
+  '@keyframes ssBadge{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.3);opacity:1}100%{transform:scale(1)}}' +
+  '@keyframes ssRise{0%{transform:translateY(8px);opacity:0}100%{transform:translateY(0);opacity:1}}' +
+  '@keyframes ssSweep{0%{transform:translateX(-120%) skewX(-18deg)}55%,100%{transform:translateX(340%) skewX(-18deg)}}' +
+  '@keyframes ssRing{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.9);opacity:0}}' +
+  '@media (prefers-reduced-motion:no-preference){.ss-sweep{animation:ssSweep 3.2s ease-in-out infinite}.ss-ring{animation:ssRing 2s ease-out infinite}}';
+
+const CONFETTI_COLORS = ['#721D32', '#DAAA2F', '#16a34a', '#e11d48', '#f59e0b', '#2563eb', '#db2777'];
+const seeded = (n: number) => {
+  const x = Math.sin(n * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+};
+const CONFETTI = Array.from({ length: 56 }, (_, i) => ({
+  x: Math.round(seeded(i + 1) * 100),
+  delay: Math.round(seeded(i + 7) * 700),
+  dur: 1900 + Math.round(seeded(i + 13) * 1100),
+  dx: Math.round((seeded(i + 19) - 0.5) * 160),
+  rot: 360 + Math.round(seeded(i + 23) * 720),
+  w: 5 + Math.round(seeded(i + 29) * 5),
+  h: 8 + Math.round(seeded(i + 31) * 8),
+  c: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  round: i % 3 === 0,
+}));
+
+/** Full-screen confetti, falls from the top like a celebration; never blocks taps. */
+function CouponConfetti() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+      {CONFETTI.map((p, i) => (
+        <span
+          key={i}
+          style={
+            {
+              position: 'absolute',
+              left: `${p.x}%`,
+              top: 0,
+              width: p.w,
+              height: p.round ? p.w : p.h,
+              background: p.c,
+              borderRadius: p.round ? '50%' : 1,
+              opacity: 0,
+              '--dx': `${p.dx}px`,
+              '--rot': `${p.rot}deg`,
+              animation: `ssFall ${p.dur}ms ${p.delay}ms cubic-bezier(.25,.6,.4,1) forwards`,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+// Smoothly counts a rupee amount up/down when it changes (not on first load).
+function useCountUp(target: number, ms = 700) {
+  const [val, setVal] = useState(target);
+  const prev = useRef(target);
+  useEffect(() => {
+    const from = prev.current;
+    prev.current = target;
+    if (from === target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setVal(target);
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / ms);
+      const e = 1 - Math.pow(1 - k, 3);
+      setVal(Math.round(from + (target - from) * e));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return val;
 }
 
 export default function CheckoutPage() {
@@ -644,6 +728,27 @@ export default function CheckoutPage() {
   // "View all coupons" now opens one bottom sheet with every coupon, gift card,
   // reward points and payment offer (see <Sheet open={offersOpen}> below).
   const [offersOpen, setOffersOpen] = useState(false);
+  // Coupon-applied celebration (confetti + shine + pop), on for ~2.4s.
+  const [celebrate, setCelebrate] = useState(false);
+  const celebrateTimer = useRef<number | null>(null);
+  const triggerCelebrate = () => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try {
+      navigator.vibrate?.(25);
+    } catch {
+      /* not supported */
+    }
+    setCelebrate(true);
+    if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
+    celebrateTimer.current = window.setTimeout(() => setCelebrate(false), 3400);
+  };
+  useEffect(
+    () => () => {
+      if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
+    },
+    []
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1083,6 +1188,8 @@ export default function CheckoutPage() {
     clampedGiftCardDiscount +
     loyaltyDiscount +
     onlinePaymentDiscount;
+  const animatedSavings = useCountUp(totalSavings);
+  const animatedCouponSaving = useCountUp(couponDiscount);
   const resalePriceTooLow = isResale && resaleSellingPriceNum > 0 && resaleSellingPriceNum < total;
 
   // Every individual discount that's actually active right now (coupon,
@@ -1174,7 +1281,8 @@ export default function CheckoutPage() {
       setCouponError(result.error || 'Invalid coupon');
       return;
     }
-    toast.success(`Coupon "${result.coupon.code}" applied`);
+    setOffersOpen(false);
+    triggerCelebrate();
   };
 
   const handleApplyFromList = async (c: Coupon) => {
@@ -1185,7 +1293,8 @@ export default function CheckoutPage() {
       if (!result.ok || !result.coupon) {
         setCouponError(result.error || 'Could not apply this coupon');
       } else {
-        toast.success(`Coupon "${result.coupon.code}" applied`);
+        setOffersOpen(false);
+        triggerCelebrate();
       }
     } finally {
       setApplyingFromList(null);
@@ -2254,24 +2363,51 @@ export default function CheckoutPage() {
       </ol>
       </div>
 
-      {/* Savings bar — edge to edge on mobile, always visible (it used to
-          vanish the moment a coupon was applied). Before anything is saved
-          it nudges toward the prepaid discount instead. */}
+      <style>{COUPON_CSS}</style>
+      {celebrate && <CouponConfetti />}
+
+      {/* Savings bar — edge to edge on mobile, always visible (also after a
+          coupon is applied). The amount counts up smoothly when it changes. */}
       {(totalSavings > 0 || (paymentDiscount.enabled && potentialOnlinePaymentDiscount > 0)) && (
-        <div className="-mx-4 mb-3 flex items-center justify-center gap-1.5 bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground sm:mx-0 sm:rounded-lg">
+        <div
+          style={celebrate ? { animation: 'ssPop .55s ease-out' } : undefined}
+          className="-mx-4 mb-3 flex items-center justify-center gap-1.5 bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground sm:mx-0 sm:rounded-lg"
+        >
           <BadgePercent className="h-3.5 w-3.5" />
-          {totalSavings > 0
-            ? `You're saving ${formatINR(totalSavings)} on this order`
-            : `Upto ${formatINR(potentialOnlinePaymentDiscount)} off on prepaid orders`}
+          {totalSavings > 0 ? (
+            <span>
+              You&apos;re saving <span className="tabular-nums">{formatINR(animatedSavings)}</span> on this order
+            </span>
+          ) : (
+            `Upto ${formatINR(potentialOnlinePaymentDiscount)} off on prepaid orders`
+          )}
         </div>
       )}
 
-      {/* Coupon card — its own card, separate from the savings bar. */}
+      {/* Coupon card */}
       {appliedCoupon ? (
-        <div className="mb-4 overflow-hidden rounded-lg border border-border/60">
-          <div className="flex items-center justify-between gap-3 bg-card px-3 py-3">
-            <span className="flex items-center gap-1.5 text-sm font-medium text-secondary-foreground">
-              <BadgeCheck className="h-4 w-4 text-green-600" />
+        <div
+          style={celebrate ? { animation: 'ssPop .6s ease-out' } : undefined}
+          className={`mb-4 overflow-hidden rounded-xl border-2 transition-colors duration-500 ${
+            celebrate ? 'border-green-500 bg-green-50' : 'border-green-600/30 bg-card'
+          }`}
+        >
+          {couponDiscount > 0 && (
+            <div
+              style={celebrate ? { animation: 'ssRise .5s ease-out' } : undefined}
+              className="bg-green-100 px-3 py-1.5 text-center text-xs font-bold text-green-800"
+            >
+              You saved <span className="tabular-nums">{formatINR(animatedCouponSaving)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3 px-3 py-3">
+            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white"
+                style={celebrate ? { animation: 'ssBadge .55s ease-out' } : undefined}
+              >
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
               &quot;{appliedCoupon.code}&quot; applied
             </span>
             <button
@@ -2285,47 +2421,80 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => setOffersOpen(true)}
-            className="flex w-full items-center gap-0.5 border-t border-border/60 bg-card px-3 py-2 text-xs font-medium text-secondary hover:underline"
+            className="flex w-full items-center gap-0.5 border-t border-border/60 px-3 py-2 text-xs font-semibold text-secondary hover:underline"
           >
             View all coupons <ChevronRight className="h-3 w-3" />
           </button>
         </div>
       ) : (
-        availableCoupons.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-lg border border-border/60">
-            <div className="flex items-center justify-between gap-3 bg-card px-3 py-3">
-              <div className="flex min-w-0 items-start gap-2.5">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
-                  <Tag className="h-3.5 w-3.5" />
+        <div className="mb-4 overflow-hidden rounded-xl border-2 border-dashed border-secondary/60 bg-gradient-to-br from-secondary/15 via-background to-background shadow-sm">
+          {availableCoupons.length > 0 && (
+            <div className="flex items-center justify-between gap-3 px-3 pb-1 pt-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                  <span className="ss-ring absolute inset-0 rounded-full bg-secondary/60" />
+                  <Gift className="relative h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">
+                  <p className="truncate text-sm font-bold text-primary">
                     Save{' '}
                     {availableCoupons[0].discount_type === 'percentage'
                       ? `${availableCoupons[0].discount_value}%`
                       : formatINR(availableCoupons[0].discount_value)}{' '}
-                    with &quot;{availableCoupons[0].code}&quot;
+                    on this order
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setOffersOpen(true)}
-                    className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-secondary hover:underline"
-                  >
-                    View all coupons <ChevronRight className="h-3 w-3" />
-                  </button>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Use code{' '}
+                    <span className="rounded bg-secondary/25 px-1.5 py-0.5 font-mono font-bold tracking-wide text-primary">
+                      {availableCoupons[0].code}
+                    </span>
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => handleApplyFromList(availableCoupons[0])}
                 disabled={applyingFromList === availableCoupons[0].code}
-                className="shrink-0 rounded-md border border-secondary px-3.5 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary hover:text-secondary-foreground disabled:opacity-60"
+                className="relative shrink-0 overflow-hidden rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow disabled:opacity-60"
               >
-                {applyingFromList === availableCoupons[0].code ? 'Applying…' : 'Apply'}
+                <span className="ss-sweep absolute inset-y-0 left-0 w-1/4 bg-white/30" style={{ transform: 'translateX(-120%)' }} />
+                <span className="relative">{applyingFromList === availableCoupons[0].code ? 'Applying…' : 'Apply'}</span>
               </button>
             </div>
+          )}
+          <div className="flex items-center gap-2 px-3 py-3">
+            <Input
+              placeholder="Enter coupon code"
+              value={couponInput}
+              onChange={(e) => setCouponInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (couponInput.trim() && !applyingCoupon) handleApplyCoupon();
+                }
+              }}
+              autoCapitalize="characters"
+              autoComplete="off"
+              className="h-10 flex-1 bg-background"
+            />
+            <button
+              type="button"
+              disabled={applyingCoupon || !couponInput.trim()}
+              onClick={handleApplyCoupon}
+              className="shrink-0 px-2 text-sm font-bold text-primary disabled:text-muted-foreground"
+            >
+              {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+            </button>
           </div>
-        )
+          {couponError && <p className="px-3 pb-2 text-xs text-destructive">{couponError}</p>}
+          <button
+            type="button"
+            onClick={() => setOffersOpen(true)}
+            className="flex w-full items-center gap-0.5 border-t border-secondary/30 px-3 py-2 text-xs font-semibold text-secondary hover:underline"
+          >
+            View all coupons <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
       )}
 
       {/* Coupons & Offers sheet — opened by every "View all coupons" link.
