@@ -18,6 +18,9 @@ import {
   MapPin,
   Truck,
   Undo2,
+  Check,
+  Receipt,
+  Percent,
 } from 'lucide-react';
 import {
   useCart,
@@ -30,7 +33,7 @@ import { useAuth } from '@/lib/auth-context';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { fireGtagEvent } from '@/lib/gtag-track';
 import { formatINR, discountPct } from '@/lib/format';
-import { fetchProductPageCoupons, computeItemCouponDiscount, Coupon } from '@/lib/coupons-api';
+import { fetchCartCoupons, computeItemCouponDiscount, Coupon } from '@/lib/coupons-api';
 import { validateGiftCard, GiftCard } from '@/lib/giftcards-api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,6 +97,29 @@ function estimateDelivery(pincode: string, f: FulfillmentSettings) {
   return fmtDate(minDate) === fmtDate(maxDate)
     ? `By ${fmtDate(maxDate)}`
     : `${fmtDate(minDate)} – ${fmtDate(maxDate)}`;
+}
+
+/** Numbered section title shown above each card of the bag (1 Items, 2 Offers, 3 Price). */
+function SectionHeading({
+  n,
+  title,
+  right,
+}: {
+  n: number;
+  title: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-1">
+      <div className="flex items-center gap-2">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+          {n}
+        </span>
+        <h3 className="text-[13px] font-bold uppercase tracking-wide text-primary">{title}</h3>
+      </div>
+      {right}
+    </div>
+  );
 }
 
 export default function CartDrawer() {
@@ -164,18 +190,17 @@ export default function CartDrawer() {
   );
   const finalTotal = Math.max(0, subtotal - couponDiscount - bogoDiscount - clampedGiftCardDiscount);
 
-  // Coupons the admin has flagged "Show on Product Page" (Admin > Coupons)
-  // — surfaced here too, in the cart drawer, so a shopper who never
-  // visited a product page still sees offers they qualify for. Only
-  // fetched/shown while nothing is applied yet; once a coupon is active
-  // there's nothing to pick from.
+  // Coupons the admin has flagged "Show in Cart" (Admin > Coupons) —
+  // listed in the Coupons & Offers section so a shopper who never visited
+  // a product page still sees offers they qualify for. Only shown while
+  // nothing is applied yet; once a coupon is active there's nothing to pick.
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [applyingFromList, setApplyingFromList] = useState<string | null>(null);
 
   useEffect(() => {
     if (appliedCoupon) return;
     let cancelled = false;
-    fetchProductPageCoupons()
+    fetchCartCoupons()
       .then((c) => {
         if (!cancelled) setAvailableCoupons(c);
       })
@@ -583,16 +608,16 @@ export default function CartDrawer() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-2 border-b border-border/60 bg-card px-4 py-2">
+            <div className="flex gap-2 overflow-x-auto border-b border-border/60 bg-card px-4 py-2.5">
               {tabs.map((t) => (
                 <button
                   key={t.key}
                   type="button"
                   onClick={() => scrollToSection(t.key)}
-                  className={`rounded-full border px-3.5 py-1 text-xs font-semibold transition-colors ${
+                  className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors ${
                     activeTab === t.key
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                      ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                      : 'border-border bg-background text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {t.label}
@@ -604,7 +629,7 @@ export default function CartDrawer() {
             <div
               ref={scrollRef}
               onScroll={onBagScroll}
-              className="relative flex flex-1 flex-col gap-3 overflow-y-auto bg-muted/40 p-3"
+              className="relative flex flex-1 flex-col gap-4 overflow-y-auto bg-muted/60 p-3"
             >
               {totalFreeUnitsUnlocked > 0 && (
                 <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3">
@@ -659,7 +684,16 @@ export default function CartDrawer() {
               )}
 
               {/* ---------- ITEMS ---------- */}
-              <div ref={sectionRefs.items} className="flex flex-col gap-3">
+              <div ref={sectionRefs.items} className="flex flex-col gap-2.5">
+                <SectionHeading
+                  n={1}
+                  title="Your items"
+                  right={
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {count} item{count === 1 ? '' : 's'}
+                    </span>
+                  }
+                />
                 {items.map((item) => {
                   const mrp = item.product.mrp ?? item.product.price;
                   const rupeesOff = Math.max(0, mrp - item.product.price) * item.quantity;
@@ -678,7 +712,7 @@ export default function CartDrawer() {
                   return (
                     <div
                       key={`${item.product.id}-${item.size}-${color ?? ''}`}
-                      className="rounded-xl border border-border/60 bg-card p-3 shadow-sm"
+                      className="rounded-2xl border border-border/60 bg-card p-3 shadow-sm"
                     >
                       <div className="flex gap-3">
                         <Link
@@ -792,7 +826,7 @@ export default function CartDrawer() {
               </div>
 
               {!user && (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3">
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5">
                   <p className="text-sm text-foreground">
                     Login to see items from your existing bag and wishlist.
                   </p>
@@ -807,28 +841,44 @@ export default function CartDrawer() {
               )}
 
               {/* ---------- COUPONS & OFFERS ---------- */}
-              <div ref={sectionRefs.offers} className="rounded-xl border border-border/60 bg-card">
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
-                  <span className="text-sm font-bold">Coupons &amp; Offers</span>
-                  {!appliedCoupon && bestCouponSaving > 0 && (
-                    <span className="text-xs font-semibold text-emerald-700">
-                      Save up to {formatINR(bestCouponSaving)}
-                    </span>
-                  )}
-                </div>
+              <div ref={sectionRefs.offers} className="flex flex-col gap-2.5">
+                <SectionHeading
+                  n={2}
+                  title="Coupons & Offers"
+                  right={
+                    !appliedCoupon && bestCouponSaving > 0 ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                        Save up to {formatINR(bestCouponSaving)}
+                      </span>
+                    ) : undefined
+                  }
+                />
+              <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
 
                 {appliedCoupon ? (
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-secondary-foreground">
-                      <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code} applied
-                    </span>
+                  <div className="flex items-center justify-between gap-3 bg-emerald-50 px-4 py-3.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                        <Check className="h-4 w-4" strokeWidth={3} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-emerald-900">
+                          &quot;{appliedCoupon.code}&quot; applied
+                        </p>
+                        {couponDiscount > 0 && (
+                          <p className="text-xs font-medium text-emerald-700">
+                            You saved {formatINR(couponDiscount)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={handleRemoveCoupon}
                       aria-label="Remove coupon"
-                      className="text-muted-foreground hover:text-destructive"
+                      className="shrink-0 text-xs font-semibold text-muted-foreground hover:text-destructive"
                     >
-                      <X className="h-4 w-4" />
+                      Remove
                     </button>
                   </div>
                 ) : (
@@ -836,29 +886,35 @@ export default function CartDrawer() {
                     {availableCoupons.map((c) => (
                       <div
                         key={c.id}
-                        className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3"
+                        className="flex items-center justify-between gap-3 border-b border-dashed border-secondary/50 bg-gradient-to-r from-secondary/10 to-transparent px-4 py-3.5"
                       >
-                        <div className="min-w-0">
-                          <p className="flex flex-wrap items-center gap-x-2 text-sm font-bold text-primary">
-                            <Tag className="h-3.5 w-3.5 text-secondary" />
-                            <span className="font-mono tracking-wide">{c.code}</span>
-                            <span className="text-xs font-semibold text-secondary-foreground">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                            <Percent className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-primary">
                               {c.discount_type === 'percentage'
                                 ? `${c.discount_value}% OFF`
                                 : `Extra ${formatINR(c.discount_value)} OFF`}
-                            </span>
-                          </p>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {c.min_order_value > 0
-                              ? `On minimum purchase of ${formatINR(c.min_order_value)}`
-                              : 'No minimum order value'}
-                          </p>
+                            </p>
+                            <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                              <span className="rounded bg-secondary/25 px-1.5 py-0.5 font-mono font-bold tracking-wide text-primary">
+                                {c.code}
+                              </span>
+                              <span className="truncate">
+                                {c.min_order_value > 0
+                                  ? `Min. ${formatINR(c.min_order_value)}`
+                                  : 'No minimum'}
+                              </span>
+                            </p>
+                          </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleApplyFromList(c)}
                           disabled={applyingFromList === c.code}
-                          className="shrink-0 rounded-md border border-primary bg-background px-3.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+                          className="shrink-0 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
                         >
                           {applyingFromList === c.code ? 'Applying…' : 'Apply'}
                         </button>
@@ -869,7 +925,9 @@ export default function CartDrawer() {
                       onClick={() => setCouponPanelOpen((o) => !o)}
                       className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
                     >
-                      <span className="text-sm font-medium">Have a coupon code?</span>
+                      <span className="flex items-center gap-2 text-sm font-semibold">
+                        <Tag className="h-4 w-4 text-primary" /> Have a coupon code?
+                      </span>
                       {couponPanelOpen ? (
                         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                       ) : (
@@ -927,7 +985,7 @@ export default function CartDrawer() {
                       onClick={() => setGiftCardPanelOpen((o) => !o)}
                       className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
                     >
-                      <span className="flex items-center gap-2 text-sm font-medium">
+                      <span className="flex items-center gap-2 text-sm font-semibold">
                         <Gift className="h-4 w-4 text-primary" /> Redeem gift card
                       </span>
                       {giftCardPanelOpen ? (
@@ -961,13 +1019,19 @@ export default function CartDrawer() {
                   )}
                 </div>
               </div>
+              </div>
 
               {/* You may also like (admin-configured bump product; hidden when off) */}
               <CartBump compact />
 
               {/* ---------- PRICE DETAILS ---------- */}
-              <div ref={sectionRefs.price} className="rounded-xl border border-border/60 bg-card">
-                <div className="px-4 pt-3.5 text-sm font-bold">Price Details ({count} item{count === 1 ? '' : 's'})</div>
+              <div ref={sectionRefs.price} className="flex flex-col gap-2.5">
+                <SectionHeading
+                  n={3}
+                  title={`Price Details (${count} item${count === 1 ? '' : 's'})`}
+                  right={<Receipt className="h-4 w-4 text-primary/70" />}
+                />
+              <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
                 <div className="flex flex-col gap-2.5 p-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total MRP</span>
@@ -1015,7 +1079,7 @@ export default function CartDrawer() {
                     </div>
                   )}
                   <Separator />
-                  <div className="flex items-center justify-between font-serif text-base font-bold">
+                  <div className="-mx-1 flex items-center justify-between rounded-lg bg-primary/5 px-3 py-2.5 font-serif text-base font-bold">
                     <span>Total Amount</span>
                     <span className="text-primary">{formatINR(finalTotal)}</span>
                   </div>
@@ -1026,6 +1090,7 @@ export default function CartDrawer() {
                     You&apos;re saving {formatINR(totalSavings)} on this order
                   </p>
                 )}
+              </div>
               </div>
 
               <Link

@@ -13,6 +13,7 @@ export interface Coupon {
   is_active: boolean;
   show_on_product_page: boolean;
   show_on_checkout: boolean;
+  show_on_cart: boolean;
   show_in_google_promotions: boolean;
   created_at?: string;
 }
@@ -45,6 +46,7 @@ export interface CouponInput {
   is_active: boolean;
   show_on_product_page: boolean;
   show_on_checkout: boolean;
+  show_on_cart: boolean;
   show_in_google_promotions: boolean;
 }
 
@@ -87,6 +89,13 @@ export async function setCouponShowOnProductPage(id: string, show_on_product_pag
   await adminCouponRequest(`/api/admin/coupons/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ show_on_product_page }),
+  });
+}
+
+export async function setCouponShowOnCart(id: string, show_on_cart: boolean) {
+  await adminCouponRequest(`/api/admin/coupons/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ show_on_cart }),
   });
 }
 
@@ -205,6 +214,29 @@ export async function fetchCheckoutCoupons(): Promise<Coupon[]> {
     .select('*')
     .eq('is_active', true)
     .eq('show_on_checkout', true)
+    .order('discount_value', { ascending: false });
+  if (error) return fetchProductPageCoupons();
+
+  const now = Date.now();
+  return ((data ?? []) as Coupon[]).filter(
+    (c) =>
+      (!c.expires_at || new Date(c.expires_at).getTime() > now) &&
+      (c.usage_limit === null || c.times_used < c.usage_limit)
+  );
+}
+
+/**
+ * Coupons an admin has flagged "Show in Cart" (Admin > Coupons) -- the list
+ * inside the side cart / shopping bag. Same active / not-expired /
+ * not-exhausted rules. If the `show_on_cart` column doesn't exist yet
+ * (migration not run) it falls back to the product-page list.
+ */
+export async function fetchCartCoupons(): Promise<Coupon[]> {
+  const { data, error } = await supabase
+    .from('coupons')
+    .select('*')
+    .eq('is_active', true)
+    .eq('show_on_cart', true)
     .order('discount_value', { ascending: false });
   if (error) return fetchProductPageCoupons();
 
