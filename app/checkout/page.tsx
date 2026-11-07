@@ -21,7 +21,8 @@ import { formatINR } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { validateGiftCard, GiftCard } from '@/lib/giftcards-api';
-import { computeCouponDiscount, fetchProductPageCoupons, Coupon } from '@/lib/coupons-api';
+import { computeCouponDiscount, Coupon } from '@/lib/coupons-api';
+import { fetchCheckoutCoupons } from '@/lib/checkout-coupons';
 import { fetchAddresses } from '@/lib/addresses-api';
 import { Address } from '@/lib/types';
 import { joinResellerProgram, fetchMyResellerOverview } from '@/lib/reseller-api';
@@ -646,7 +647,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (appliedCoupon) return;
     let cancelled = false;
-    fetchProductPageCoupons()
+    fetchCheckoutCoupons()
       .then((c) => {
         if (!cancelled) setAvailableCoupons(c);
       })
