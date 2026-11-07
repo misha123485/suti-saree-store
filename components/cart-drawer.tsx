@@ -836,17 +836,26 @@ export default function CartDrawer() {
               </div>
 
               {!user && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5">
+                <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5">
                   <p className="text-sm text-foreground">
                     Login to see items from your existing bag and wishlist.
                   </p>
-                  <Link
-                    href="/login"
-                    onClick={() => setCartOpen(false)}
-                    className="shrink-0 text-xs font-bold tracking-wide text-primary"
-                  >
-                    LOGIN NOW
-                  </Link>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link
+                      href="/login"
+                      onClick={() => setCartOpen(false)}
+                      className="rounded-lg bg-primary px-3 py-2 text-center text-xs font-bold tracking-wide text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
+                    >
+                      LOGIN NOW
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setCartOpen(false)}
+                      className="rounded-lg border border-primary bg-background px-3 py-2 text-center text-xs font-bold tracking-wide text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                    >
+                      SIGN UP
+                    </Link>
+                  </div>
                 </div>
               )}
 

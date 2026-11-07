@@ -1257,6 +1257,11 @@ export default function CheckoutPage() {
     router.push('/login?next=/checkout');
   };
 
+  const goToSignupFromCheckout = () => {
+    saveAddressDraft(false);
+    router.push('/signup?next=/checkout');
+  };
+
   const goToResaleSignup = () => {
     saveAddressDraft();
     setShowResaleLoginPrompt(false);
@@ -2822,10 +2827,10 @@ export default function CheckoutPage() {
           {/* Login status — always shown, whether the saved-address summary
               or the editable guest form is what's displayed below it. */}
           <section
-            className={`mb-3 flex items-center justify-between gap-3 ${
+            className={`mb-3 ${
               user
-                ? 'rounded-lg border border-green-200 bg-green-50 p-4'
-                : 'px-1 text-xs'
+                ? 'flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-4'
+                : 'rounded-xl border border-primary/20 bg-primary/5 p-3.5'
             }`}
           >
             {user ? (
@@ -2833,18 +2838,27 @@ export default function CheckoutPage() {
                 ✓ Logged in as {user.email}
               </span>
             ) : (
-              <>
-                <span className="text-xs text-muted-foreground">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-xs text-muted-foreground sm:text-sm">
                   Checking out as a guest — no account needed.
                 </span>
-                <button
-                  type="button"
-                  onClick={goToLoginFromCheckout}
-                  className="shrink-0 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-secondary"
-                >
-                  Have an account? Log in
-                </button>
-              </>
+                <div className="grid shrink-0 grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={goToLoginFromCheckout}
+                    className="rounded-lg border border-primary bg-background px-3 py-2 text-center text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Have an account? Log in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToSignupFromCheckout}
+                    className="rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
+                  >
+                    Sign up
+                  </button>
+                </div>
+              </div>
             )}
           </section>
 
