@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import PaymentPendingBanner from '@/components/order/payment-pending-banner';
 import { toPublicMediaUrl } from '@/lib/media-url';
+import DeliveredItemReview from '@/components/account/delivered-item-review';
 import { listMyLegacyOrders, type MyLegacyOrder } from '@/lib/legacy-orders-customer';
 
 const STATUS_VARIANT: Record<string, string> = {
@@ -155,6 +156,23 @@ export default async function OrdersPage() {
                     </div>
                   </div>
                 </Link>
+
+                {order.status === 'delivered' && !isResellerOrder && (
+                  <div className="mt-3 space-y-2">
+                    {Array.from(
+                      new Map(
+                        (Array.isArray(order.items) ? order.items : [])
+                          .filter((it: any) => it?.product_id)
+                          .map((it: any) => [it.product_id, it])
+                      ).values()
+                    ).map((it: any) => (
+                      <div key={it.product_id}>
+                        <p className="truncate text-xs font-medium text-foreground">{it.product_name}</p>
+                        <DeliveredItemReview productId={it.product_id} productName={it.product_name} />
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {isUnpaidPending && (
                   <div className="mt-3">

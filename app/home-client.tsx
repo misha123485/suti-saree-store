@@ -14,6 +14,7 @@ import ProductCard from '@/components/product-card';
 import DiscoverProductsSection from '@/components/home/discover-products-section';
 import { expandProductVariants } from '@/lib/expand-product-variants';
 import CouponStrip from '@/components/home/coupon-strip';
+import ReviewPromptBanner from '@/components/home/review-prompt-banner';
 import PromoSlider from '@/components/home/promo-slider';
 import HomepageGrid from '@/components/home/homepage-grid';
 import AppCategoryBar from '@/components/home/app-category-bar';
@@ -119,6 +120,9 @@ export default function HomeClient({
 
   return (
     <div className="flex flex-col">
+      {/* Logged-in customer's latest delivered order, if not yet rated */}
+      <ReviewPromptBanner />
+
       {appLayout.enabled && <AppCategoryBar items={primaryItems} layout={appLayout} />}
 
       {/* Hero */}
