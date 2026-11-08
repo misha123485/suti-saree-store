@@ -90,6 +90,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import OfferDisplayPanel from '@/components/admin/offer-display-panel';
+import CheckoutButtonsPanel from '@/components/admin/checkout-buttons-panel';
 import GalleryOverlaysCard from '@/components/admin/gallery-overlays-card';
 import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
 import {
@@ -1783,6 +1784,16 @@ export default function SettingsPanel() {
           the simple online-payment pill.
         </p>
         <OfferDisplayPanel />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Pay Buttons</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Show or hide the Pay Online / Cash on Delivery button under the payment options, and the
+          sticky bottom pay button on mobile. Whichever payment method the customer selects, that
+          method&apos;s button is the one shown.
+        </p>
+        <CheckoutButtonsPanel />
       </div>
 
       <div className="mt-8">

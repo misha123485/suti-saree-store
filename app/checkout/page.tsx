@@ -92,6 +92,12 @@ import {
   type PartialPaySettings,
 } from '@/lib/partial-pay';
 import StickyOrderBar from '@/components/checkout/sticky-order-bar';
+import {
+  DEFAULT_CHECKOUT_BUTTONS_SETTINGS,
+  fetchCheckoutButtonsSettings,
+  resolveCheckoutButtons,
+  type CheckoutButtonsSettings,
+} from '@/lib/checkout-buttons-settings';
 import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
 import { useForceMobileRepaint } from '@/hooks/use-force-mobile-repaint';
 import { usePaymentGateway } from '@/hooks/use-payment-gateway';
@@ -292,6 +298,22 @@ export default function CheckoutPage() {
   // online payment") refers to, so the customer never sees the price jump up at checkout.
   // COD stays one tap away and is never hidden.
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('online');
+  // Admin > Settings > Checkout Pay Buttons (payment-section buttons +
+  // mobile sticky button). Defaults to both ON until the setting loads.
+  const [checkoutButtons, setCheckoutButtons] = useState<CheckoutButtonsSettings>(
+    DEFAULT_CHECKOUT_BUTTONS_SETTINGS
+  );
+  useEffect(() => {
+    let cancelled = false;
+    fetchCheckoutButtonsSettings()
+      .then((s) => {
+        if (!cancelled) setCheckoutButtons(resolveCheckoutButtons(s));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Partial Pay (advance online, rest on delivery) -- switched on/off and sized in Admin > Settings.
   const [partialPaySettings, setPartialPaySettings] = useState<PartialPaySettings>(DEFAULT_PARTIAL_PAY_SETTINGS);
   useEffect(() => {
@@ -3154,6 +3176,39 @@ export default function CheckoutPage() {
               codTotal={codTotalDisplay}
             />
             )}
+
+            {/* Pay Online / COD buttons -- only the button of the selected
+                method is shown (Admin > Settings > Checkout Pay Buttons). */}
+            {checkoutButtons.payment_buttons_enabled && (
+              <Button
+                type="submit"
+                size="lg"
+                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
+                className="mt-4 h-12 w-full bg-primary text-base"
+              >
+                {placing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : paymentMethod === 'cod' ? (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Place Order (COD) — {formatINR(payableTotal)}
+                  </>
+                ) : paymentMethod === 'partial' && partialOption ? (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Pay advance — {formatINR(partialOption.advance)}
+                  </>
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Pay securely — {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
+                  </>
+                )}
+              </Button>
+            )}
           </section>
         </div>
 
@@ -3805,7 +3860,7 @@ export default function CheckoutPage() {
             {/* Mobile: pay button always visible at the bottom of the screen.
                 Rendered in a portal on <body> so no parent (transform/overflow)
                 can break position:fixed; it still submits the form via form="". */}
-            {barMounted && !phoneSheetActive && createPortal(
+            {barMounted && !phoneSheetActive && checkoutButtons.sticky_button_enabled && createPortal(
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
               {totalSavings > 0 && (
                 <button
