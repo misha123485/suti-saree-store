@@ -7,8 +7,11 @@ import { supabase } from './supabase';
 //   payment_buttons_enabled: the button shown right under the payment
 //     options (Pay Online / Cash on Delivery). Only the button of the
 //     CURRENTLY SELECTED method is shown.
-//   sticky_button_enabled: the mobile bottom (sticky) bar with the price
-//     and the pay button.
+//   sticky_button_enabled: the pay button inside the mobile bottom
+//     (sticky) bar.
+//   sticky_price_bar_enabled: the price part of that bar -- the total,
+//     "View price details" and the green "You'll save" strip. Independent
+//     of the sticky button: either, both or neither can be shown.
 //
 // Both default to ON. Safety net (see resolveCheckoutButtons): on mobile
 // there must always be at least one way to place the order, so if the
@@ -17,11 +20,13 @@ import { supabase } from './supabase';
 export interface CheckoutButtonsSettings {
   payment_buttons_enabled: boolean;
   sticky_button_enabled: boolean;
+  sticky_price_bar_enabled: boolean;
 }
 
 export const DEFAULT_CHECKOUT_BUTTONS_SETTINGS: CheckoutButtonsSettings = {
   payment_buttons_enabled: true,
   sticky_button_enabled: true,
+  sticky_price_bar_enabled: true,
 };
 
 export function resolveCheckoutButtons(s: CheckoutButtonsSettings): CheckoutButtonsSettings {
@@ -43,6 +48,8 @@ export async function fetchCheckoutButtonsSettings(): Promise<CheckoutButtonsSet
     payment_buttons_enabled:
       typeof v.payment_buttons_enabled === 'boolean' ? v.payment_buttons_enabled : true,
     sticky_button_enabled: typeof v.sticky_button_enabled === 'boolean' ? v.sticky_button_enabled : true,
+    sticky_price_bar_enabled:
+      typeof v.sticky_price_bar_enabled === 'boolean' ? v.sticky_price_bar_enabled : true,
   };
 }
 

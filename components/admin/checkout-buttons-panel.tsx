@@ -82,9 +82,16 @@ export default function CheckoutButtonsPanel() {
         checked={form.sticky_button_enabled}
         onChange={(v) => setForm((f) => (f ? { ...f, sticky_button_enabled: v } : f))}
       />
+      <ToggleRow
+        id="checkout-sticky-price-bar"
+        label="Sticky price bar (mobile)"
+        hint="ON = total price, “View price details” and the “You'll save ₹X” strip at the bottom. Works with or without the sticky button."
+        checked={form.sticky_price_bar_enabled}
+        onChange={(v) => setForm((f) => (f ? { ...f, sticky_price_bar_enabled: v } : f))}
+      />
       {bothOff && (
         <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-          Both are OFF. So customers can still order on mobile, the sticky bottom button will stay ON.
+          Payment buttons and sticky button are both OFF. So customers can still order on mobile, the sticky button will stay ON.
         </p>
       )}
       <Button type="button" onClick={save} disabled={saving} className="mt-2 w-fit bg-primary">

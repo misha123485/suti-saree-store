@@ -3860,9 +3860,9 @@ export default function CheckoutPage() {
             {/* Mobile: pay button always visible at the bottom of the screen.
                 Rendered in a portal on <body> so no parent (transform/overflow)
                 can break position:fixed; it still submits the form via form="". */}
-            {barMounted && !phoneSheetActive && checkoutButtons.sticky_button_enabled && createPortal(
+            {barMounted && !phoneSheetActive && (checkoutButtons.sticky_button_enabled || checkoutButtons.sticky_price_bar_enabled) && createPortal(
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
-              {totalSavings > 0 && (
+              {checkoutButtons.sticky_price_bar_enabled && totalSavings > 0 && (
                 <button
                   type="button"
                   onClick={() => setPriceSheetOpen(true)}
@@ -3873,6 +3873,7 @@ export default function CheckoutPage() {
                 </button>
               )}
               <div className="flex items-center gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+              {checkoutButtons.sticky_price_bar_enabled && (
               <div className="shrink-0">
                 <p className="font-serif text-xl font-bold leading-tight text-primary">
                   {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
@@ -3885,6 +3886,8 @@ export default function CheckoutPage() {
                   View price details
                 </button>
               </div>
+              )}
+              {checkoutButtons.sticky_button_enabled && (
               <Button
                 type="submit"
                 form="checkout-form"
@@ -3914,6 +3917,7 @@ export default function CheckoutPage() {
                 </>
               )}
               </Button>
+              )}
               </div>
             </div>,
             document.body
