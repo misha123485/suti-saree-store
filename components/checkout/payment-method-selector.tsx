@@ -69,6 +69,10 @@ interface PaymentMethodSelectorProps {
   onlineTotal: number;
   /** Final amount if the customer chooses COD. */
   codTotal: number;
+  /** Pay button (Admin > Settings > Checkout Pay Buttons). Rendered INSIDE
+   *  the card of whichever method is currently selected, so the customer
+   *  sees at a glance whether it is the online or the COD button. */
+  action?: React.ReactNode;
 }
 
 function RadioDot({ selected }: { selected: boolean }) {
@@ -151,22 +155,34 @@ export default function PaymentMethodSelector({
   savings,
   onlineTotal,
   codTotal,
+  action,
 }: PaymentMethodSelectorProps) {
   const online = value === 'online';
   const cod = value === 'cod';
   const part = value === 'partial';
   const hasSavings = savings > 0;
 
+  // The selected card and its button read as ONE box: the card loses its
+  // bottom border/radius and the action strip continues the same outline.
+  const joined = (selected: boolean) => (selected && action ? 'rounded-b-none border-b-0' : '');
+  const actionSlot = (selected: boolean) =>
+    selected && action ? (
+      <div className="rounded-b-xl border border-t-0 border-primary bg-primary/[0.035] px-3.5 pb-3 pt-1 shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]">
+        {action}
+      </div>
+    ) : null;
+
   return (
     <div role="radiogroup" aria-label="Payment method" className="flex flex-col gap-2.5">
       {/* ───────── Pay Online (recommended) ───────── */}
       {onlineAvailable && (
+      <div>
       <button
         type="button"
         role="radio"
         aria-checked={online}
         onClick={() => onChange('online')}
-        className={`${cardBase} ${online ? cardOn : 'border-primary/40 hover:border-primary'}`}
+        className={`${cardBase} ${online ? cardOn : 'border-primary/40 hover:border-primary'} ${joined(online)}`}
       >
         <span className="flex items-center gap-3">
           <RadioDot selected={online} />
@@ -215,16 +231,19 @@ export default function PaymentMethodSelector({
         </span>
 
       </button>
+      {actionSlot(online)}
+      </div>
       )}
 
       {/* ───────── Partial Pay (advance online, rest on delivery) ───────── */}
       {onlineAvailable && partial && (
+        <div>
         <button
           type="button"
           role="radio"
           aria-checked={part}
           onClick={() => onChange('partial')}
-          className={`${cardBase} ${part ? cardOn : cardOff}`}
+          className={`${cardBase} ${part ? cardOn : cardOff} ${joined(part)}`}
         >
           <span className="flex items-center gap-3">
             <RadioDot selected={part} />
@@ -292,6 +311,8 @@ export default function PaymentMethodSelector({
             </span>
           </Expand>
         </button>
+        {actionSlot(part)}
+        </div>
       )}
 
       {/* ───────── Cash on Delivery ───────── */}
@@ -301,7 +322,7 @@ export default function PaymentMethodSelector({
           role="radio"
           aria-checked={cod}
           onClick={() => onChange('cod')}
-          className={`${cardBase} ${cod ? cardOn : cardOff}`}
+          className={`${cardBase} ${cod ? cardOn : cardOff} ${joined(cod)}`}
         >
           <span className="flex items-center gap-3">
             <RadioDot selected={cod} />
@@ -331,6 +352,7 @@ export default function PaymentMethodSelector({
           </span>
 
         </button>
+        {actionSlot(cod)}
 
         {/* Separate button (not nested inside the card button) */}
         {cod && hasSavings && onlineAvailable && (

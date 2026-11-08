@@ -2281,6 +2281,39 @@ export default function CheckoutPage() {
     </>
   );
 
+  // Pay button for the payment section (Admin > Settings > Checkout Pay Buttons).
+  // Shown inside the selected method's card: Pay Online or Cash on Delivery.
+  const payButtonNode = checkoutButtons.payment_buttons_enabled ? (
+    <Button
+                type="submit"
+                size="lg"
+                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
+                className="h-12 w-full bg-primary text-base"
+              >
+                {placing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : paymentMethod === 'cod' ? (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Place Order (COD) — {formatINR(payableTotal)}
+                  </>
+                ) : paymentMethod === 'partial' && partialOption ? (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Pay advance — {formatINR(partialOption.advance)}
+                  </>
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Pay securely — {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
+                  </>
+                )}
+              </Button>
+  ) : null;
+
   return (
     <>
       {phoneSheetActive && (
@@ -3174,41 +3207,13 @@ export default function CheckoutPage() {
               savings={onlineSavingsDisplay}
               onlineTotal={onlineTotalDisplay}
               codTotal={codTotalDisplay}
+              action={payButtonNode}
             />
             )}
 
-            {/* Pay Online / COD buttons -- only the button of the selected
-                method is shown (Admin > Settings > Checkout Pay Buttons). */}
-            {checkoutButtons.payment_buttons_enabled && (
-              <Button
-                type="submit"
-                size="lg"
-                disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
-                className="mt-4 h-12 w-full bg-primary text-base"
-              >
-                {placing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : paymentMethod === 'cod' ? (
-                  <>
-                    <Wallet className="mr-2 h-4 w-4" />
-                    Place Order (COD) — {formatINR(payableTotal)}
-                  </>
-                ) : paymentMethod === 'partial' && partialOption ? (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Pay advance — {formatINR(partialOption.advance)}
-                  </>
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Pay securely — {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
-                  </>
-                )}
-              </Button>
-            )}
+            {/* International orders have no method picker, so the button sits here. */}
+            {isIntl && payButtonNode && <div className="mt-4">{payButtonNode}</div>}
+
           </section>
         </div>
 
