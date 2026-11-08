@@ -417,6 +417,8 @@ export default function ReviewsPanel() {
                 ['showPhotoGallery', 'Show "Photos from customers" strip'],
                 ['showFilters', 'Show filters and sort menu'],
                 ['showColorFilter', 'Show variation (colour) filter'],
+                ['allowGuestReviews', 'Allow reviews without login (guest reviews)'],
+                ['autoPublishGuestReviews', 'Auto-publish guest reviews (off = wait for my approval)'],
               ] as [keyof ReviewDisplaySettings, string][]).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm">
                   <input

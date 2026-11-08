@@ -4,6 +4,7 @@ import { getSupabaseServer } from '@/lib/supabase-server-auth';
 import { uploadToStorage } from '@/lib/storage';
 import { storeBlurPreview } from '@/lib/blur-preview';
 import { verifyReviewToken } from '@/lib/review-link-tokens';
+import { rateLimit, clientIp } from '@/lib/simple-rate-limit';
 
 // ---------------------------------------------------------------------
 // POST /api/upload-review-photo
@@ -46,6 +47,16 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     authorized = Boolean(user);
   }
+  // Guest reviews on the product page (no login): allowed, but rate limited
+  // per IP and with a smaller size cap, since anyone can reach this.
+  let guestUpload = false;
+  if (!authorized && form.get('guestReview') === '1') {
+    if (!rateLimit(`review-photo:${clientIp(req)}`, 12, 60 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many uploads. Please try again later.' }, { status: 429 });
+    }
+    authorized = true;
+    guestUpload = true;
+  }
   if (!authorized) {
     return NextResponse.json({ error: 'Please log in to upload review photos.' }, { status: 401 });
   }
@@ -54,8 +65,8 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: 'Photo is too large (max 10MB).' }, { status: 400 });
+  if (file.size > (guestUpload ? 6 * 1024 * 1024 : MAX_BYTES)) {
+    return NextResponse.json({ error: `Photo is too large (max ${guestUpload ? 6 : 10}MB).` }, { status: 400 });
   }
   if (file.type && !ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json({ error: 'Unsupported image type.' }, { status: 400 });

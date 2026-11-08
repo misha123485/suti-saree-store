@@ -17,6 +17,8 @@ import {
   hasWrittenContent,
   scheduleAutoPublish,
   submitReview,
+  submitGuestReview,
+  uploadGuestReviewPhoto,
   summarizeReviews,
   updateMyReview,
   uploadReviewPhoto,
@@ -982,6 +984,21 @@ export default function ReviewsSection({
   const [focusReviewId, setFocusReviewId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement | null>(null);
 
+  // ---- Guest (no login) review ----
+  const [guestMode, setGuestMode] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestHoneypot, setGuestHoneypot] = useState('');
+  const [guestDone, setGuestDone] = useState<null | { published: boolean }>(null);
+  const guestKey = `sutisaree_guest_review_${productId}`;
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(guestKey)) setGuestDone({ published: false });
+    } catch {
+      /* storage unavailable */
+    }
+  }, [guestKey]);
+
   const MAX_PHOTOS = 4;
 
   const toggleHelpful = (reviewId: string) => {
@@ -1153,6 +1170,53 @@ export default function ReviewsSection({
     setPhotoFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleSubmitGuest = async () => {
+    if (rating === 0) {
+      toast.error('Please select a star rating');
+      return;
+    }
+    if (guestName.trim().length < 2) {
+      toast.error('Please enter your name');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      let photos: string[] = [];
+      if (photoFiles.length > 0) {
+        photos = await Promise.all(photoFiles.map((f) => uploadGuestReviewPhoto(f)));
+      }
+      const result = await submitGuestReview({
+        productId,
+        rating,
+        name: guestName.trim(),
+        email: guestEmail.trim() || undefined,
+        title: title.trim() || undefined,
+        comment: comment.trim() || undefined,
+        photos,
+        color: selectedColor || undefined,
+        website: guestHoneypot,
+      });
+      try {
+        window.localStorage.setItem(guestKey, '1');
+      } catch {
+        /* ignore */
+      }
+      setGuestDone(result);
+      setFormOpen(false);
+      setTitle('');
+      setComment('');
+      setPhotoFiles([]);
+      if (result.published) fetchApprovedReviews(productId).then(setReviews).catch(() => {});
+      toast.success(
+        result.published ? 'Thank you! Your review is now live.' : 'Thank you! Your review will appear after a quick check.'
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not submit your review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmitRating = async () => {
     if (rating === 0) {
       toast.error('Please select a star rating');
@@ -1202,11 +1266,28 @@ export default function ReviewsSection({
   };
 
   const openForm = () => {
+    // Not logged in (or logged in but never bought this): if the admin
+    // allows it, take the review right here as a guest -- no login wall.
+    if ((!user || !eligible) && settings.allowGuestReviews) {
+      if (guestDone) return;
+      setGuestMode(true);
+      if (user && !guestName) {
+        setGuestName(
+          ((user.user_metadata?.full_name as string | undefined) || user.email?.split('@')[0] || '').slice(0, 40)
+        );
+      }
+      setStep('rating');
+      setRating(0);
+      setFormOpen(true);
+      window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+      return;
+    }
     if (!user) {
       toast.info('Login to write a review');
       router.push(`/login?next=/product/${productSlug}`);
       return;
     }
+    setGuestMode(false);
     if (myReview && !hasWrittenContent(myReview)) {
       // Already rated -- go straight to the "add details" step.
       setRating(myReview.rating);
@@ -1221,14 +1302,21 @@ export default function ReviewsSection({
 
   // What the "write a review" button should say (null = nothing to offer).
   const writeCta: { label: string; onClick: () => void } | null =
-    myReview && hasWrittenContent(myReview)
+    guestDone
+      ? null
+      : myReview && hasWrittenContent(myReview)
       ? null
       : myReview
       ? { label: 'Add a written review', onClick: openForm }
       : { label: reviews.length === 0 ? 'Write the first review' : 'Rate this product', onClick: openForm };
 
   const statusNote =
-    myReview && hasWrittenContent(myReview) ? (
+    guestDone ? (
+      <div className="flex items-center gap-2 rounded-lg border border-emerald-200/60 bg-emerald-50/60 p-3 text-xs font-medium text-emerald-800">
+        <CheckCircle2 className="h-4 w-4 shrink-0" />
+        Thank you! {guestDone.published ? 'Your review is live.' : 'Your review will appear after a quick check.'}
+      </div>
+    ) : myReview && hasWrittenContent(myReview) ? (
       <div className="flex items-center gap-2 rounded-lg border border-emerald-200/60 bg-emerald-50/60 p-3 text-xs font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         {myReview.is_approved ? 'You reviewed this product.' : 'Your review is awaiting approval.'}
@@ -1340,7 +1428,7 @@ export default function ReviewsSection({
             </Button>
           )}
 
-          {user && !myReview && !eligible && (
+          {user && !myReview && !eligible && !settings.allowGuestReviews && (
             <p className="text-xs leading-relaxed text-muted-foreground">
               Only customers who have purchased this product can leave a review.
             </p>
@@ -1351,7 +1439,99 @@ export default function ReviewsSection({
         <div className="flex min-w-0 flex-col gap-4">
           {formOpen && (
             <div ref={formRef} className="rounded-2xl border border-border/60 bg-card p-5">
-              {step === 'rating' ? (
+              {guestMode ? (
+                <>
+                  <p className="mb-1 text-sm font-semibold">Rate &amp; review this product</p>
+                  <p className="mb-3 text-xs text-muted-foreground">No login needed. Tap a star and tell us what you think.</p>
+                  <StarPicker value={rating} onChange={setRating} />
+                  <Input
+                    className="mt-4"
+                    placeholder="Your name *"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    maxLength={40}
+                    autoComplete="name"
+                  />
+                  <Input
+                    className="mt-3"
+                    type="email"
+                    placeholder="Email (optional, never shown)"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    maxLength={120}
+                    autoComplete="email"
+                  />
+                  {/* Honeypot: hidden from people, bots tend to fill it. */}
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    value={guestHoneypot}
+                    onChange={(e) => setGuestHoneypot(e.target.value)}
+                    className="absolute -left-[9999px] h-0 w-0 opacity-0"
+                  />
+                  <Input
+                    className="mt-3"
+                    placeholder="Review title (optional)"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={100}
+                  />
+                  <Textarea
+                    className="mt-3"
+                    placeholder="Share details about the fabric, colour and quality... (optional)"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={4}
+                    maxLength={1000}
+                  />
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                      Add photos (optional) — {photoFiles.length}/{MAX_PHOTOS}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {photoPreviews.map((src, idx) => (
+                        <div key={idx} className="relative h-16 w-16 overflow-hidden rounded-md border border-border/60">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`Attached photo ${idx + 1}`} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(idx)}
+                            className="absolute right-0.5 top-0.5 rounded-full bg-background/90 p-0.5 text-destructive shadow-sm hover:bg-background"
+                            aria-label="Remove photo"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {photoFiles.length < MAX_PHOTOS && (
+                        <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-muted-foreground hover:border-primary/40 hover:text-primary">
+                          <ImagePlus className="h-5 w-5" />
+                          <span className="text-[10px]">Add</span>
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={onPickPhotos} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button onClick={handleSubmitGuest} disabled={submitting} className="bg-primary">
+                      {submitting ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Review'
+                      )}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setFormOpen(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              ) : step === 'rating' ? (
                 <>
                   <p className="mb-2 text-sm font-semibold">Rate this product</p>
                   <p className="mb-3 text-xs text-muted-foreground">

@@ -31,6 +31,10 @@ export interface ReviewDisplaySettings {
   defaultSort: ReviewSort;
   /** Review ids pinned to the top (and first in the photo strip). */
   featuredReviewIds: string[];
+  /** Let shoppers who are not logged in rate / review a product. */
+  allowGuestReviews: boolean;
+  /** Publish guest reviews right away. Off = they wait for admin approval. */
+  autoPublishGuestReviews: boolean;
 }
 
 export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
@@ -42,6 +46,8 @@ export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
   showColorFilter: true,
   defaultSort: 'newest',
   featuredReviewIds: [],
+  allowGuestReviews: true,
+  autoPublishGuestReviews: false,
 };
 
 const SORTS: ReviewSort[] = ['newest', 'highest', 'lowest', 'photos'];
@@ -69,5 +75,8 @@ export function mergeReviewDisplaySettings(
     showColorFilter: typeof v.showColorFilter === 'boolean' ? v.showColorFilter : d.showColorFilter,
     defaultSort: SORTS.includes(v.defaultSort as ReviewSort) ? (v.defaultSort as ReviewSort) : d.defaultSort,
     featuredReviewIds: ids.slice(0, 100),
+    allowGuestReviews: typeof v.allowGuestReviews === 'boolean' ? v.allowGuestReviews : d.allowGuestReviews,
+    autoPublishGuestReviews:
+      typeof v.autoPublishGuestReviews === 'boolean' ? v.autoPublishGuestReviews : d.autoPublishGuestReviews,
   };
 }

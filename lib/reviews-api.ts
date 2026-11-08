@@ -246,6 +246,45 @@ export async function uploadReviewPhoto(file: File): Promise<string> {
   return json.url as string;
 }
 
+/** Same as uploadReviewPhoto, for shoppers who are not logged in (guest review). */
+export async function uploadGuestReviewPhoto(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('guestReview', '1');
+  const res = await fetch('/api/upload-review-photo', { method: 'POST', body: form });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.error || 'Could not upload review photo.');
+  if (!json?.url) throw new Error('Upload succeeded but no URL returned.');
+  return json.url as string;
+}
+
+/**
+ * Rate / review WITHOUT logging in (server route /api/reviews/guest, which
+ * enforces the admin switch, spam checks and moderation). Never verified.
+ */
+export async function submitGuestReview(input: {
+  productId: string;
+  rating: number;
+  name: string;
+  email?: string;
+  title?: string;
+  comment?: string;
+  photos?: string[];
+  color?: string;
+  variantSlug?: string;
+  /** Honeypot -- must stay empty (hidden from real users). */
+  website?: string;
+}): Promise<{ published: boolean }> {
+  const res = await fetch('/api/reviews/guest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || 'Could not submit your review');
+  return { published: Boolean(json.published) };
+}
+
 export async function submitReview(input: {
   productId: string;
   rating: number;
