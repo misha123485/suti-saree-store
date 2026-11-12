@@ -170,6 +170,16 @@ export async function GET() {
     if (typeof shipping.flat_rate === 'number' && shipping.flat_rate >= 0) {
       row.shipping_price = money(shipping.flat_rate);
     }
+    // Review summary (NOT individual reviews -- OpenAI's feed only takes aggregates). products.rating /
+    // products.reviews are kept in sync with APPROVED reviews by a DB trigger, and the product page
+    // shows the same numbers. Only sent when there is at least one real review: no reviews means
+    // no rating (never a made-up value).
+    const reviewCount = Number(product.reviews) || 0;
+    const rating = Number(product.rating) || 0;
+    if (reviewCount > 0 && rating > 0 && rating <= 5) {
+      row.review_count = Math.floor(reviewCount);
+      row.star_rating = rating.toFixed(2);
+    }
     if (groupId) {
       row.group_id = groupId;
       row.listing_has_variations = true;
