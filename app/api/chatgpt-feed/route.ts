@@ -56,13 +56,23 @@ async function fetchVariantsForFeed(productIds: string[]): Promise<Map<string, F
   return byProduct;
 }
 
-/** OpenAI wants plain-text descriptions (max ~5000 chars). */
+/** OpenAI wants plain-text descriptions (max ~5000 chars). Line breaks are KEPT (a section like
+ *  "Key Features" stays on its own line); HTML tags are removed. */
 function plainText(input: string): string {
   return (input || '')
+    .replace(/\r\n?/g, '\n')
+    // block-level HTML -> line breaks, list items -> "- " bullets
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*li[^>]*>/gi, '\n- ')
+    .replace(/<\/\s*(p|div|h[1-6]|ul|ol|tr)\s*>/gi, '\n')
     .replace(/<[^>]*>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ')
+    // tidy: collapse spaces/tabs inside a line, trim each line, at most one blank line in a row
+    .split('\n')
+    .map((line) => line.replace(/[ \t\u00a0]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
