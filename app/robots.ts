@@ -14,12 +14,17 @@ export default function robots(): MetadataRoute.Robots {
     };
   }
 
-  const AI_BOTS = ['GPTBot', 'ChatGPT-User', 'CCBot', 'Bytespider', 'ClaudeBot', 'anthropic-ai', 'PerplexityBot', 'Amazonbot', 'Applebot-Extended', 'meta-externalagent', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot'];
+  const AI_BOTS = ['GPTBot', 'CCBot', 'Bytespider', 'ClaudeBot', 'anthropic-ai', 'PerplexityBot', 'Amazonbot', 'Applebot-Extended', 'meta-externalagent', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot'];
 
   return {
     rules: [
       // Heavy scrapers / AI crawlers: they burn serverless CPU for no sales.
       { userAgent: AI_BOTS, disallow: '/' },
+      // ChatGPT shopping/search: OAI-SearchBot (indexes pages for ChatGPT search) and ChatGPT-User
+      // (opens a page when a shopper asks about it) must be allowed, or ChatGPT cannot verify
+      // products. GPTBot (model-training crawler) stays blocked above.
+      { userAgent: 'OAI-SearchBot', allow: '/', disallow: PRIVATE_PATHS },
+      { userAgent: 'ChatGPT-User', allow: '/', disallow: PRIVATE_PATHS },
       // Merchant Center needs Googlebot (landing pages) AND Googlebot-Image (images).
       // AdsBot-Google ignores the '*' group, so it is listed explicitly too.
       { userAgent: 'Googlebot', allow: '/', disallow: PRIVATE_PATHS },
