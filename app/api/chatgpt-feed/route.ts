@@ -3,6 +3,7 @@ import { getServerSupabase } from '@/lib/supabase-server';
 import { fetchProductsServer } from '@/lib/products-api-server';
 import { fetchShippingSettings } from '@/lib/pincode-api';
 import { toPublicMediaUrls } from '@/lib/media-url';
+import { STORE_POLICY } from '@/lib/store-policy';
 import type { Product } from '@/lib/types';
 
 // ChatGPT (OpenAI) product feed -- JSONL, one JSON object per line, one line per purchasable
@@ -179,6 +180,12 @@ export async function GET() {
     if (product.material) row.material = product.material;
     if (typeof shipping.flat_rate === 'number' && shipping.flat_rate >= 0) {
       row.shipping_price = money(shipping.flat_rate);
+    }
+    // Returns -- same source of truth as the storefront / Google Merchant Center (lib/store-policy.ts).
+    if (STORE_POLICY.returnWindowDays > 0) {
+      row.accepts_returns = true;
+      row.return_deadline_in_days = STORE_POLICY.returnWindowDays;
+      row.return_policy = `${SITE_URL}/returns-exchange/`;
     }
     // Review summary (NOT individual reviews -- OpenAI's feed only takes aggregates). products.rating /
     // products.reviews are kept in sync with APPROVED reviews by a DB trigger, and the product page

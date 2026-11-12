@@ -1,0 +1,37 @@
+name: Push ChatGPT product feed (SFTP)
+
+# Runs once a day and can also be started by hand from the Actions tab.
+# Needs these repo secrets (Settings > Secrets and variables > Actions):
+#   OPENAI_SFTP_HOST, OPENAI_SFTP_USER, and OPENAI_SFTP_PASSWORD  (or OPENAI_SFTP_PRIVATE_KEY)
+# Optional: OPENAI_SFTP_PORT, OPENAI_SFTP_REMOTE_DIR, FEED_URL
+on:
+  schedule:
+    - cron: '30 21 * * *'   # 03:00 IST every day
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (validate only, do not upload)'
+        type: boolean
+        default: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install SFTP client (not added to package.json)
+        run: npm install --no-save --no-package-lock ssh2-sftp-client@11
+      - name: Validate and push feed
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
+          FEED_URL: ${{ secrets.FEED_URL }}
+          OPENAI_SFTP_HOST: ${{ secrets.OPENAI_SFTP_HOST }}
+          OPENAI_SFTP_PORT: ${{ secrets.OPENAI_SFTP_PORT }}
+          OPENAI_SFTP_USER: ${{ secrets.OPENAI_SFTP_USER }}
+          OPENAI_SFTP_PASSWORD: ${{ secrets.OPENAI_SFTP_PASSWORD }}
+          OPENAI_SFTP_PRIVATE_KEY: ${{ secrets.OPENAI_SFTP_PRIVATE_KEY }}
+          OPENAI_SFTP_REMOTE_DIR: ${{ secrets.OPENAI_SFTP_REMOTE_DIR }}
+        run: node scripts/push-chatgpt-feed.mjs
