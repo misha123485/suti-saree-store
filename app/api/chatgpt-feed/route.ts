@@ -123,7 +123,15 @@ export async function GET() {
     if (usedOptionKeys.has(optionKey)) return;
 
     // image_url is required -- a row without one would be rejected, so skip it.
-    const images = toPublicMediaUrls(rawImages).filter(Boolean) as string[];
+    // Legacy WordPress images are stored as relative paths ("/wp-content/uploads/...") -- OpenAI
+    // needs absolute URLs, so prefix the site origin. AVIF is the least widely supported format,
+    // so JPG/PNG/WebP images are listed first (the main image_url is the first one); AVIF is kept
+    // only as a fallback.
+    const absolute = (toPublicMediaUrls(rawImages).filter(Boolean) as string[]).map((u) =>
+      u.startsWith('/') ? `${SITE_URL}${u}` : u
+    );
+    const isAvif = (u: string) => /\.avif(\?|$)/i.test(u);
+    const images = [...absolute.filter((u) => !isAvif(u)), ...absolute.filter(isAvif)];
     if (images.length === 0 || price <= 0) return;
 
     usedItemIds.add(itemId);
