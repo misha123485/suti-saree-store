@@ -90,6 +90,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import OfferDisplayPanel from '@/components/admin/offer-display-panel';
+import TelegramNotifyCard from '@/components/admin/telegram-notify-card';
 import CheckoutButtonsPanel from '@/components/admin/checkout-buttons-panel';
 import GalleryOverlaysCard from '@/components/admin/gallery-overlays-card';
 import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
@@ -2143,6 +2144,8 @@ export default function SettingsPanel() {
           </form>
         </div>
       )}
+
+      <TelegramNotifyCard />
 
       <div className="mt-8">
         <h2 className="font-serif text-2xl font-bold text-primary">Product Page</h2>

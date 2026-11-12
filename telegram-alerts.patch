@@ -1,0 +1,590 @@
+diff --git a/app/api/admin/settings/telegram/route.ts b/app/api/admin/settings/telegram/route.ts
+new file mode 100644
+index 0000000..c3dee0a
+--- /dev/null
++++ b/app/api/admin/settings/telegram/route.ts
+@@ -0,0 +1,133 @@
++import { NextResponse } from 'next/server';
++import { cookies } from 'next/headers';
++import { verifyAdminToken, ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
++import { getSupabaseAdmin } from '@/lib/supabase-admin';
++import {
++  TELEGRAM_SETTINGS_KEY,
++  TELEGRAM_TOKEN_RE,
++  TELEGRAM_CHAT_ID_RE,
++  detectTelegramChatId,
++  getTelegramConfig,
++  maskToken,
++  readStoredTelegramSettings,
++  sendTelegramMessage,
++  type StoredTelegramSettings,
++} from '@/lib/telegram-notify';
++
++// Telegram bot token + chat id for the new-order phone alert.
++// The token is a secret: it lives in the RLS-locked `admin_private_settings` table and
++// this route NEVER returns it in full -- GET only gives a masked preview.
++
++export const dynamic = 'force-dynamic';
++
++async function requireAdmin() {
++  const cookie = cookies().get(ADMIN_SESSION_COOKIE)?.value ?? null;
++  const verified = await verifyAdminToken(cookie);
++  return verified.valid;
++}
++
++export async function GET() {
++  if (!(await requireAdmin())) {
++    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
++  }
++  const cfg = await getTelegramConfig();
++  return NextResponse.json({
++    enabled: cfg.enabled,
++    chat_id: cfg.chat_id,
++    token_set: !!cfg.bot_token,
++    token_masked: maskToken(cfg.bot_token),
++    token_source: cfg.token_source,
++    chat_source: cfg.chat_source,
++  });
++}
++
++export async function PUT(req: Request) {
++  if (!(await requireAdmin())) {
++    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
++  }
++  const body = (await req.json().catch(() => null)) as {
++    enabled?: boolean;
++    bot_token?: string;
++    chat_id?: string;
++  } | null;
++  if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
++
++  const next: StoredTelegramSettings = { ...(await readStoredTelegramSettings()) };
++
++  if (typeof body.enabled === 'boolean') next.enabled = body.enabled;
++
++  // Blank token = keep the saved one. Only a non-empty value replaces it.
++  const token = typeof body.bot_token === 'string' ? body.bot_token.trim() : '';
++  if (token) {
++    if (!TELEGRAM_TOKEN_RE.test(token)) {
++      return NextResponse.json(
++        { error: 'That does not look like a Telegram bot token (expected 123456789:AA...).' },
++        { status: 400 }
++      );
++    }
++    next.bot_token = token;
++  }
++
++  if (typeof body.chat_id === 'string') {
++    const chat = body.chat_id.trim();
++    if (chat && !TELEGRAM_CHAT_ID_RE.test(chat)) {
++      return NextResponse.json(
++        { error: 'Chat ID should be a number (e.g. 987654321) or @channelname.' },
++        { status: 400 }
++      );
++    }
++    next.chat_id = chat;
++  }
++
++  const { error } = await getSupabaseAdmin()
++    .from('admin_private_settings')
++    .upsert(
++      { key: TELEGRAM_SETTINGS_KEY, value: next, updated_at: new Date().toISOString() },
++      { onConflict: 'key' }
++    );
++  if (error) {
++    return NextResponse.json(
++      { error: 'Could not save. Did you run the Supabase migration for admin_private_settings?' },
++      { status: 500 }
++    );
++  }
++  return NextResponse.json({ ok: true });
++}
++
++// POST { action: 'test' | 'detect_chat_id', bot_token?, chat_id? }
++// Uses the values typed into the form if given, otherwise the saved ones.
++export async function POST(req: Request) {
++  if (!(await requireAdmin())) {
++    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
++  }
++  const body = (await req.json().catch(() => ({}))) as {
++    action?: string;
++    bot_token?: string;
++    chat_id?: string;
++  };
++  const cfg = await getTelegramConfig();
++  const typedToken = (body.bot_token || '').trim();
++  const token = typedToken || cfg.bot_token;
++  if (!token) {
++    return NextResponse.json({ error: 'Add a bot token first.' }, { status: 400 });
++  }
++  if (typedToken && !TELEGRAM_TOKEN_RE.test(typedToken)) {
++    return NextResponse.json({ error: 'That does not look like a Telegram bot token.' }, { status: 400 });
++  }
++
++  if (body.action === 'detect_chat_id') {
++    const r = await detectTelegramChatId(token);
++    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
++    return NextResponse.json({ chat_id: r.chat_id, label: r.label });
++  }
++
++  if (body.action === 'test') {
++    const chat = (body.chat_id || '').trim() || cfg.chat_id;
++    if (!chat) return NextResponse.json({ error: 'Add a Chat ID first.' }, { status: 400 });
++    const r = await sendTelegramMessage(token, chat, '✅ Test from your store admin. Telegram order alerts are working!');
++    if (!r.ok) return NextResponse.json({ error: r.error || 'Telegram rejected the message' }, { status: 502 });
++    return NextResponse.json({ success: true });
++  }
++
++  return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
++}
+diff --git a/components/admin/settings-panel.tsx b/components/admin/settings-panel.tsx
+index 39dffcd..10c6cd5 100644
+--- a/components/admin/settings-panel.tsx
++++ b/components/admin/settings-panel.tsx
+@@ -90,6 +90,7 @@ import { Label } from '@/components/ui/label';
+ import { Textarea } from '@/components/ui/textarea';
+ import { Switch } from '@/components/ui/switch';
+ import OfferDisplayPanel from '@/components/admin/offer-display-panel';
++import TelegramNotifyCard from '@/components/admin/telegram-notify-card';
+ import CheckoutButtonsPanel from '@/components/admin/checkout-buttons-panel';
+ import GalleryOverlaysCard from '@/components/admin/gallery-overlays-card';
+ import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
+@@ -2144,6 +2145,8 @@ export default function SettingsPanel() {
+         </div>
+       )}
+ 
++      <TelegramNotifyCard />
++
+       <div className="mt-8">
+         <h2 className="font-serif text-2xl font-bold text-primary">Product Page</h2>
+         <p className="mt-1 text-sm text-muted-foreground">
+diff --git a/components/admin/telegram-notify-card.tsx b/components/admin/telegram-notify-card.tsx
+new file mode 100644
+index 0000000..bc65b98
+--- /dev/null
++++ b/components/admin/telegram-notify-card.tsx
+@@ -0,0 +1,211 @@
++'use client';
++
++import { useEffect, useState } from 'react';
++import { Save, Loader2, Send, Search } from 'lucide-react';
++import { toast } from 'sonner';
++import { Button } from '@/components/ui/button';
++import { Input } from '@/components/ui/input';
++import { Label } from '@/components/ui/label';
++import { Switch } from '@/components/ui/switch';
++
++// Admin > Settings > "Telegram Order Alerts".
++// The saved bot token is never sent to the browser in full: the API returns a masked
++// preview (e.g. 1234••••••••abcd) which is shown as the input's placeholder. Leave the
++// field empty to keep the saved token; type/paste a new one to replace it.
++
++type TelegramState = {
++  enabled: boolean;
++  chat_id: string;
++  token_set: boolean;
++  token_masked: string;
++  token_source: 'admin' | 'env' | 'none';
++  chat_source: 'admin' | 'env' | 'none';
++};
++
++export default function TelegramNotifyCard() {
++  const [state, setState] = useState<TelegramState | null>(null);
++  const [tokenInput, setTokenInput] = useState('');
++  const [chatInput, setChatInput] = useState('');
++  const [saving, setSaving] = useState(false);
++  const [toggling, setToggling] = useState(false);
++  const [testing, setTesting] = useState(false);
++  const [detecting, setDetecting] = useState(false);
++
++  const load = async () => {
++    try {
++      const res = await fetch('/api/admin/settings/telegram', { cache: 'no-store' });
++      const d = await res.json();
++      if (!res.ok) throw new Error(d?.error || 'Failed');
++      setState(d);
++      setChatInput(d.chat_id || '');
++    } catch {
++      toast.error('Failed to load Telegram settings');
++    }
++  };
++
++  useEffect(() => {
++    load();
++  }, []);
++
++  const call = async (method: 'PUT' | 'POST', payload: Record<string, unknown>) => {
++    const res = await fetch('/api/admin/settings/telegram', {
++      method,
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(payload),
++    });
++    const d = await res.json().catch(() => ({}));
++    if (!res.ok) throw new Error(d?.error || 'Something went wrong');
++    return d;
++  };
++
++  const onToggle = async (checked: boolean) => {
++    if (!state) return;
++    setToggling(true);
++    try {
++      await call('PUT', { enabled: checked });
++      setState({ ...state, enabled: checked });
++      toast.success(checked ? 'Telegram alerts turned on' : 'Telegram alerts turned off');
++    } catch (err: any) {
++      toast.error(err.message);
++    } finally {
++      setToggling(false);
++    }
++  };
++
++  const onSave = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setSaving(true);
++    try {
++      await call('PUT', { bot_token: tokenInput.trim(), chat_id: chatInput.trim() });
++      setTokenInput('');
++      await load();
++      toast.success('Telegram settings saved');
++    } catch (err: any) {
++      toast.error(err.message);
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const onDetect = async () => {
++    setDetecting(true);
++    try {
++      const d = await call('POST', { action: 'detect_chat_id', bot_token: tokenInput.trim() });
++      setChatInput(d.chat_id);
++      toast.success(`Chat ID found${d.label ? ` (${d.label})` : ''}. Press Save.`);
++    } catch (err: any) {
++      toast.error(err.message);
++    } finally {
++      setDetecting(false);
++    }
++  };
++
++  const onTest = async () => {
++    setTesting(true);
++    try {
++      await call('POST', { action: 'test', bot_token: tokenInput.trim(), chat_id: chatInput.trim() });
++      toast.success('Test message sent. Check Telegram on your phone.');
++    } catch (err: any) {
++      toast.error(err.message);
++    } finally {
++      setTesting(false);
++    }
++  };
++
++  const tokenPlaceholder = state?.token_set
++    ? `${state.token_masked}  (saved${state.token_source === 'env' ? ' via server env' : ''}, type to replace)`
++    : '123456789:AAExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
++
++  return (
++    <>
++      <div className="mt-8">
++        <h2 className="font-serif text-2xl font-bold text-primary">Telegram Order Alerts</h2>
++        <p className="mt-1 text-sm text-muted-foreground">
++          Get an instant push notification on your phone (Telegram app) for every new order, even
++          when the admin panel is closed. Create a bot with @BotFather, paste its token here,
++          message your bot once, then press Detect Chat ID.
++        </p>
++      </div>
++
++      {!state ? (
++        <p className="py-4 text-sm text-muted-foreground">Loading…</p>
++      ) : (
++        <div className="mt-4 max-w-xl space-y-4 rounded-lg border border-border/60 bg-card p-5">
++          <div className="flex items-center justify-between gap-4">
++            <div>
++              <Label htmlFor="telegram-enabled">{state.enabled ? 'Alerts on' : 'Alerts off'}</Label>
++              <p className="text-xs text-muted-foreground">
++                {state.enabled
++                  ? 'On: every new order sends a Telegram message (once configured below).'
++                  : 'Off: no Telegram message is sent.'}
++              </p>
++            </div>
++            <Switch
++              id="telegram-enabled"
++              checked={state.enabled}
++              disabled={toggling}
++              onCheckedChange={onToggle}
++            />
++          </div>
++
++          <form onSubmit={onSave} className="flex flex-col gap-4 border-t border-border/60 pt-4">
++            <div className="flex flex-col gap-2">
++              <Label htmlFor="telegram-token">Bot token</Label>
++              <Input
++                id="telegram-token"
++                type="text"
++                autoComplete="off"
++                spellCheck={false}
++                placeholder={tokenPlaceholder}
++                value={tokenInput}
++                onChange={(e) => setTokenInput(e.target.value)}
++              />
++              <p className="text-xs text-muted-foreground">
++                Leave empty to keep the saved token. It is stored privately and never shown in full.
++              </p>
++            </div>
++
++            <div className="flex flex-col gap-2">
++              <Label htmlFor="telegram-chat">Chat ID</Label>
++              <div className="flex gap-2">
++                <Input
++                  id="telegram-chat"
++                  type="text"
++                  autoComplete="off"
++                  placeholder="987654321"
++                  value={chatInput}
++                  onChange={(e) => setChatInput(e.target.value)}
++                />
++                <Button
++                  type="button"
++                  variant="outline"
++                  onClick={onDetect}
++                  disabled={detecting || (!tokenInput.trim() && !state.token_set)}
++                  className="shrink-0"
++                >
++                  {detecting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Search className="mr-1.5 h-4 w-4" />}
++                  Detect Chat ID
++                </Button>
++              </div>
++            </div>
++
++            <div className="flex flex-wrap gap-2">
++              <Button type="submit" disabled={saving} className="bg-primary">
++                <Save className="mr-1.5 h-4 w-4" /> {saving ? 'Saving…' : 'Save'}
++              </Button>
++              <Button
++                type="button"
++                variant="outline"
++                onClick={onTest}
++                disabled={testing || (!tokenInput.trim() && !state.token_set) || (!chatInput.trim())}
++              >
++                {testing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}
++                Send test message
++              </Button>
++            </div>
++          </form>
++        </div>
++      )}
++    </>
++  );
++}
+diff --git a/lib/order-confirmation.ts b/lib/order-confirmation.ts
+index 2dff6d8..56ccbae 100644
+--- a/lib/order-confirmation.ts
++++ b/lib/order-confirmation.ts
+@@ -4,6 +4,7 @@ import { orderConfirmationEmail, newOrderAdminNotification } from './email-templ
+ import { codConfirmUrl, getOrCreateCodConfirmToken } from './cod-confirmation';
+ import { DEFAULT_LOYALTY_SETTINGS, type LoyaltySettings } from './loyalty-api';
+ import { DEFAULT_REFERRAL_SETTINGS, type ReferralSettings } from './referrals-api';
++import { getTelegramConfig, sendTelegramMessage } from './telegram-notify';
+ 
+ // Extracted out of app/api/order-confirm/route.ts so this exact logic can
+ // also be called server-side from app/api/razorpay/webhook/route.ts --
+@@ -151,6 +152,43 @@ export async function runOrderConfirmationSideEffects(orderId: string) {
+     console.error('[order-confirmation] Admin notification setup failed:', adminEmailErr);
+   }
+ 
++  // 1d. Telegram push to the admin's phone (once per order).
++  // Token / chat id come from Admin -> Settings -> Telegram Order Alerts
++  // (falls back to TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID env vars). Silently
++  // skipped if turned off or not configured. The telegram_notified_at claim
++  // makes this safe when this function runs more than once for the same order
++  // (client call + payment webhook): only one message is ever sent.
++  try {
++    const tg = await getTelegramConfig();
++    if (tg.enabled && tg.bot_token && tg.chat_id) {
++      const { data: claimed, error: claimErr } = await supabase
++        .from('orders')
++        .update({ telegram_notified_at: new Date().toISOString() })
++        .eq('id', order.id)
++        .is('telegram_notified_at', null)
++        .select('id');
++      if (claimErr) {
++        console.error('[order-confirmation] Telegram claim failed (run the Supabase migration?):', claimErr.message);
++      } else if (claimed && claimed.length > 0) {
++        const itemCount = Array.isArray(order.items) ? order.items.length : 0;
++        const text =
++          `🛍 New order #${String(order.id).slice(0, 8)}\n` +
++          `Total: ${order.total_amount}\n` +
++          `Items: ${itemCount}\n` +
++          `Payment: ${order.payment_method || '-'}\n` +
++          `${order.customer_name || ''} ${order.customer_phone || ''}`.trim();
++        const sent = await sendTelegramMessage(tg.bot_token, tg.chat_id, text);
++        if (!sent.ok) {
++          console.error('[order-confirmation] Telegram send failed:', sent.error);
++          // Release the claim so a later call can retry.
++          await supabase.from('orders').update({ telegram_notified_at: null }).eq('id', order.id);
++        }
++      }
++    }
++  } catch (tgErr) {
++    console.error('[order-confirmation] Telegram notify failed:', tgErr instanceof Error ? tgErr.message : 'unknown error');
++  }
++
+   // 2. Gift card redemption.
+   if (order.gift_card_code && order.gift_card_discount > 0) {
+     const { data: card } = await supabase
+diff --git a/lib/telegram-notify.ts b/lib/telegram-notify.ts
+new file mode 100644
+index 0000000..20ecf41
+--- /dev/null
++++ b/lib/telegram-notify.ts
+@@ -0,0 +1,126 @@
++// Server-only helpers for the Telegram new-order alert.
++//
++// The bot token is a secret. It is stored in the locked `admin_private_settings`
++// table (RLS on, no policies -> unreachable with the public anon key) and is never
++// sent back to the browser in full -- only a masked preview (see maskToken).
++// Falls back to the TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID env vars when nothing is
++// saved from the admin panel, so a Netlify-env-only setup keeps working.
++
++import { getSupabaseAdmin } from './supabase-admin';
++
++export const TELEGRAM_SETTINGS_KEY = 'telegram_notify';
++
++export interface StoredTelegramSettings {
++  enabled?: boolean;
++  bot_token?: string;
++  chat_id?: string;
++}
++
++export interface TelegramConfig {
++  enabled: boolean;
++  bot_token: string;
++  chat_id: string;
++  token_source: 'admin' | 'env' | 'none';
++  chat_source: 'admin' | 'env' | 'none';
++}
++
++export const TELEGRAM_TOKEN_RE = /^\d{6,}:[A-Za-z0-9_-]{30,}$/;
++export const TELEGRAM_CHAT_ID_RE = /^(-?\d+|@[A-Za-z0-9_]{4,})$/;
++
++export function maskToken(token: string): string {
++  if (!token) return '';
++  if (token.length <= 12) return '••••••••';
++  return `${token.slice(0, 4)}••••••••${token.slice(-4)}`;
++}
++
++export async function readStoredTelegramSettings(): Promise<StoredTelegramSettings> {
++  try {
++    const { data, error } = await getSupabaseAdmin()
++      .from('admin_private_settings')
++      .select('value')
++      .eq('key', TELEGRAM_SETTINGS_KEY)
++      .maybeSingle();
++    if (error) return {};
++    return (data?.value as StoredTelegramSettings) ?? {};
++  } catch {
++    return {};
++  }
++}
++
++export async function getTelegramConfig(): Promise<TelegramConfig> {
++  const stored = await readStoredTelegramSettings();
++  const envToken = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
++  const envChat = (process.env.TELEGRAM_CHAT_ID || '').trim();
++  const storedToken = (stored.bot_token || '').trim();
++  const storedChat = (stored.chat_id || '').trim();
++
++  return {
++    enabled: stored.enabled !== false,
++    bot_token: storedToken || envToken,
++    chat_id: storedChat || envChat,
++    token_source: storedToken ? 'admin' : envToken ? 'env' : 'none',
++    chat_source: storedChat ? 'admin' : envChat ? 'env' : 'none',
++  };
++}
++
++export async function sendTelegramMessage(
++  botToken: string,
++  chatId: string,
++  text: string
++): Promise<{ ok: boolean; error?: string }> {
++  const controller = new AbortController();
++  const timer = setTimeout(() => controller.abort(), 6000);
++  try {
++    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ chat_id: chatId, text }),
++      signal: controller.signal,
++    });
++    if (res.ok) return { ok: true };
++    const body = (await res.json().catch(() => null)) as { description?: string } | null;
++    return { ok: false, error: body?.description || `Telegram responded ${res.status}` };
++  } catch (err) {
++    // Deliberately do not log/return the raw error: it can embed the request URL (= the token).
++    const aborted = err instanceof Error && err.name === 'AbortError';
++    return { ok: false, error: aborted ? 'Telegram timed out' : 'Could not reach Telegram' };
++  } finally {
++    clearTimeout(timer);
++  }
++}
++
++// Finds the chat id of whoever last messaged the bot (used by the "Detect Chat ID" button).
++export async function detectTelegramChatId(
++  botToken: string
++): Promise<{ ok: true; chat_id: string; label: string } | { ok: false; error: string; status: number }> {
++  const controller = new AbortController();
++  const timer = setTimeout(() => controller.abort(), 8000);
++  try {
++    const res = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates`, {
++      signal: controller.signal,
++    });
++    const body = (await res.json().catch(() => null)) as any;
++    if (!res.ok || !body?.ok) {
++      return { ok: false, status: 400, error: body?.description || 'Telegram rejected the token' };
++    }
++    const updates: any[] = Array.isArray(body.result) ? body.result : [];
++    for (let i = updates.length - 1; i >= 0; i--) {
++      const u = updates[i];
++      const chat = u?.message?.chat || u?.channel_post?.chat || u?.my_chat_member?.chat;
++      if (chat?.id != null) {
++        const label = chat.username ? `@${chat.username}` : [chat.first_name, chat.last_name].filter(Boolean).join(' ') || chat.title || '';
++        return { ok: true, chat_id: String(chat.id), label };
++      }
++    }
++    return {
++      ok: false,
++      status: 404,
++      error: 'No chat found yet. Open your bot in Telegram, press Start, send "hi", then try again.',
++    };
++  } catch (err) {
++    const aborted = err instanceof Error && err.name === 'AbortError';
++    return { ok: false, status: 502, error: aborted ? 'Telegram timed out' : 'Could not reach Telegram' };
++  } finally {
++    clearTimeout(timer);
++  }
++}
+diff --git a/supabase/migrations/20261113000000_orders_telegram_notified.sql b/supabase/migrations/20261113000000_orders_telegram_notified.sql
+new file mode 100644
+index 0000000..5954a5d
+--- /dev/null
++++ b/supabase/migrations/20261113000000_orders_telegram_notified.sql
+@@ -0,0 +1,19 @@
++-- Telegram new-order alerts.
++-- Safe to run more than once.
++
++-- 1) Once-per-order guard for the alert.
++alter table orders add column if not exists telegram_notified_at timestamptz;
++
++-- 2) Private key/value store for secrets (Telegram bot token, chat id).
++--    RLS is ON and there are deliberately NO policies, so the public anon key and
++--    logged-in customers can neither read nor write it. Only the server (service role)
++--    can, through /api/admin/settings/telegram.
++create table if not exists admin_private_settings (
++  key        text primary key,
++  value      jsonb not null default '{}'::jsonb,
++  updated_at timestamptz not null default now()
++);
++
++alter table admin_private_settings enable row level security;
++revoke all on admin_private_settings from anon, authenticated;
++grant all on admin_private_settings to service_role;

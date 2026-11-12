@@ -4,6 +4,7 @@ import { orderConfirmationEmail, newOrderAdminNotification } from './email-templ
 import { codConfirmUrl, getOrCreateCodConfirmToken } from './cod-confirmation';
 import { DEFAULT_LOYALTY_SETTINGS, type LoyaltySettings } from './loyalty-api';
 import { DEFAULT_REFERRAL_SETTINGS, type ReferralSettings } from './referrals-api';
+import { getTelegramConfig, sendTelegramMessage } from './telegram-notify';
 
 // Extracted out of app/api/order-confirm/route.ts so this exact logic can
 // also be called server-side from app/api/razorpay/webhook/route.ts --
@@ -149,6 +150,43 @@ export async function runOrderConfirmationSideEffects(orderId: string) {
     }
   } catch (adminEmailErr) {
     console.error('[order-confirmation] Admin notification setup failed:', adminEmailErr);
+  }
+
+  // 1d. Telegram push to the admin's phone (once per order).
+  // Token / chat id come from Admin -> Settings -> Telegram Order Alerts
+  // (falls back to TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID env vars). Silently
+  // skipped if turned off or not configured. The telegram_notified_at claim
+  // makes this safe when this function runs more than once for the same order
+  // (client call + payment webhook): only one message is ever sent.
+  try {
+    const tg = await getTelegramConfig();
+    if (tg.enabled && tg.bot_token && tg.chat_id) {
+      const { data: claimed, error: claimErr } = await supabase
+        .from('orders')
+        .update({ telegram_notified_at: new Date().toISOString() })
+        .eq('id', order.id)
+        .is('telegram_notified_at', null)
+        .select('id');
+      if (claimErr) {
+        console.error('[order-confirmation] Telegram claim failed (run the Supabase migration?):', claimErr.message);
+      } else if (claimed && claimed.length > 0) {
+        const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+        const text =
+          `🛍 New order #${String(order.id).slice(0, 8)}\n` +
+          `Total: ${order.total_amount}\n` +
+          `Items: ${itemCount}\n` +
+          `Payment: ${order.payment_method || '-'}\n` +
+          `${order.customer_name || ''} ${order.customer_phone || ''}`.trim();
+        const sent = await sendTelegramMessage(tg.bot_token, tg.chat_id, text);
+        if (!sent.ok) {
+          console.error('[order-confirmation] Telegram send failed:', sent.error);
+          // Release the claim so a later call can retry.
+          await supabase.from('orders').update({ telegram_notified_at: null }).eq('id', order.id);
+        }
+      }
+    }
+  } catch (tgErr) {
+    console.error('[order-confirmation] Telegram notify failed:', tgErr instanceof Error ? tgErr.message : 'unknown error');
   }
 
   // 2. Gift card redemption.
