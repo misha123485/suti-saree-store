@@ -2,8 +2,11 @@
 // the order-confirmation page and the site-wide badge.
 //
 // Merchant Center -> Settings -> Add-ons -> Google Customer Reviews.
+// Default is the Sutisaree Merchant Center ID (421683398). Set
+// NEXT_PUBLIC_GCR_MERCHANT_ID only if you need to override it -- a stale value
+// in the hosting env would take priority over this default.
 
-export const GCR_MERCHANT_ID = Number(process.env.NEXT_PUBLIC_GCR_MERCHANT_ID || '5830177505');
+export const GCR_MERCHANT_ID = Number(process.env.NEXT_PUBLIC_GCR_MERCHANT_ID || '421683398');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;

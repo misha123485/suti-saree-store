@@ -43,7 +43,12 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;
-      style.textContent = `.${HIDE_CLASS}{display:none !important;}`;
+      // Mobile: sit just above the sticky "Add to Bag / Buy Now" bar on the
+      // product page (it publishes its height as --sticky-bar-h); elsewhere
+      // keep the usual 80px lift above the bottom nav.
+      style.textContent =
+        `.${HIDE_CLASS}{display:none !important;}` +
+        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 8px) !important;}}`;
       document.head.appendChild(style);
     }
 
