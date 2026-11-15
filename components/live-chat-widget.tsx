@@ -723,7 +723,7 @@ export default function LiveChatWidget() {
         <div
           role="dialog"
           aria-label="Live chat"
-          className="fixed inset-x-3 bottom-[9.5rem] z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:inset-x-auto sm:bottom-24 sm:left-4 sm:w-[23rem]"
+          className="fixed inset-x-3 bottom-[calc(var(--sticky-bar-h,5.5rem)+4rem)] z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:inset-x-auto sm:left-4 sm:w-[23rem] md:bottom-24"
         >
           <div className="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground">
             <div>
@@ -1061,7 +1061,7 @@ export default function LiveChatWidget() {
         onClick={handleToggle}
         aria-label={open ? 'Close chat' : 'Chat with us'}
         aria-expanded={open}
-        className="fixed bottom-24 left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#20bd5a]"
+        className="fixed bottom-[calc(var(--sticky-bar-h,5.5rem)+0.5rem)] left-4 z-40 flex h-14 w-14 md:bottom-24 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#20bd5a]"
       >
         {open ? <X className="h-6 w-6" /> : <WhatsAppIcon className="h-7 w-7" />}
         {!hasOpenedOnce && (

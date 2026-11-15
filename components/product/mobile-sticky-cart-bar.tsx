@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatINR } from '@/lib/format';
@@ -30,8 +31,29 @@ export default function MobileStickyCartBar({
   const hasCoupon = !!couponCode && couponDiscount > 0;
   const finalPrice = hasCoupon ? Math.max(0, price - couponDiscount) : price;
 
+  // Publish this bar's real height (it grows when the coupon line shows and
+  // with the phone's safe-area inset) as --sticky-bar-h, so the floating
+  // WhatsApp / chat button can sit just above it with only a small gap.
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty('--sticky-bar-h', `${el.offsetHeight}px`);
+    publish();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', publish);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', publish);
+      root.style.removeProperty('--sticky-bar-h');
+    };
+  }, []);
+
   return (
     <div
+      ref={barRef}
       className="fixed inset-x-0 bottom-0 z-30 bg-background md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
