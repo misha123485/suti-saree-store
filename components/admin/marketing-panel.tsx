@@ -1034,7 +1034,7 @@ function AnalyticsTab() {
         <div>
           <p className="text-sm font-medium">Google Customer Reviews</p>
           <p className="text-xs text-muted-foreground">
-            Builds your Google store rating. Merchant ID is set in code (5830177505).
+            Builds your Google store rating. Merchant ID is set in code (421683398).
           </p>
         </div>
         <div className="flex items-center justify-between">
