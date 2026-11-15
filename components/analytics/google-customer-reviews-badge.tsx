@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { GCR_MERCHANT_ID } from '@/lib/google-customer-reviews';
 
@@ -65,25 +64,62 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
     return () => observer.disconnect();
   }, [hidden]);
 
-  if (disabled || hidden) return null;
+  // Load Google's store widget exactly like the snippet in Merchant Center >
+  // Customer Reviews > Badge integration: add the script, and on its "load"
+  // event call merchantwidget.start({...}). Only the documented options are
+  // passed (merchant_id, position, region).
+  //
+  // Add ?gcrdebug=1 to any page URL to log what happens in the console.
+  useEffect(() => {
+    if (disabled || hidden) return;
+    const w = window as any;
+    const debug = new URLSearchParams(window.location.search).has('gcrdebug');
+    const log = (...a: unknown[]) => {
+      if (debug) console.info('[GCR badge]', ...a);
+    };
 
-  return (
-    <Script
-      id="merchantWidgetScript"
-      src="https://www.gstatic.com/shopping/merchant/merchantwidget.js"
-      strategy="lazyOnload"
-      onLoad={() => {
-        const w = window as any;
-        if (w.__gcrBadgeStarted || !w.merchantwidget?.start) return;
+    const start = () => {
+      if (w.__gcrBadgeStarted) return log('already started');
+      if (!w.merchantwidget?.start) return console.warn('[GCR badge] merchantwidget.start is missing');
+      try {
         w.__gcrBadgeStarted = true; // start() once per page load
         w.merchantwidget.start({
           merchant_id: GCR_MERCHANT_ID,
           position: 'RIGHT_BOTTOM',
           region: 'IN',
-          // Mobile: keep clear of the sticky cart bar / bottom nav (px).
-          mobileBottomMargin: 80,
         });
-      }}
-    />
-  );
+        log('started with merchant_id', GCR_MERCHANT_ID);
+      } catch (err) {
+        w.__gcrBadgeStarted = false;
+        console.warn('[GCR badge] start() failed', err);
+      }
+    };
+
+    if (w.merchantwidget?.start) {
+      start();
+      return;
+    }
+
+    let script = document.getElementById('merchantWidgetScript') as HTMLScriptElement | null;
+    const onError = () =>
+      console.warn(
+        '[GCR badge] merchantwidget.js could not be loaded (ad blocker, network or blocked gstatic.com?)'
+      );
+    if (!script) {
+      script = document.createElement('script');
+      script.id = 'merchantWidgetScript';
+      script.src = 'https://www.gstatic.com/shopping/merchant/merchantwidget.js';
+      script.defer = true;
+      document.head.appendChild(script);
+      log('script added');
+    }
+    script.addEventListener('load', start);
+    script.addEventListener('error', onError);
+    return () => {
+      script?.removeEventListener('load', start);
+      script?.removeEventListener('error', onError);
+    };
+  }, [disabled, hidden]);
+
+  return null;
 }
