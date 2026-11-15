@@ -95,7 +95,7 @@ export default function SiteBanner({ initialBanner }: { initialBanner?: SiteBann
     '--sb-d': `${banner.desktop_height ?? 400}px`,
   } as React.CSSProperties;
 
-  const showControls = count > 1;
+  const showControls = count > 1 && banner.show_controls !== false;
   const canPrev = loop || index > 0;
   const canNext = loop || index < count - 1;
 

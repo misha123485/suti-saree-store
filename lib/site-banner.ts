@@ -35,6 +35,8 @@ export interface SiteBanner {
   loop?: boolean;
   /** Auto-slide only runs when true and there is more than one slide. */
   autoplay?: boolean;
+  /** Show the slide icons (dots + prev/next arrows). Swipe / auto slide still work when off. */
+  show_controls?: boolean;
   /** Seconds each slide stays on screen. */
   interval_seconds?: number;
 
@@ -58,6 +60,7 @@ export const DEFAULT_SITE_BANNER: SiteBanner = {
   slides: [],
   loop: true,
   autoplay: true,
+  show_controls: true,
   interval_seconds: 5,
   desktop_size_mode: 'default',
   desktop_height: 400,
@@ -105,6 +108,7 @@ export function normalizeSiteBanner(raw: unknown): SiteBanner {
     slides,
     loop: r.loop !== false,
     autoplay: r.autoplay !== false,
+    show_controls: r.show_controls !== false,
     interval_seconds: clamp(
       r.interval_seconds,
       SITE_BANNER_MIN_INTERVAL,

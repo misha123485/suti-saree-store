@@ -1609,6 +1609,20 @@ export default function SettingsPanel() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <div>
+                <Label htmlFor="banner-controls">Show slide icons</Label>
+                <p className="text-xs text-muted-foreground">
+                  The dots and the left / right arrows on the banner. Off hides them (swipe and auto slide still work).
+                </p>
+              </div>
+              <Switch
+                id="banner-controls"
+                checked={bannerForm.show_controls !== false}
+                onCheckedChange={(checked) => saveBanner({ ...bannerForm, show_controls: checked })}
+                disabled={savingBanner}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
                 <Label htmlFor="banner-loop">Loop</Label>
                 <p className="text-xs text-muted-foreground">
                   On: after the last image it goes back to the first. Off: it stops at the last image.
