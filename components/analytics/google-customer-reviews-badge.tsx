@@ -47,7 +47,7 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
       // keep the usual 80px lift above the bottom nav.
       style.textContent =
         `.${HIDE_CLASS}{display:none !important;}` +
-        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 8px) !important;}}`;
+        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 24px) !important;}}`;
       document.head.appendChild(style);
     }
 
