@@ -11,6 +11,7 @@ import type { HomepageTile } from '@/lib/homepage-tiles-api';
 import type { HeroBanner } from '@/lib/hero-banners-api';
 import type { DiscoverSectionSettings } from '@/lib/discover-products-api';
 import ProductCard from '@/components/product-card';
+import { FeaturedCarousel } from '@/components/featured-picks';
 import DiscoverProductsSection from '@/components/home/discover-products-section';
 import { expandProductVariants } from '@/lib/expand-product-variants';
 import CouponStrip from '@/components/home/coupon-strip';
@@ -255,6 +256,11 @@ export default function HomeClient({
         </div>
       </section>
       )}
+
+      {/* Trending Now -- admin toggle (Analytics > settings). Default OFF. */}
+      <div className="container-boutique">
+        <FeaturedCarousel placement="home" products={products} />
+      </div>
 
       {/* Categories — app-style 2/3-row grid when enabled in Admin > App
           Layout, otherwise the original circle row below. */}

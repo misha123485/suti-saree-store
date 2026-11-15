@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { SlidersHorizontal, Video, VideoOff } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { expandProductVariants } from '@/lib/expand-product-variants';
 import ProductCard from '@/components/product-card';
+import { FeaturedHighlight } from '@/components/featured-picks';
 import QuickNavIcons from '@/components/quick-nav-icons';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -299,15 +300,15 @@ export default function CategoryToolbarGrid({
         className="mt-4"
       />
 
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-4 grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {expandProductVariants(visibleProducts, listingSettings.max_variant_cards_per_product).map((p, i) => {
           // Show this product's best-performing colour instead of always
           // its default -- skipped for already-exploded per-colour cards,
           // which already show one specific colour on purpose.
           const topVariant = !p.isVariantCard ? topVariants[p.id] : undefined;
           return (
+            <Fragment key={`${p.id}-${p.slug}`}>
             <ProductCard
-              key={`${p.id}-${p.slug}`}
               product={p}
               priority={i < 4}
               imageOverride={topVariant?.image || undefined}
@@ -315,6 +316,15 @@ export default function CategoryToolbarGrid({
               disableAutoplayVideo={!videoEnabled || !!p.isVariantCard}
               blurPreviews={blurPreviews}
             />
+            {/* Trending strip after the first 3 products -- admin toggle, default OFF. */}
+            {i === 2 && (
+              <FeaturedHighlight
+                placement="category"
+                products={sorted}
+                excludeIds={visibleProducts.slice(0, 3).map((x) => x.id)}
+              />
+            )}
+            </Fragment>
           );
         })}
       </div>

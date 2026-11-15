@@ -1,7 +1,7 @@
 'use client';
 
 import { useScrollHide } from '@/lib/use-scroll-hide';
-import { useMemo, useState, useEffect, useRef, Suspense } from 'react';
+import { Fragment, useMemo, useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -9,6 +9,7 @@ import { SlidersHorizontal, TrendingDown, Flame, Gift, Camera, ChevronRight, Ima
 import { Product, CategoryRow } from '@/lib/types';
 import { expandProductVariants, ExpandedProduct } from '@/lib/expand-product-variants';
 import ProductCard from '@/components/product-card';
+import { FeaturedHighlight } from '@/components/featured-picks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1091,7 +1092,7 @@ function ShopContentInner({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                 {(isSearchPage || imageSearchIds
                   ? visibleProducts
                   : expandProductVariants(visibleProducts, listingSettings.max_variant_cards_per_product)
@@ -1111,8 +1112,8 @@ function ShopContentInner({
                   // colour on purpose.
                   const topVariant = !p.isVariantCard ? topVariants[p.id] : undefined;
                   return (
+                    <Fragment key={`${p.id}-${p.slug}`}>
                     <ProductCard
-                      key={`${p.id}-${p.slug}`}
                       product={p}
                       priority={idx < 4}
                       imageOverride={imageSearchIds ? imageSearchMatches[p.id] : (colorMatchImage || topVariant?.image || undefined)}
@@ -1131,6 +1132,16 @@ function ShopContentInner({
                       disableAutoplayVideo={isSearchPage || !videoEnabled || !!p.isVariantCard}
                       blurPreviews={blurPreviews}
                     />
+                    {/* Trending strip after the first 3 products -- admin toggle, default OFF.
+                        Search / photo-search / typed query me nahi dikhta. */}
+                    {idx === 2 && !isSearchPage && !imageSearchIds && !query.trim() && (
+                      <FeaturedHighlight
+                        placement="shop"
+                        products={filtered}
+                        excludeIds={visibleProducts.slice(0, 3).map((x) => x.id)}
+                      />
+                    )}
+                    </Fragment>
                   );
                 })}
               </div>

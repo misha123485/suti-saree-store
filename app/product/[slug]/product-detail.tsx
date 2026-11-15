@@ -62,6 +62,7 @@ import {
 } from '@/lib/loyalty-api';
 import { addRecentlyViewed } from '@/lib/recently-viewed';
 import { trackEvent } from '@/lib/track-api';
+import { FeaturedCarousel } from '@/components/featured-picks';
 import { useAuth } from '@/lib/auth-context';
 import { fetchOfferDisplaySettings, DEFAULT_OFFER_DISPLAY_SETTINGS, OfferDisplaySettings } from '@/lib/offer-display-settings';
 import MegaDealOffers from '@/components/product/mega-deal-offers';
@@ -881,6 +882,9 @@ export default function ProductDetail({
 
       {/* Desktop only: reviews sit full-width right above "You may also like". */}
       {isDesktop === true && <div className="mt-8">{reviewsBlock}</div>}
+
+      {/* Trending Now -- "You may also like" se pehle. Admin toggle, default OFF. */}
+      <FeaturedCarousel placement="product" products={products} excludeIds={[product.id]} />
 
       <LazyOnView className="mt-8" minHeight={320}>
         <RelatedProducts

@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { Product } from '@/lib/types';
 import ProductCarousel from '@/components/product/product-carousel';
 import { useTopVariants } from '@/lib/top-variant-api';
+import { useFeaturedPicks } from '@/components/featured-picks';
+import { markFeaturedClick } from '@/lib/track-api';
 
 /**
  * Scores every candidate against the current product and returns the best
@@ -55,7 +57,35 @@ export default function RelatedProducts({
       .map((entry) => entry.product);
   }, [current, allProducts, limit]);
 
-  const related = overrideProducts && overrideProducts.length > 0 ? overrideProducts.slice(0, limit) : scored;
+  const usingOverride = !!(overrideProducts && overrideProducts.length > 0);
+
+  // "Similar" me conversion-wale products mix karna (admin toggle 'similar', default OFF):
+  // 1 similar -> 1 trending -> 2 similar -> 1 trending -> 2 similar -> 1 trending ...
+  // Trending wahi jo isi category me sabse zyada convert karte hain (purchase > checkout > cart > views).
+  const sameCategory = useMemo(
+    () => allProducts.filter((p) => p.id !== current.id && p.category === current.category),
+    [allProducts, current]
+  );
+  const scoredIds = useMemo(() => scored.map((p) => p.id), [scored]);
+  const trending = useFeaturedPicks('similar', sameCategory, { limit: 4, min: 2, excludeIds: scoredIds });
+
+  const { related, highlightIds } = useMemo(() => {
+    if (usingOverride) return { related: overrideProducts!.slice(0, limit), highlightIds: undefined };
+    if (trending.length === 0) return { related: scored, highlightIds: undefined };
+    const gaps = [1, 2]; // pehli baar 1 chhodke, phir har baar 2 chhodke
+    const out: Product[] = [];
+    let s = 0;
+    let t = 0;
+    let gapIdx = 0;
+    while (out.length < limit && (s < scored.length || t < trending.length)) {
+      const gap = gaps[Math.min(gapIdx, gaps.length - 1)];
+      for (let i = 0; i < gap && s < scored.length && out.length < limit; i++) out.push(scored[s++]);
+      if (t < trending.length && out.length < limit) out.push(trending[t++]);
+      gapIdx++;
+      if (s >= scored.length && t >= trending.length) break;
+    }
+    return { related: out, highlightIds: new Set(trending.map((p) => p.id)) };
+  }, [usingOverride, overrideProducts, scored, trending, limit]);
   const topVariants = useTopVariants();
 
   return (
@@ -64,6 +94,8 @@ export default function RelatedProducts({
       products={related}
       viewAllHref={viewAllHref ?? `/shop?category=${encodeURIComponent(current.category)}`}
       variantOverrides={topVariants}
+      highlightIds={highlightIds}
+      onProductClick={highlightIds ? (p) => highlightIds.has(p.id) && markFeaturedClick(p.id, 'similar') : undefined}
     />
   );
 }

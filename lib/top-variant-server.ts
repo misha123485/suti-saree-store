@@ -19,6 +19,7 @@
  */
 
 import { getSupabaseAdmin } from './supabase-admin';
+import { fetchCapped } from './fetch-capped';
 
 export interface TopVariantInfo {
   color: string;
@@ -33,23 +34,34 @@ export async function fetchTopVariantMapServer(days = 30): Promise<Map<string, T
     const supabase = getSupabaseAdmin();
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-    const [eventsRes, ordersRes, variantsRes, productsRes] = await Promise.all([
-      supabase
-        .from('activity_events')
-        .select('product_id, event_type, metadata')
-        .in('event_type', ['product_view', 'add_to_cart', 'checkout_start'])
-        .gte('created_at', since)
-        .not('product_id', 'is', null),
-      supabase
-        .from('orders')
-        .select('items, status, created_at')
-        .gte('created_at', since),
+    // PostgREST ek baar me sirf 1000 rows deta hai -- pehle yahan bina pagination ke padhte the,
+    // isliye data badhne par best-colour galat aa sakta tha. Ab pages me padhte hain
+    // (free-tier egress bachane ke liye newest 15000 events / 5000 orders par ruk jaate hain).
+    const [eventRows, orderRows, variantsRes, productsRes] = await Promise.all([
+      fetchCapped<{ product_id: string; event_type: string; metadata: any }>((a, b) =>
+        supabase
+          .from('activity_events')
+          .select('product_id, event_type, metadata')
+          .in('event_type', ['product_view', 'add_to_cart', 'checkout_start'])
+          .gte('created_at', since)
+          .not('product_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .range(a, b)
+      ),
+      fetchCapped<{ items: any; status: string }>(
+        (a, b) =>
+          supabase
+            .from('orders')
+            .select('items, status, created_at')
+            .gte('created_at', since)
+            .order('created_at', { ascending: false })
+            .range(a, b),
+        5000
+      ),
       supabase.from('product_variants').select('product_id, color, images, slug'),
       supabase.from('products').select('id, slug, images, colors'),
     ]);
 
-    if (eventsRes.error) throw eventsRes.error;
-    if (ordersRes.error) throw ordersRes.error;
     if (variantsRes.error) throw variantsRes.error;
     if (productsRes.error) throw productsRes.error;
 
@@ -69,14 +81,14 @@ export async function fetchTopVariantMapServer(days = 30): Promise<Map<string, T
       byProduct.set(productId, byColor);
     };
 
-    for (const ev of eventsRes.data ?? []) {
+    for (const ev of eventRows) {
       const color = typeof (ev as any).metadata?.color === 'string' ? (ev as any).metadata.color : null;
       if (ev.event_type === 'product_view') bump(ev.product_id, color, 'impressions');
       else if (ev.event_type === 'add_to_cart') bump(ev.product_id, color, 'addToCart');
       else if (ev.event_type === 'checkout_start') bump(ev.product_id, color, 'beginCheckout');
     }
 
-    for (const o of ordersRes.data ?? []) {
+    for (const o of orderRows) {
       if (EXCLUDED_ORDER_STATUSES.includes((o as any).status)) continue;
       const items = Array.isArray((o as any).items) ? (o as any).items : [];
       const seen = new Set<string>();

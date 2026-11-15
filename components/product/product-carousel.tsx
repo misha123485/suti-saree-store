@@ -11,6 +11,8 @@ export default function ProductCarousel({
   products,
   viewAllHref,
   variantOverrides,
+  highlightIds,
+  onProductClick,
 }: {
   /** Small uppercase label shown above the title, e.g. "Collection" --
    *  same visual pattern as the "BRIDAL" category tag above a product
@@ -28,6 +30,10 @@ export default function ProductCarousel({
    * Like" showing the exact variation shoppers actually engage with most.
    */
   variantOverrides?: Record<string, { image?: string | null; slug?: string | null }>;
+  /** In products par chhota "Trending" badge lagta hai (similar products me mix ke liye). */
+  highlightIds?: Set<string>;
+  /** Card par click hone par (capture phase) call hota hai -- click tracking ke liye. */
+  onProductClick?: (p: Product) => void;
 }) {
   if (products.length === 0) return null;
 
@@ -77,8 +83,14 @@ export default function ProductCarousel({
           return (
             <div
               key={p.id}
-              className="w-[42%] shrink-0 snap-start sm:w-[180px] md:w-[200px]"
+              className="relative w-[42%] shrink-0 snap-start sm:w-[180px] md:w-[200px]"
+              onClickCapture={onProductClick ? () => onProductClick(p) : undefined}
             >
+              {highlightIds?.has(p.id) && (
+                <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow">
+                  Trending
+                </span>
+              )}
               <ProductCard
                 product={p}
                 compact

@@ -17,16 +17,21 @@ import {
   LabelList,
   Cell,
 } from 'recharts';
-import { LayoutDashboard, AlertTriangle, TrendingUp, ShoppingBag, Percent, PackageX, BarChart3, Wifi, Receipt, Search, ShoppingCart, CreditCard, CheckCircle2, PackagePlus, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Repeat } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, TrendingUp, ShoppingBag, Percent, PackageX, BarChart3, Wifi, Receipt, Search, ShoppingCart, CreditCard, CheckCircle2, PackagePlus, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Repeat, Users, Settings2 } from 'lucide-react';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 import { fetchAnalytics, AnalyticsData } from '@/lib/analytics-api';
 import { updateProduct, extractErrorMessage } from '@/lib/products-api';
 import { formatINR } from '@/lib/format';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import type { FeaturedFlags, FeaturedPlacement } from '@/lib/featured-placements';
+import { DEFAULT_TRENDING_CONFIG, TrendingConfig, TrendingSignal } from '@/lib/trending-config';
 import { toast } from 'sonner';
 import TrafficPanel from '@/components/admin/traffic-panel';
 import SearchInsightsPanel from '@/components/admin/search-insights-panel';
 import VariantSwitchesPanel from '@/components/admin/variant-switches-panel';
+import ShopperInsightsPanel from '@/components/admin/shopper-insights-panel';
 import { DateRangePicker, SimpleRange } from '@/components/admin/date-range-picker';
 import DashboardsTab from '@/components/admin/dashboards/dashboards-tab';
 
@@ -36,35 +41,378 @@ const ORDER_DOT_COLOR = '#8b5e3c';
 
 // ── Tab bar ────────────────────────────────────────────────────────────────
 
-type Tab = 'dashboards' | 'sales' | 'traffic' | 'search' | 'variants';
+type Tab = 'dashboards' | 'shoppers' | 'sales' | 'traffic' | 'search' | 'variants';
+
+const TAB_OPTIONS: { value: Tab; label: string; icon: React.ReactNode }[] = [
+  { value: 'dashboards', label: 'Dashboards', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { value: 'shoppers', label: 'Shopper Insights', icon: <Users className="h-4 w-4" /> },
+  { value: 'sales', label: 'Sales Analytics', icon: <BarChart3 className="h-4 w-4" /> },
+  { value: 'traffic', label: 'Traffic', icon: <Wifi className="h-4 w-4" /> },
+  { value: 'search', label: 'Search', icon: <Search className="h-4 w-4" /> },
+  { value: 'variants', label: 'Variant Switches', icon: <Repeat className="h-4 w-4" /> },
+];
+
+const HIDDEN_TABS_KEY = 'admin-analytics-hidden-tabs';
+
+const TRACK_OPTIONS: { type: string; label: string }[] = [
+  { type: 'variant_switch', label: 'Variant Switch data jama karo' },
+  { type: 'search', label: 'Search data jama karo' },
+];
+
+function TrackingToggle() {
+  const [loaded, setLoaded] = useState(false);
+  const [disabled, setDisabled] = useState<string[]>([]);
+  const [missing, setMissing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/admin/tracking-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!alive || !j) return;
+        setDisabled(Array.isArray(j.disabled) ? j.disabled : []);
+        setMissing(!!j.tableMissing);
+        setLoaded(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const change = async (type: string, v: boolean) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/tracking-settings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ eventType: type, enabled: v }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'Save nahi hua');
+      setDisabled(Array.isArray(j.disabled) ? j.disabled : []);
+      toast.success(v ? 'Data jama hona chalu' : 'Data jama hona band (naye visitors par 30 min me lagu)');
+    } catch (e: any) {
+      toast.error(e.message || 'Save nahi hua');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 border-t border-border/60 pt-3">
+      <p className="mb-1 text-sm font-semibold">Data jama karna (poori site)</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        OFF karoge to naya data Supabase me save nahi hoga. Purana data rahega. Cart, checkout aur order ka data
+        kabhi band nahi hota.
+      </p>
+      <ul className="space-y-2">
+        {TRACK_OPTIONS.map((o) => (
+          <li key={o.type} className="flex items-center justify-between gap-3">
+            <span className="text-sm">{o.label}</span>
+            <Switch
+              checked={!disabled.includes(o.type)}
+              disabled={!loaded || saving || missing}
+              onCheckedChange={(v) => change(o.type, v)}
+            />
+          </li>
+        ))}
+      </ul>
+      {missing && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          Pehle Supabase me 20261115020000_tracking_settings.sql run karo.
+        </p>
+      )}
+    </div>
+  );
+}
+
+const FEATURED_OPTIONS: { type: FeaturedPlacement; label: string }[] = [
+  { type: 'home', label: 'Home page ke top par' },
+  { type: 'shop', label: 'Shop page (3 product ke baad)' },
+  { type: 'category', label: 'Category page (3 product ke baad)' },
+  { type: 'product', label: 'Product page ("You may also like" se pehle)' },
+  { type: 'similar', label: 'Similar products me mix (1, phir 2 chhodke)' },
+];
+
+function FeaturedToggles() {
+  const [loaded, setLoaded] = useState(false);
+  const [flags, setFlags] = useState<FeaturedFlags>({ home: false, shop: false, category: false, product: false, similar: false });
+  const [missing, setMissing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/admin/featured-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!alive || !j) return;
+        if (j.flags) setFlags(j.flags);
+        setMissing(!!j.tableMissing);
+        setLoaded(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const change = async (placement: FeaturedPlacement, v: boolean) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/featured-settings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ placement, enabled: v }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'Save nahi hua');
+      if (j.flags) setFlags(j.flags);
+      toast.success(v ? 'Chalu ho gaya (1-2 min me site par dikhega)' : 'Band ho gaya (1-2 min me site se hat jayega)');
+    } catch (e: any) {
+      toast.error(e.message || 'Save nahi hua');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 border-t border-border/60 pt-3">
+      <p className="mb-1 text-sm font-semibold">Customers ko "Trending Now" dikhao</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Sabse zyada bikne wale products. Har jagah alag ON/OFF. Data kam ho to apne aap nahi dikhta.
+      </p>
+      <ul className="space-y-2">
+        {FEATURED_OPTIONS.map((o) => (
+          <li key={o.type} className="flex items-center justify-between gap-3">
+            <span className="text-sm">{o.label}</span>
+            <Switch
+              checked={flags[o.type]}
+              disabled={!loaded || saving || missing}
+              onCheckedChange={(v) => change(o.type, v)}
+            />
+          </li>
+        ))}
+      </ul>
+      {missing && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          Pehle Supabase me 20261115020000_tracking_settings.sql run karo.
+        </p>
+      )}
+    </div>
+  );
+}
+
+const TRENDING_SIGNAL_OPTIONS: { type: TrendingSignal; label: string }[] = [
+  { type: 'purchase', label: 'Purchase (order) gino' },
+  { type: 'checkout', label: 'Begin checkout gino' },
+  { type: 'cart', label: 'Add to cart gino' },
+  { type: 'view', label: 'Views (product dekhna) gino' },
+];
+
+function TrendingRankingSettings() {
+  const [loaded, setLoaded] = useState(false);
+  const [cfg, setCfg] = useState<TrendingConfig>(DEFAULT_TRENDING_CONFIG);
+  const [missing, setMissing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/admin/trending-settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!alive || !j) return;
+        if (j.config) setCfg(j.config);
+        setMissing(!!j.tableMissing);
+        setLoaded(true);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const save = async (body: Record<string, unknown>, okMsg: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/trending-settings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'Save nahi hua');
+      if (j.config) setCfg(j.config);
+      toast.success(okMsg);
+    } catch (e: any) {
+      toast.error(e.message || 'Save nahi hua');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const allOff = !cfg.purchase && !cfg.checkout && !cfg.cart && !cfg.view;
+
+  return (
+    <div className="mt-4 border-t border-border/60 pt-3">
+      <p className="mb-1 text-sm font-semibold">Trending kis data se bane?</p>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Jo OFF karoge wo ranking me nahi gina jayega. Priority: Purchase, phir Checkout, Cart, Views.
+      </p>
+      <ul className="space-y-2">
+        {TRENDING_SIGNAL_OPTIONS.map((o) => (
+          <li key={o.type} className="flex items-center justify-between gap-3">
+            <span className="text-sm">{o.label}</span>
+            <Switch
+              checked={cfg[o.type]}
+              disabled={!loaded || saving || missing}
+              onCheckedChange={(v) => save({ signal: o.type, enabled: v }, 'Save ho gaya (1-2 min me site par lagu)')}
+            />
+          </li>
+        ))}
+      </ul>
+      {allOff && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          Sab OFF hai, to sirf lifetime popularity ke hisaab se products dikhenge.
+        </p>
+      )}
+      <div className="mt-3">
+        <label className="mb-1 block text-sm">Is date ke baad ka data dekho</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={cfg.since ?? ''}
+            max={new Date().toISOString().slice(0, 10)}
+            disabled={!loaded || saving || missing}
+            onChange={(e) =>
+              save({ since: e.target.value || null }, e.target.value ? 'Date set ho gayi' : 'Date hat gayi (pichle 30 din)')
+            }
+            className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-sm"
+          />
+          {cfg.since && (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => save({ since: null }, 'Date hat gayi (pichle 30 din)')}
+              className="text-xs text-muted-foreground underline"
+            >
+              Hatao
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {cfg.since ? `${cfg.since} (India time, subah 12 baje) se aaj tak ka data.` : 'Date khali = pichle 30 din.'}
+        </p>
+      </div>
+      {missing && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          Pehle Supabase me 20261115020000_tracking_settings.sql run karo.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function IgnoreThisBrowser() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    try {
+      setOn(localStorage.getItem('saaj_ignore_me') === '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const change = (v: boolean) => {
+    try {
+      if (v) localStorage.setItem('saaj_ignore_me', '1');
+      else localStorage.removeItem('saaj_ignore_me');
+      setOn(v);
+      toast.success(v ? 'Ab is browser ke visits/carts ginti me nahi aayenge' : 'Is browser ki tracking wapas chalu');
+    } catch {
+      toast.error('Browser ne save karne nahi diya');
+    }
+  };
+  return (
+    <div className="mt-4 border-t border-border/60 pt-3">
+      <p className="mb-1 text-sm font-semibold">Mera apna device ignore karo</p>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Apne test carts/visits ginti me na aayein. Har device/browser par alag se ON karna padega.
+      </p>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm">Is browser ko ignore karo</span>
+        <Switch checked={on} onCheckedChange={change} />
+      </div>
+    </div>
+  );
+}
 
 function TabBar({
   active,
   onChange,
   right,
+  hidden,
+  onToggle,
 }: {
   active: Tab;
   onChange: (t: Tab) => void;
   right?: React.ReactNode;
+  hidden: Tab[];
+  onToggle: (t: Tab, show: boolean) => void;
 }) {
+  const visibleCount = TAB_OPTIONS.length - hidden.length;
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
-      <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl sm:w-fit border border-border/60 bg-muted/40 p-1">
-        <TabButton value="dashboards" active={active} onChange={onChange} icon={<LayoutDashboard className="h-4 w-4" />}>
-          Dashboards
-        </TabButton>
-        <TabButton value="sales" active={active} onChange={onChange} icon={<BarChart3 className="h-4 w-4" />}>
-          Sales Analytics
-        </TabButton>
-        <TabButton value="traffic" active={active} onChange={onChange} icon={<Wifi className="h-4 w-4" />}>
-          Traffic
-        </TabButton>
-        <TabButton value="search" active={active} onChange={onChange} icon={<Search className="h-4 w-4" />}>
-          Search
-        </TabButton>
-        <TabButton value="variants" active={active} onChange={onChange} icon={<Repeat className="h-4 w-4" />}>
-          Variant Switches
-        </TabButton>
+      <div className="flex w-full max-w-full items-center gap-1 sm:w-fit">
+        <div className="flex min-w-0 gap-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1">
+          {TAB_OPTIONS.filter((t) => !hidden.includes(t.value)).map((t) => (
+            <TabButton key={t.value} value={t.value} active={active} onChange={onChange} icon={t.icon}>
+              {t.label}
+            </TabButton>
+          ))}
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Tabs settings"
+              title="Tabs dikhao / chhupao"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-muted/40 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="max-h-[80vh] w-72 overflow-y-auto p-3">
+            <p className="mb-1 text-sm font-semibold">Tabs dikhao / chhupao</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Jo tab nahi chahiye use OFF karo. Ye sirf is browser me save hota hai.
+            </p>
+            <ul className="space-y-2">
+              {TAB_OPTIONS.map((t) => {
+                const isOn = !hidden.includes(t.value);
+                const isLastOn = isOn && visibleCount <= 1;
+                return (
+                  <li key={t.value} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-sm">
+                      {t.icon}
+                      {t.label}
+                    </span>
+                    <Switch
+                      checked={isOn}
+                      disabled={isLastOn}
+                      onCheckedChange={(v) => onToggle(t.value, v)}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-3 text-[11px] text-muted-foreground">Kam se kam 1 tab ON rehna zaroori hai.</p>
+            <TrackingToggle />
+            <FeaturedToggles />
+            <TrendingRankingSettings />
+            <IgnoreThisBrowser />
+          </PopoverContent>
+        </Popover>
       </div>
       {active === 'sales' && right}
     </div>
@@ -775,6 +1123,42 @@ function SummaryCard({
 
 export default function AnalyticsPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboards');
+  const [hiddenTabs, setHiddenTabs] = useState<Tab[]>([]);
+
+  // Saved settings load karo (sirf browser me)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HIDDEN_TABS_KEY);
+      if (!raw) return;
+      const valid = TAB_OPTIONS.map((t) => t.value);
+      const saved = (JSON.parse(raw) as Tab[]).filter((t) => valid.includes(t));
+      if (saved.length < valid.length) setHiddenTabs(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Agar abhi khula tab chhup gaya, to pehle visible tab par jao
+  useEffect(() => {
+    if (hiddenTabs.includes(activeTab)) {
+      const first = TAB_OPTIONS.find((t) => !hiddenTabs.includes(t.value));
+      if (first) setActiveTab(first.value);
+    }
+  }, [hiddenTabs, activeTab]);
+
+  const handleToggleTab = (tab: Tab, show: boolean) => {
+    setHiddenTabs((prev) => {
+      const next = show ? prev.filter((t) => t !== tab) : [...prev, tab];
+      if (next.length >= TAB_OPTIONS.length) return prev; // sab chhupne nahi denge
+      try {
+        localStorage.setItem(HIDDEN_TABS_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
   const [range, setRange] = useState<SimpleRange>(() => ({
     from: startOfDay(subDays(new Date(), 29)),
     to: endOfDay(new Date()),
@@ -785,10 +1169,14 @@ export default function AnalyticsPanel() {
       <TabBar
         active={activeTab}
         onChange={setActiveTab}
+        hidden={hiddenTabs}
+        onToggle={handleToggleTab}
         right={<DateRangePicker value={range} onChange={setRange} />}
       />
       {activeTab === 'dashboards' ? (
         <DashboardsTab />
+      ) : activeTab === 'shoppers' ? (
+        <ShopperInsightsPanel />
       ) : activeTab === 'sales' ? (
         <SalesPanel range={range} onRangeChange={setRange} />
       ) : activeTab === 'traffic' ? (

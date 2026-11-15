@@ -1,5 +1,6 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { fetchCapped } from '@/lib/fetch-capped';
 
 /**
  * Shop "Popularity" order — same idea as the old WooCommerce site, where
@@ -108,12 +109,16 @@ export async function computePopularityRanking(): Promise<string[]> {
 
     const [sold, ev] = await Promise.all([
       loadLifetimeSales(supabase),
-      supabase
-        .from('activity_events')
-        .select('product_id, event_type')
-        .in('event_type', ['purchase', 'checkout_start', 'add_to_cart', 'product_view'])
-        .gte('created_at', since)
-        .not('product_id', 'is', null),
+      fetchCapped<{ product_id: string | null; event_type: string }>((a, b) =>
+        supabase
+          .from('activity_events')
+          .select('product_id, event_type')
+          .in('event_type', ['purchase', 'checkout_start', 'add_to_cart', 'product_view'])
+          .gte('created_at', since)
+          .not('product_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .range(a, b)
+      ),
     ]);
 
     type C = { sold: number; view: number; purchase: number; checkout: number; cart: number };
@@ -124,7 +129,7 @@ export async function computePopularityRanking(): Promise<string[]> {
       return c;
     };
     sold.forEach((n, id) => { get(id).sold = n; });
-    for (const r of ev.data ?? []) {
+    for (const r of ev) {
       if (!r.product_id) continue;
       const c = get(String(r.product_id));
       if (r.event_type === 'product_view') c.view++;

@@ -5,7 +5,7 @@ import { fetchTopVariantMapServer, toJSON } from '@/lib/top-variant-server';
 // image/slug) — no order or customer detail ever leaves fetchTopVariantMapServer.
 // Used by client components that can't call the server helper directly:
 // "You may also like" and "Recently viewed" on the product page.
-export const revalidate = 300; // 5 min — this doesn't need to be second-fresh
+export const revalidate = 3600; // 1 hour (was 5 min): ab pagination se zyada rows padhte hain, isliye free-tier bachane ko cache lamba
 
 export async function GET() {
   try {
