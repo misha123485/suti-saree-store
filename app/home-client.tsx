@@ -26,6 +26,13 @@ import { Button } from '@/components/ui/button';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { productInCategory } from '@/lib/category-utils';
 
+// The home page's top banner comes from Admin > Hero Banners (carousel) and,
+// separately, the storewide Site Banner in the layout. The old fallback that
+// re-rendered the Site Banner image here as a second hero (so it showed twice)
+// has been removed. Flip this to true to show the built-in "Handwoven Heritage"
+// gradient hero when no hero banners exist.
+const SHOW_DEFAULT_HERO = false;
+
 interface HomeClientProps {
   products: Product[];
   categories: CategoryRow[];
@@ -129,48 +136,7 @@ export default function HomeClient({
       {/* Hero */}
       {heroBanners.length > 0 ? (
         <HeroBannerCarousel banners={heroBanners} />
-      ) : banner ? (
-        <section className="w-full">
-          {banner.link_url ? (
-            <Link
-              href={banner.link_url}
-              className="group relative block aspect-[4/5] w-full overflow-hidden sm:aspect-[16/6]"
-            >
-              <Image
-                src={toPublicMediaUrl(banner.image_url) ?? banner.image_url}
-                alt="Current promotion"
-                fill
-                priority
-                fetchPriority="high"
-                sizes="100vw"
-                className="animate-ken-burns object-cover"
-              />
-              {/* Light sweep gives the static banner a "live" glint without
-                  needing extra images from the admin panel. */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shine-sweep bg-gradient-to-r from-transparent via-white/25 to-transparent"
-              />
-            </Link>
-          ) : (
-            <div className="group relative aspect-[4/5] w-full overflow-hidden sm:aspect-[16/6]">
-              <Image
-                src={toPublicMediaUrl(banner.image_url) ?? banner.image_url}
-                alt="Current promotion"
-                fill
-                priority
-                fetchPriority="high"
-                sizes="100vw"
-                className="animate-ken-burns object-cover"
-              />
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-y-0 left-0 w-1/3 animate-shine-sweep bg-gradient-to-r from-transparent via-white/25 to-transparent"
-              />
-            </div>
-          )}
-        </section>
-      ) : (
+      ) : SHOW_DEFAULT_HERO ? (
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/80">
         <div className="absolute inset-0 opacity-20">
           <div className="animate-float absolute -left-20 top-10 h-72 w-72 rounded-full bg-secondary/40 blur-3xl" />
@@ -255,7 +221,7 @@ export default function HomeClient({
           </div>
         </div>
       </section>
-      )}
+      ) : null}
 
       {/* Trending Now -- admin toggle (Analytics > settings). Default OFF. */}
       <div className="container-boutique">

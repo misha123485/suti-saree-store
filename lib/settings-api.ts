@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { purgeSiteLayoutCache } from './purge-site-cache';
+import { normalizeSiteBanner, prepareSiteBannerForSave, type SiteBanner } from './site-banner';
 
 export interface StoreInfo {
   name: string;
@@ -716,22 +717,7 @@ export async function saveReturnAutomationSettings(settings: ReturnAutomationSet
   if (error) throw error;
 }
 
-export interface SiteBanner {
-  image_url: string;
-  link_url?: string;
-  // Per-page visibility toggles. Both default to false so an existing
-  // banner doesn't suddenly reappear storewide the moment this field
-  // ships — admin has to explicitly turn each one on.
-  show_on_home?: boolean;
-  show_on_product?: boolean;
-}
-
-const DEFAULT_SITE_BANNER: SiteBanner = {
-  image_url: '',
-  link_url: '',
-  show_on_home: false,
-  show_on_product: false,
-};
+export type { SiteBanner, SiteBannerSlide, SiteBannerSizeMode } from './site-banner';
 
 export async function fetchSiteBanner(): Promise<SiteBanner> {
   const { data, error } = await supabase
@@ -739,14 +725,14 @@ export async function fetchSiteBanner(): Promise<SiteBanner> {
     .select('value')
     .eq('key', 'site_banner')
     .maybeSingle();
-  if (error || !data) return DEFAULT_SITE_BANNER;
-  return { ...DEFAULT_SITE_BANNER, ...(data.value as Partial<SiteBanner>) };
+  if (error || !data) return normalizeSiteBanner(null);
+  return normalizeSiteBanner(data.value);
 }
 
 export async function saveSiteBanner(banner: SiteBanner) {
   const { error } = await supabase
     .from('settings')
-    .upsert({ key: 'site_banner', value: banner }, { onConflict: 'key' });
+    .upsert({ key: 'site_banner', value: prepareSiteBannerForSave(banner) }, { onConflict: 'key' });
   if (error) throw error;
   await purgeSiteLayoutCache();
 }

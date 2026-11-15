@@ -42,22 +42,6 @@ export interface HomeData {
   appLayout: HomeAppLayoutSettings;
 }
 
-async function fetchHomeBanner(): Promise<HomeBanner | null> {
-  try {
-    const supabase = getServerSupabase();
-    const { data } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'site_banner')
-      .maybeSingle();
-    const banner = data?.value as Partial<HomeBanner> | undefined;
-    if (!banner?.image_url) return null;
-    return { image_url: banner.image_url, link_url: banner.link_url };
-  } catch {
-    return null;
-  }
-}
-
 async function fetchHomeFreeShippingThreshold(): Promise<number | null> {
   try {
     const supabase = getServerSupabase();
@@ -223,7 +207,6 @@ export async function fetchHomeData(): Promise<HomeData> {
   const [
     products,
     categories,
-    banner,
     freeShippingThreshold,
     collections,
     tiles,
@@ -235,7 +218,6 @@ export async function fetchHomeData(): Promise<HomeData> {
   ] = await Promise.all([
     fetchProductsServer(),
     fetchCategoriesServer(),
-    fetchHomeBanner(),
     fetchHomeFreeShippingThreshold(),
     fetchPublicCollectionsServer(),
     fetchHomeTiles(),
@@ -251,7 +233,7 @@ export async function fetchHomeData(): Promise<HomeData> {
   return {
     products,
     categories,
-    banner,
+    banner: null,
     freeShippingThreshold,
     collections,
     tiles,

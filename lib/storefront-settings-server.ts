@@ -1,7 +1,7 @@
 import { getServerSupabase } from '@/lib/supabase-server';
 import { DEFAULT_GROWTH_SETTINGS, type GrowthSettings } from '@/lib/growth-api';
 import { DEFAULT_SHIPPING_SETTINGS } from '@/lib/pincode-api';
-import type { SiteBanner } from '@/lib/settings-api';
+import { normalizeSiteBanner, type SiteBanner } from '@/lib/site-banner';
 
 /**
  * Settings that the storefront "chrome" (site banner, sale countdown bar,
@@ -26,12 +26,7 @@ export interface StorefrontChromeSettings {
   freeShippingThreshold: number;
 }
 
-const DEFAULT_BANNER: SiteBanner = {
-  image_url: '',
-  link_url: '',
-  show_on_home: false,
-  show_on_product: false,
-};
+const DEFAULT_BANNER: SiteBanner = normalizeSiteBanner(null);
 
 export async function getStorefrontChromeSettings(): Promise<StorefrontChromeSettings> {
   const fallback: StorefrontChromeSettings = {
@@ -51,7 +46,7 @@ export async function getStorefrontChromeSettings(): Promise<StorefrontChromeSet
     const shipping = (byKey.get('shipping') || {}) as { free_shipping_threshold?: number };
 
     return {
-      siteBanner: { ...DEFAULT_BANNER, ...((byKey.get('site_banner') as Partial<SiteBanner>) || {}) },
+      siteBanner: normalizeSiteBanner(byKey.get('site_banner')),
       growth: { ...DEFAULT_GROWTH_SETTINGS, ...((byKey.get('growth_settings') as Partial<GrowthSettings>) || {}) },
       freeShippingThreshold:
         typeof shipping.free_shipping_threshold === 'number'

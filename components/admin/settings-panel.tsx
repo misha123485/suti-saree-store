@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, FormEvent } from 'react';
-import { Save, Upload, Loader2, Trash2 } from 'lucide-react';
+import { Save, Upload, Loader2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import {
   StoreInfo,
@@ -13,6 +13,7 @@ import {
   DEFAULT_ABOUT_CONTENT,
   EmailSettings,
   SiteBanner,
+  SiteBannerSlide,
   fetchSiteBanner,
   saveSiteBanner,
   AiChatSettings,
@@ -89,6 +90,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import {
+  newBannerSlideId,
+  prepareSiteBannerForSave,
+  SITE_BANNER_MIN_HEIGHT,
+  SITE_BANNER_MAX_HEIGHT,
+} from '@/lib/site-banner';
 import OfferDisplayPanel from '@/components/admin/offer-display-panel';
 import TelegramNotifyCard from '@/components/admin/telegram-notify-card';
 import CheckoutButtonsPanel from '@/components/admin/checkout-buttons-panel';
@@ -1043,10 +1050,11 @@ export default function SettingsPanel() {
   };
 
   const saveBanner = async (next: SiteBanner) => {
-    setBannerForm(next);
+    const prepared = prepareSiteBannerForSave(next);
+    setBannerForm(prepared);
     setSavingBanner(true);
     try {
-      await saveSiteBanner(next);
+      await saveSiteBanner(prepared);
       toast.success('Site banner saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed');
@@ -1055,24 +1063,54 @@ export default function SettingsPanel() {
     }
   };
 
+  // Multiple images at once — each file is uploaded, then all of them are
+  // appended as new (enabled) slides in a single save.
   const onUploadBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !bannerForm) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0 || !bannerForm) return;
     setUploadingBanner(true);
     try {
-      const url = await uploadProductImage(file);
-      await saveBanner({ ...bannerForm, image_url: url });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Banner upload failed');
+      const added: SiteBannerSlide[] = [];
+      for (const file of files) {
+        try {
+          const url = await uploadProductImage(file);
+          added.push({ id: newBannerSlideId(), image_url: url, link_url: '', enabled: true });
+        } catch (err) {
+          toast.error(`${file.name}: ${err instanceof Error ? err.message : 'upload failed'}`);
+        }
+      }
+      if (added.length > 0) {
+        await saveBanner({ ...bannerForm, slides: [...(bannerForm.slides ?? []), ...added] });
+      }
     } finally {
       setUploadingBanner(false);
       e.target.value = '';
     }
   };
 
-  const removeBanner = () => {
+  const updateBannerSlide = (id: string, patch: Partial<SiteBannerSlide>, persist: boolean) => {
     if (!bannerForm) return;
-    saveBanner({ ...bannerForm, image_url: '' });
+    const next = {
+      ...bannerForm,
+      slides: (bannerForm.slides ?? []).map((sl) => (sl.id === id ? { ...sl, ...patch } : sl)),
+    };
+    if (persist) saveBanner(next);
+    else setBannerForm(next);
+  };
+
+  const removeBannerSlide = (id: string) => {
+    if (!bannerForm) return;
+    saveBanner({ ...bannerForm, slides: (bannerForm.slides ?? []).filter((sl) => sl.id !== id) });
+  };
+
+  const moveBannerSlide = (id: string, dir: -1 | 1) => {
+    if (!bannerForm) return;
+    const list = [...(bannerForm.slides ?? [])];
+    const i = list.findIndex((sl) => sl.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    saveBanner({ ...bannerForm, slides: list });
   };
 
   const runWebpConversion = async () => {
@@ -1429,9 +1467,10 @@ export default function SettingsPanel() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl font-bold text-primary">Site Banner</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          A promotional image shown at the top of every page except checkout. The toggles
-          below only control the home page and product pages — every other page (shop,
-          categories, etc.) always shows it whenever an image is set.
+          Promotional banner(s) shown at the top of every page except checkout. Upload one or
+          more images — with more than one, the banner becomes a slider. The home / product
+          page toggles below only control those two pages; every other page (shop,
+          categories, etc.) always shows the banner whenever at least one image is enabled.
         </p>
       </div>
 
@@ -1439,66 +1478,238 @@ export default function SettingsPanel() {
         <p className="py-4 text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="mt-4 grid max-w-xl gap-4 rounded-lg border border-border/60 bg-card p-5">
-          <div className="grid gap-1.5">
-            <Label>Banner image</Label>
-            {bannerForm.image_url ? (
-              <div className="flex items-center gap-3">
-                <div className="relative h-16 w-32 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
-                  <Image
-                    src={bannerForm.image_url}
-                    alt="Site banner preview"
-                    fill
-                    sizes="128px"
-                    className="object-cover"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={removeBanner}
-                  disabled={savingBanner}
-                  className="gap-1.5 text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Remove banner
-                </Button>
-              </div>
-            ) : (
-              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-2 text-sm hover:border-primary/50">
-                {uploadingBanner ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
-                <span>{uploadingBanner ? 'Uploading…' : 'Upload banner image'}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onUploadBanner}
-                  disabled={uploadingBanner}
-                />
-              </label>
+          <div className="grid gap-2">
+            <Label>Banner images</Label>
+            {(bannerForm.slides ?? []).length > 0 && (
+              <ul className="grid gap-2">
+                {(bannerForm.slides ?? []).map((slide, i, arr) => (
+                  <li
+                    key={slide.id}
+                    className={`grid gap-2 rounded-md border border-border/60 p-2.5 ${
+                      slide.enabled ? '' : 'bg-muted/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`relative h-14 w-28 shrink-0 overflow-hidden rounded-md border border-border bg-muted ${
+                          slide.enabled ? '' : 'opacity-50'
+                        }`}
+                      >
+                        <Image
+                          src={slide.image_url}
+                          alt={`Banner ${i + 1} preview`}
+                          fill
+                          sizes="112px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <Switch
+                          id={`banner-slide-on-${slide.id}`}
+                          checked={slide.enabled}
+                          onCheckedChange={(checked) =>
+                            updateBannerSlide(slide.id, { enabled: checked }, true)
+                          }
+                          disabled={savingBanner}
+                        />
+                        <Label htmlFor={`banner-slide-on-${slide.id}`} className="text-xs">
+                          {slide.enabled ? `#${i + 1} · Enabled` : `#${i + 1} · Hidden`}
+                        </Label>
+                      </div>
+                      <div className="flex shrink-0 items-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => moveBannerSlide(slide.id, -1)}
+                          disabled={savingBanner || i === 0}
+                          aria-label="Move up"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => moveBannerSlide(slide.id, 1)}
+                          disabled={savingBanner || i === arr.length - 1}
+                          aria-label="Move down"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => removeBannerSlide(slide.id)}
+                          disabled={savingBanner}
+                          aria-label="Remove banner image"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <Input
+                      value={slide.link_url ?? ''}
+                      onChange={(e) => updateBannerSlide(slide.id, { link_url: e.target.value }, false)}
+                      onBlur={() => bannerForm && saveBanner(bannerForm)}
+                      placeholder="Link for this image (optional) e.g. /shop?category=Bridal"
+                      className="h-8 text-xs"
+                    />
+                  </li>
+                ))}
+              </ul>
             )}
+            <label className="flex w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-4 py-2 text-sm hover:border-primary/50">
+              {uploadingBanner ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              <span>
+                {uploadingBanner
+                  ? 'Uploading…'
+                  : (bannerForm.slides ?? []).length > 0
+                    ? 'Add more images'
+                    : 'Upload banner images'}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={onUploadBanner}
+                disabled={uploadingBanner}
+              />
+            </label>
             <p className="text-xs text-muted-foreground">
-              Wide images work best (e.g. 1600×400). Use the toggles below to control where it
-              shows. Remove it and the banner disappears everywhere, regardless of the toggles.
+              You can select several images at once. Wide images work best (e.g. 1600×400). Use
+              the switch on each image to show / hide it, and the arrows to change the order.
+              Remove all images (or disable them all) and the banner disappears everywhere.
             </p>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="banner-link">Link (optional)</Label>
-            <Input
-              id="banner-link"
-              value={bannerForm.link_url ?? ''}
-              onChange={(e) => setBannerForm((f) => f && { ...f, link_url: e.target.value })}
-              onBlur={() => bannerForm && saveBanner(bannerForm)}
-              placeholder="/shop?category=Bridal"
-            />
+
+          <div className="grid gap-4 border-t border-border/60 pt-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="banner-autoplay">Auto slide</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically move to the next image (only when 2+ images are enabled).
+                </p>
+              </div>
+              <Switch
+                id="banner-autoplay"
+                checked={bannerForm.autoplay !== false}
+                onCheckedChange={(checked) => saveBanner({ ...bannerForm, autoplay: checked })}
+                disabled={savingBanner}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="banner-loop">Loop</Label>
+                <p className="text-xs text-muted-foreground">
+                  On: after the last image it goes back to the first. Off: it stops at the last image.
+                </p>
+              </div>
+              <Switch
+                id="banner-loop"
+                checked={bannerForm.loop !== false}
+                onCheckedChange={(checked) => saveBanner({ ...bannerForm, loop: checked })}
+                disabled={savingBanner}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label>Slide time</Label>
+                <p className="text-xs text-muted-foreground">
+                  How long each image stays on screen.
+                </p>
+              </div>
+              <Select
+                value={String(bannerForm.interval_seconds ?? 5)}
+                onValueChange={(v) => saveBanner({ ...bannerForm, interval_seconds: Number(v) })}
+                disabled={savingBanner}
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(
+                    new Set([2, 3, 4, 5, 6, 8, 10, 15, 20, 30, bannerForm.interval_seconds ?? 5])
+                  )
+                    .sort((x, y) => x - y)
+                    .map((sec) => (
+                      <SelectItem key={sec} value={String(sec)}>
+                        {sec} sec
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 border-t border-border/60 pt-4">
+            <div>
+              <Label>Banner size</Label>
+              <p className="text-xs text-muted-foreground">
+                Default = the image&apos;s own height (full width, nothing cropped). Fixed = a set
+                height in pixels (the image fills it and the edges may be cropped).
+              </p>
+            </div>
+            {(['desktop', 'mobile'] as const).map((device) => {
+              const modeKey = `${device}_size_mode` as const;
+              const heightKey = `${device}_height` as const;
+              const mode = bannerForm[modeKey] === 'fixed' ? 'fixed' : 'default';
+              return (
+                <div key={device} className="flex flex-wrap items-center justify-between gap-3">
+                  <Label className="capitalize">{device}</Label>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={mode}
+                      onValueChange={(v) =>
+                        saveBanner({ ...bannerForm, [modeKey]: v as 'default' | 'fixed' })
+                      }
+                      disabled={savingBanner}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default</SelectItem>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {mode === 'fixed' && (
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={SITE_BANNER_MIN_HEIGHT}
+                          max={SITE_BANNER_MAX_HEIGHT}
+                          value={bannerForm[heightKey] ?? ''}
+                          onChange={(e) =>
+                            setBannerForm((f) => f && { ...f, [heightKey]: Number(e.target.value) })
+                          }
+                          onBlur={() => bannerForm && saveBanner(bannerForm)}
+                          className="w-24"
+                          aria-label={`${device} banner height in pixels`}
+                        />
+                        <span className="text-xs text-muted-foreground">px</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             <p className="text-xs text-muted-foreground">
-              Where the banner takes people if they click it. Leave blank for a non-clickable banner.
+              Tip: desktop ≈ 300–450 px, mobile ≈ 120–200 px works well for 1600×400 banners.
+              Desktop applies from tablet width (768 px) and up.
             </p>
           </div>
+
           <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4">
             <div>
               <Label htmlFor="banner-show-home">Show on home page</Label>
