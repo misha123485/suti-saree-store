@@ -23,6 +23,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // ---------- Bots / logged-out visitors: skip the Supabase network call ----------
+  // Supabase auth cookies start with "sb-". No such cookie = nobody is logged in,
+  // so there is nothing to refresh and getUser() would be a wasted round trip.
+  const hasAuthCookie = req.cookies.getAll().some((c) => c.name.startsWith('sb-'));
+  if (!hasAuthCookie) {
+    if (pathname.startsWith('/account') || pathname.startsWith('/vendor')) {
+      const loginUrl = new URL('/login', req.url);
+      loginUrl.searchParams.set('next', pathname + search);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
   // ---------- Customer session refresh (all other routes) ----------
   let response = NextResponse.next({ request: req });
 

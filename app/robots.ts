@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com').replace(/\/$/, '');
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mishaboutique.com').replace(/\/$/, '');
 
 // Private / non-content paths (never needed by Google for product checks).
 const PRIVATE_PATHS = ['/admin', '/checkout', '/cart', '/api/', '/track/', '/order-confirmation/'];
@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
     };
   }
 
-  const AI_BOTS = ['GPTBot', 'CCBot', 'Bytespider', 'ClaudeBot', 'anthropic-ai', 'PerplexityBot', 'Amazonbot', 'Applebot-Extended', 'meta-externalagent', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot'];
+  const AI_BOTS = ['GPTBot', 'CCBot', 'Bytespider', 'ClaudeBot', 'anthropic-ai', 'Amazonbot', 'Applebot-Extended', 'meta-externalagent', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot'];
 
   return {
     rules: [
@@ -23,6 +23,9 @@ export default function robots(): MetadataRoute.Robots {
       // ChatGPT shopping/search: OAI-SearchBot (indexes pages for ChatGPT search) and ChatGPT-User
       // (opens a page when a shopper asks about it) must be allowed, or ChatGPT cannot verify
       // products. GPTBot (model-training crawler) stays blocked above.
+      // AI search / shopper-triggered fetchers: these are how ChatGPT, Claude and Perplexity
+      // find and verify products for people who ask. Allowed on purpose.
+      { userAgent: ['Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User'], allow: '/', disallow: PRIVATE_PATHS },
       { userAgent: 'OAI-SearchBot', allow: '/', disallow: PRIVATE_PATHS },
       { userAgent: 'ChatGPT-User', allow: '/', disallow: PRIVATE_PATHS },
       // Merchant Center needs Googlebot (landing pages) AND Googlebot-Image (images).
