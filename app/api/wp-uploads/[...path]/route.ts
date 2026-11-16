@@ -126,6 +126,31 @@ async function createVariant(bucket: string, key: string): Promise<{ buffer: Buf
   }
 }
 
+// ---------------------------------------------------------------------
+// Pinterest (and some other crawlers) do not accept AVIF product images.
+// The product feed (app/rss.xml/route.ts) appends  ?fmt=jpg  to .avif
+// URLs; here we convert that one file to JPEG on the fly with sharp.
+// Original in R2 is never touched. If anything fails we return null and
+// the normal handler below serves the original AVIF as before.
+// ---------------------------------------------------------------------
+async function avifToJpeg(bucket: string, key: string): Promise<Buffer | null> {
+  try {
+    const orig = await getR2Client().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    if (typeof orig.ContentLength === 'number' && orig.ContentLength > MAX_ORIGINAL_BYTES) return null;
+    const body = orig.Body as unknown as { transformToByteArray?: () => Promise<Uint8Array> } | undefined;
+    if (!body?.transformToByteArray) return null;
+    const input = Buffer.from(await body.transformToByteArray());
+    return await sharp(input, { failOn: 'none' })
+      .rotate()
+      .resize({ width: 1500, withoutEnlargement: true })
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toBuffer();
+  } catch (err) {
+    console.error('[wp-uploads] avif->jpeg failed, serving original:', key, err);
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
   const segments = (params.path || []).map(decodeSegment);
   if (segments.length === 0 || segments.some((s) => !s || s === '.' || s === '..' || s.includes('\\'))) {
@@ -140,6 +165,20 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
   const bucket = process.env.R2_BUCKET_NAME;
   if (!bucket || !process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
     return new NextResponse('Storage not configured', { status: 503 });
+  }
+
+  if (ext === 'avif' && req.nextUrl.searchParams.get('fmt') === 'jpg') {
+    const jpg = await avifToJpeg(bucket, key);
+    if (jpg) {
+      return new NextResponse(new Uint8Array(jpg), {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Content-Length': String(jpg.length),
+          'Cache-Control': 'public, max-age=2592000, s-maxage=31536000, stale-while-revalidate=86400',
+        },
+      });
+    }
   }
 
   try {

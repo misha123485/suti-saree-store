@@ -106,7 +106,19 @@ function absUrl(u: string): string {
   return SITE_URL.replace(/\/$/, "") + (u.startsWith("/") ? "" : "/") + u;
 }
 
+// Pinterest does not accept AVIF images. For our own /wp-content/ .avif files
+// ask the site to serve a JPEG version (see app/api/wp-uploads route).
+function pinterestSafeImage(u: string): string {
+  if (!u) return u;
+  const [path, query] = u.split("?");
+  if (path.toLowerCase().endsWith(".avif") && path.startsWith(SITE_URL.replace(/\/$/, "") + "/wp-content/") && !query) {
+    return path + "?fmt=jpg";
+  }
+  return u;
+}
+
 function imageMime(url: string): string {
+  if (/[?&]fmt=jpg\b/.test(url)) return "image/jpeg";
   const u = url.split("?")[0].toLowerCase();
   if (u.endsWith(".avif")) return "image/avif";
   if (u.endsWith(".png")) return "image/png";
@@ -225,7 +237,7 @@ export async function GET() {
   }) {
     const { id, itemGroupId, title: rawTitle, link, images: rawImages, inStock, price, mrp, color, size, product } = opts;
 
-    const images = toPublicMediaUrls(rawImages).map(absUrl).filter(Boolean);
+    const images = toPublicMediaUrls(rawImages).map(absUrl).map(pinterestSafeImage).filter(Boolean);
     const image = images[0] || "";
     const extraImages = images
       .slice(1, 11)
