@@ -17,7 +17,7 @@ import { expandProductVariants } from '@/lib/expand-product-variants';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
 
-export const revalidate = 1800;
+export const revalidate = 86400; // 24h (was 30 min)
 
 type Params = { params: { slug: string } };
 

@@ -13,7 +13,7 @@ const VALID_SLUGS = Object.keys(LEGAL_PAGE_TITLES) as LegalSlug[];
 // straight to Supabase. Without this, Next.js would statically generate this
 // page once at build time and keep serving that stale copy forever, so admin
 // edits would never show up on the live site until the next deploy.
-export const revalidate = 600; // 10 min cache (was force-dynamic = 1 function run per visit)
+export const revalidate = 43200; // 12h - legal text rarely changes (was 10 min)
 
 async function getLegalPages(): Promise<LegalPages> {
   const supabase = getServerSupabase();

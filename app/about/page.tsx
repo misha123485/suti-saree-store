@@ -19,7 +19,7 @@ import { safeJsonLd } from '@/lib/json-ld';
 
 import { mergeAboutContent } from '@/lib/settings-api';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 43200; // 12h cached page (was force-dynamic = 1 function run per visit)
 
 export const metadata: Metadata = {
   title: 'About Us',

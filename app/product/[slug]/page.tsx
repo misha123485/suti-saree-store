@@ -9,7 +9,7 @@ import { fetchTopProductSlugsServer } from '@/lib/top-products-server';
 // layout + page, so a smaller number here would only add Vercel ISR writes
 // (Hobby plan: 200k/month).
 // NOTE: do NOT read `searchParams` in this file -- it turns the page dynamic.
-export const revalidate = 21600; // 6 hours (was 1800) - less CPU/ISR writes; admin edits still purge via revalidatePath
+export const revalidate = 43200; // 12h - CPU saver (was 6h); admin edits still purge via revalidatePath
 
 type Params = { params: { slug: string } };
 
