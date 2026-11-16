@@ -97,6 +97,15 @@ function slugLabel(input: string): string {
     .slice(0, 60);
 }
 
+// Pinterest requires absolute http(s) image URLs. Some DB rows hold relative
+// paths like /wp-content/uploads/... (served via next.config rewrite), so
+// prefix them with SITE_URL.
+function absUrl(u: string): string {
+  if (!u) return "";
+  if (/^https?:\/\//i.test(u)) return u;
+  return SITE_URL.replace(/\/$/, "") + (u.startsWith("/") ? "" : "/") + u;
+}
+
 function imageMime(url: string): string {
   const u = url.split("?")[0].toLowerCase();
   if (u.endsWith(".avif")) return "image/avif";
@@ -216,7 +225,7 @@ export async function GET() {
   }) {
     const { id, itemGroupId, title: rawTitle, link, images: rawImages, inStock, price, mrp, color, size, product } = opts;
 
-    const images = toPublicMediaUrls(rawImages).filter(Boolean);
+    const images = toPublicMediaUrls(rawImages).map(absUrl).filter(Boolean);
     const image = images[0] || "";
     const extraImages = images
       .slice(1, 11)
