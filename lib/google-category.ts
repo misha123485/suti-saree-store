@@ -63,7 +63,7 @@ const CATEGORY_RULES: CategoryRule[] = [
 
 /**
  * Returns the most specific Google product category path that matches, or
- * a safe generic fallback ("Apparel & Accessories > Clothing") if nothing
+ * a safe generic fallback ("... > Clothing > Traditional & Ceremonial Clothing") if nothing
  * matches -- this keeps the feed valid even for a brand-new admin-created
  * category the rules above don't recognize yet, instead of erroring out.
  */
@@ -76,5 +76,8 @@ export function resolveGoogleProductCategory(categoryName: string, productName?:
     }
   }
 
-  return 'Apparel & Accessories > Clothing';
+  // Fallback must have 3+ levels: Pinterest (Warning 126) flags items that
+  // only carry 1-2 levels. This store sells ethnic wear, so the 3-level
+  // "Traditional & Ceremonial Clothing" node is a safe, accurate default.
+  return 'Apparel & Accessories > Clothing > Traditional & Ceremonial Clothing';
 }
