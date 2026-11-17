@@ -55,6 +55,8 @@ export default function MegaDealOffers({
   const [storeCredit, setStoreCredit] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const [applying, setApplying] = useState<string | null>(null);
+  // The Mega Deal popup is controlled so the coupon row below it can open it via "Details".
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!settings.show_coupons) return;
@@ -224,7 +226,8 @@ export default function MegaDealOffers({
     });
 
   return (
-    <Sheet>
+    <div className="flex flex-col gap-2">
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
       <SheetTrigger asChild>
         <button
           type="button"
@@ -297,5 +300,60 @@ export default function MegaDealOffers({
         </p>
       </SheetContent>
     </Sheet>
+
+    {/* Quick coupon apply — sits right below the Mega Deal bar so the best
+        coupon can be applied without opening the popup. */}
+    {chosen && (() => {
+      const c = chosen.coupon;
+      const isApplied = appliedCoupon?.code === c.code;
+      return (
+        <div
+          className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
+            isApplied ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/30' : 'border-border bg-card'
+          }`}
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Tag className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">
+              Coupon <span className="font-bold">{c.code}</span>
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {c.min_order_value > 0 ? `On orders above ${formatINR(c.min_order_value)}` : 'No minimum order value'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              className="mt-0.5 flex items-center gap-0.5 text-xs font-semibold text-rose-600"
+            >
+              Details <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className="text-sm font-bold text-emerald-600">{formatINR(chosen.discount)} off</span>
+            <button
+              type="button"
+              onClick={() => applyCoupon(c)}
+              disabled={applying === c.code}
+              className={`rounded-full px-4 py-1 text-xs font-semibold disabled:opacity-60 ${
+                isApplied ? 'bg-emerald-600 text-white' : 'border border-primary text-primary'
+              }`}
+            >
+              {isApplied ? (
+                <span className="flex items-center gap-1">
+                  <Check className="h-3 w-3" /> Applied
+                </span>
+              ) : applying === c.code ? (
+                '…'
+              ) : (
+                'Apply'
+              )}
+            </button>
+          </div>
+        </div>
+      );
+    })()}
+    </div>
   );
 }
