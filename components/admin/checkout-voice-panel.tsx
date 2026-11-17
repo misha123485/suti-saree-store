@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   CheckoutVoiceSettings,
   DEFAULT_CHECKOUT_VOICE_SETTINGS,
-  VOICE_LANGUAGE_OPTIONS,
+  VOICE_LANGUAGES,
   fetchCheckoutVoiceSettings,
   saveCheckoutVoiceSettings,
 } from '@/lib/checkout-voice-settings';
@@ -45,10 +45,11 @@ export default function CheckoutVoicePanel() {
     <div className="mt-4 grid max-w-xl gap-4 rounded-lg border border-border/60 bg-card p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <Label htmlFor="voice-enabled">“Speak your address” button on checkout</Label>
+          <Label htmlFor="voice-enabled">“Speak to fill details” on checkout</Label>
           <p className="text-xs text-muted-foreground">
-            ON = customer taps the mic, says the full address once, and AI fills Street, Apartment,
-            Landmark and PIN code (City/State then fill automatically from the PIN).
+            ON = a voice assistant at the top of checkout asks name, phone, email and address one by one.
+            Customer answers in their own language; AI fills the fields in English letters (City/State
+            then fill automatically from the PIN code).
           </p>
         </div>
         <Switch
@@ -59,7 +60,7 @@ export default function CheckoutVoicePanel() {
       </div>
 
       <div className={form.enabled ? '' : 'pointer-events-none opacity-50'}>
-        <Label htmlFor="voice-lang">Speaking language</Label>
+        <Label htmlFor="voice-lang">Starting language</Label>
         <select
           id="voice-lang"
           value={form.language}
@@ -68,16 +69,44 @@ export default function CheckoutVoicePanel() {
           }
           className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
-          {VOICE_LANGUAGE_OPTIONS.map((l) => (
+          {VOICE_LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>
               {l.label}
             </option>
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          Recommended: Auto detect. The address is always saved in English letters so the courier can read
-          it.
+          Customers can change the language themselves (it is remembered on their phone). Hindi works
+          for Hinglish too. Values are always saved in English letters so the courier can read them.
         </p>
+      </div>
+
+      <div className={'grid gap-4 ' + (form.enabled ? '' : 'pointer-events-none opacity-50')}>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label htmlFor="voice-email">Also ask for email</Label>
+            <p className="text-xs text-muted-foreground">Customer can skip it. Not asked to logged-in customers.</p>
+          </div>
+          <Switch
+            id="voice-email"
+            checked={form.ask_email}
+            onCheckedChange={(v) => setForm((f) => (f ? { ...f, ask_email: v } : f))}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label htmlFor="voice-speak">Read questions aloud</Label>
+            <p className="text-xs text-muted-foreground">
+              Phone speaks each question (only if it has a voice for that language). Questions are always
+              shown on screen too.
+            </p>
+          </div>
+          <Switch
+            id="voice-speak"
+            checked={form.speak_questions}
+            onCheckedChange={(v) => setForm((f) => (f ? { ...f, speak_questions: v } : f))}
+          />
+        </div>
       </div>
 
       <p className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs text-muted-foreground">

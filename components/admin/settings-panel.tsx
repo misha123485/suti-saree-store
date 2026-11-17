@@ -2024,10 +2024,10 @@ export default function SettingsPanel() {
       </div>
 
       <div className="mt-8">
-        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Voice Typing (Address)</h2>
+        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Voice Assistant (Speak to Fill)</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Adds a “Speak your address” button on checkout. The customer says the full address once and AI
-          fills the address fields. Turn it on/off and choose the language here.
+          Adds a “Speak to fill details” voice assistant on checkout. AI asks name, phone, email and address
+          one by one, the customer answers in their own language, and the fields fill in English letters.
         </p>
         <CheckoutVoicePanel />
       </div>

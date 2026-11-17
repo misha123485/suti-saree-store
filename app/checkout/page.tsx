@@ -99,7 +99,7 @@ import {
   type CheckoutButtonsSettings,
 } from '@/lib/checkout-buttons-settings';
 import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
-import VoiceAddressButton from '@/components/checkout/voice-address-button';
+import VoiceAssistant from '@/components/checkout/voice-assistant';
 import {
   DEFAULT_CHECKOUT_VOICE_SETTINGS,
   fetchCheckoutVoiceSettings,
@@ -2092,6 +2092,32 @@ export default function CheckoutPage() {
                 <h2 className="mb-4 font-serif text-lg font-bold text-primary">
                   Contact Information
                 </h2>
+            {voiceSettings.enabled && !isIntl && (
+              <VoiceAssistant
+                language={voiceSettings.language}
+                askEmail={voiceSettings.ask_email && !user}
+                speakQuestions={voiceSettings.speak_questions}
+                handlers={{
+                  onName: (first, last) => {
+                    setFirstName(first);
+                    setLastName(last);
+                  },
+                  onPhone: (phone) => setShipPhone(phone),
+                  onEmail: (mail) => setEmail(mail),
+                  onAddress: (a) => {
+                    if (a.line1) setAddressLine1(a.line1);
+                    if (a.line2) setAddressLine2(a.line2);
+                    if (a.landmark) setLandmark(a.landmark);
+                    if (a.pincode) {
+                      // Same as typing a new PIN: let the lookup refresh City/State.
+                      cityAutoFilledRef.current = true;
+                      stateAutoFilledRef.current = true;
+                      setPincode(a.pincode);
+                    }
+                  },
+                }}
+              />
+            )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
               <div className="grid gap-1.5">
                 <Label htmlFor="firstName">First name *</Label>
@@ -2178,22 +2204,6 @@ export default function CheckoutPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              {voiceSettings.enabled && !isIntl && (
-                <VoiceAddressButton
-                  language={voiceSettings.language}
-                  onResult={(r) => {
-                    if (r.line1) setAddressLine1(r.line1);
-                    if (r.line2) setAddressLine2(r.line2);
-                    if (r.landmark) setLandmark(r.landmark);
-                    if (r.pincode) {
-                      // Same as typing a new PIN: let the lookup refresh City/State.
-                      cityAutoFilledRef.current = true;
-                      stateAutoFilledRef.current = true;
-                      setPincode(r.pincode);
-                    }
-                  }}
-                />
               )}
               <div className="grid gap-1.5">
                 <Label htmlFor="address">Street address *</Label>
