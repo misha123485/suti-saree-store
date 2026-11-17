@@ -2917,8 +2917,8 @@ export default function CheckoutPage() {
         </DialogContent>
       </Dialog>
 
-      <form id="checkout-form" onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <form id="checkout-form" onSubmit={onSubmit} className="grid gap-x-8 gap-y-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] lg:gap-y-0">
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 max-lg:order-1">
           {/* Login status — always shown, whether the saved-address summary
               or the editable guest form is what's displayed below it. */}
           <section
@@ -3184,11 +3184,14 @@ export default function CheckoutPage() {
             )
           )}
 
-          {/* Payment info */}
+        </div>
+
+        {/* Payment — on mobile it comes AFTER the order summary (order-3); desktop layout unchanged. */}
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 max-lg:order-3">
           <section
             ref={paymentSectionRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
-            className="mt-4 rounded-lg border border-border/60 bg-card p-3.5 sm:p-5"
+            className="rounded-lg border border-border/60 bg-card p-3.5 sm:p-5 lg:mt-4"
           >
             <h2 className="mb-0.5 font-serif text-lg font-bold text-primary">Payment</h2>
             <p className="mb-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -3255,10 +3258,18 @@ export default function CheckoutPage() {
             {isIntl && payButtonNode && <div className="mt-4">{payButtonNode}</div>}
 
           </section>
+
+          {/* Mobile only: terms + trust badges sit right below Payment (desktop keeps them in the summary card). */}
+          <div className="lg:hidden">
+            <p className="mt-3 text-center text-[11px] text-muted-foreground">
+              By placing your order, you agree to our Terms &amp; Privacy Policy.
+            </p>
+            <TrustBadges />
+          </div>
         </div>
 
-        {/* Summary */}
-        <aside id="order-summary" className="lg:col-span-1">
+        {/* Summary — on mobile shown BEFORE Payment (order-2) */}
+        <aside id="order-summary" className="lg:col-span-1 lg:col-start-3 lg:row-span-2 lg:row-start-1 max-lg:order-2">
           <div
             ref={orderSummaryRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
@@ -3967,10 +3978,12 @@ export default function CheckoutPage() {
             </div>,
             document.body
             )}
-            <p className="mt-3 text-center text-[11px] text-muted-foreground">
-              By placing your order, you agree to our Terms & Privacy Policy.
-            </p>
-            <TrustBadges />
+            <div className="max-lg:hidden">
+              <p className="mt-3 text-center text-[11px] text-muted-foreground">
+                By placing your order, you agree to our Terms &amp; Privacy Policy.
+              </p>
+              <TrustBadges />
+            </div>
           </div>
         </aside>
       </form>
