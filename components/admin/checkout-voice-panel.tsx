@@ -109,6 +109,21 @@ export default function CheckoutVoicePanel() {
         </div>
       </div>
 
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <Label htmlFor="loc-enabled">“Use my current location” button (free)</Label>
+          <p className="text-xs text-muted-foreground">
+            ON = one tap fills street, area and PIN code from the customer’s phone GPS. No API key, no cost.
+            Works even if the voice assistant above is OFF.
+          </p>
+        </div>
+        <Switch
+          id="loc-enabled"
+          checked={form.location_enabled}
+          onCheckedChange={(v) => setForm((f) => (f ? { ...f, location_enabled: v } : f))}
+        />
+      </div>
+
       <p className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs text-muted-foreground">
         Uses the same <b>GROQ_API_KEY</b> as the AI chat (Vercel environment variable) — no extra key. Groq
         free tier is enough for normal traffic. If the key is missing, customers see “please type your

@@ -100,6 +100,7 @@ import {
 } from '@/lib/checkout-buttons-settings';
 import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
 import VoiceAssistant from '@/components/checkout/voice-assistant';
+import UseLocationButton from '@/components/checkout/use-location-button';
 import {
   DEFAULT_CHECKOUT_VOICE_SETTINGS,
   fetchCheckoutVoiceSettings,
@@ -2204,6 +2205,29 @@ export default function CheckoutPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+              {voiceSettings.location_enabled && !isIntl && (
+                <UseLocationButton
+                  onResult={(a) => {
+                    if (a.line1) setAddressLine1(a.line1);
+                    if (a.line2) setAddressLine2(a.line2);
+                    if (a.pincode) {
+                      // Same as typing a new PIN: the India Post lookup then fills City/State.
+                      cityAutoFilledRef.current = true;
+                      stateAutoFilledRef.current = true;
+                      setPincode(a.pincode);
+                    } else {
+                      if (a.city) {
+                        setCity(a.city);
+                        cityAutoFilledRef.current = true;
+                      }
+                      if (a.state && INDIAN_STATES.includes(a.state)) {
+                        setStateName(a.state);
+                        stateAutoFilledRef.current = true;
+                      }
+                    }
+                  }}
+                />
               )}
               <div className="grid gap-1.5">
                 <Label htmlFor="address">Street address *</Label>

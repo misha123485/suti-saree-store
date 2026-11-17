@@ -8,6 +8,7 @@ import { supabase } from './supabase';
 //   enabled:         show the voice assistant on checkout.
 //   language:        language the assistant starts in (customer can change).
 //   ask_email:       also ask for the email (skippable by the customer).
+//   location_enabled: show the free "Use my current location" button.
 //   speak_questions: assistant reads each question aloud (if the phone
 //                    has a voice for that language) besides showing it.
 //
@@ -40,6 +41,7 @@ export interface CheckoutVoiceSettings {
   language: VoiceLanguage;
   ask_email: boolean;
   speak_questions: boolean;
+  location_enabled: boolean;
 }
 
 export const DEFAULT_CHECKOUT_VOICE_SETTINGS: CheckoutVoiceSettings = {
@@ -47,6 +49,7 @@ export const DEFAULT_CHECKOUT_VOICE_SETTINGS: CheckoutVoiceSettings = {
   language: 'hi',
   ask_email: true,
   speak_questions: true,
+  location_enabled: true,
 };
 
 export function isVoiceLanguage(v: unknown): v is VoiceLanguage {
@@ -68,6 +71,7 @@ export async function fetchCheckoutVoiceSettings(): Promise<CheckoutVoiceSetting
     language: isVoiceLanguage(v.language) ? v.language : d.language,
     ask_email: typeof v.ask_email === 'boolean' ? v.ask_email : d.ask_email,
     speak_questions: typeof v.speak_questions === 'boolean' ? v.speak_questions : d.speak_questions,
+    location_enabled: typeof v.location_enabled === 'boolean' ? v.location_enabled : d.location_enabled,
   };
 }
 
