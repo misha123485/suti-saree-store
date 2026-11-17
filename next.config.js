@@ -36,7 +36,12 @@ const nextConfig = {
       { source: '/wp-content/uploads/woo-feed/google/xml/saree.xml', destination: '/feeds/google-saree.xml' },
       // Old WordPress media at its original URL -> read from Cloudflare R2 (app/api/wp-uploads).
       { source: '/wp-content/uploads/:path*', destination: '/api/wp-uploads/:path*' },
-      { source: '/product-category/:parent*/:slug', destination: '/category/:slug' },      { source: '/product-tag/:slug', destination: '/tag/:slug' },
+      // Pinterest per-category / per-tag feeds on the OLD Woo URLs. Must come BEFORE the
+      // generic rewrites below (otherwise "rss.xml" would be treated as the category slug).
+      { source: '/product-category/:parent*/:slug/rss.xml', destination: '/category/:slug/rss.xml' },
+      { source: '/product-tag/:slug/rss.xml', destination: '/tag/:slug/rss.xml' },
+      { source: '/product-category/:parent*/:slug', destination: '/category/:slug' },
+      { source: '/product-tag/:slug', destination: '/tag/:slug' },
       { source: '/privacy-policy', destination: '/legal/privacy-policy' },
       { source: '/terms-and-conditions', destination: '/legal/terms-conditions' },
       { source: '/shipping-delivery-information', destination: '/legal/shipping-policy' },
