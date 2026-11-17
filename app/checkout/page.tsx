@@ -99,7 +99,7 @@ import {
   type CheckoutButtonsSettings,
 } from '@/lib/checkout-buttons-settings';
 import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
-import VoiceInputButton from '@/components/checkout/voice-input-button';
+import VoiceAddressButton from '@/components/checkout/voice-address-button';
 import {
   DEFAULT_CHECKOUT_VOICE_SETTINGS,
   fetchCheckoutVoiceSettings,
@@ -309,15 +309,15 @@ export default function CheckoutPage() {
   const [checkoutButtons, setCheckoutButtons] = useState<CheckoutButtonsSettings>(
     DEFAULT_CHECKOUT_BUTTONS_SETTINGS
   );
-  // Admin > Settings > Checkout Voice Typing (mic button on address fields).
+  // Admin > Settings > Checkout Voice Typing ("Speak your address" AI button).
   const [voiceSettings, setVoiceSettings] = useState<CheckoutVoiceSettings>(
     DEFAULT_CHECKOUT_VOICE_SETTINGS
   );
   useEffect(() => {
     let cancelled = false;
     fetchCheckoutVoiceSettings()
-      .then((s) => {
-        if (!cancelled) setVoiceSettings(s);
+      .then((v) => {
+        if (!cancelled) setVoiceSettings(v);
       })
       .catch(() => {});
     return () => {
@@ -2179,71 +2179,54 @@ export default function CheckoutPage() {
                   </Select>
                 </div>
               )}
+              {voiceSettings.enabled && !isIntl && (
+                <VoiceAddressButton
+                  language={voiceSettings.language}
+                  onResult={(r) => {
+                    if (r.line1) setAddressLine1(r.line1);
+                    if (r.line2) setAddressLine2(r.line2);
+                    if (r.landmark) setLandmark(r.landmark);
+                    if (r.pincode) {
+                      // Same as typing a new PIN: let the lookup refresh City/State.
+                      cityAutoFilledRef.current = true;
+                      stateAutoFilledRef.current = true;
+                      setPincode(r.pincode);
+                    }
+                  }}
+                />
+              )}
               <div className="grid gap-1.5">
                 <Label htmlFor="address">Street address *</Label>
-                <div className="relative">
-                  <Input
-                    id="address"
-                    className="pr-24"
-                    name="address"
-                    autoComplete="address-line1"
-                    required
-                    placeholder="12, MG Road, Apt 304"
-                    value={addressLine1}
-                    onChange={(e) => setAddressLine1(e.target.value)}
-                  />
-                  {voiceSettings.enabled && voiceSettings.field_address && (
-                    <VoiceInputButton
-                      value={addressLine1}
-                      onText={setAddressLine1}
-                      defaultLang={voiceSettings.default_language}
-                      showLangSwitcher={voiceSettings.show_language_switcher}
-                    />
-                  )}
-                </div>
+                <Input
+                  id="address"
+                  name="address"
+                  autoComplete="address-line1"
+                  required
+                  placeholder="12, MG Road, Apt 304"
+                  value={addressLine1}
+                  onChange={(e) => setAddressLine1(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
-                <div className="relative">
-                  <Input
-                    id="address2"
-                    className="pr-24"
-                    name="address2"
-                    autoComplete="address-line2"
-                    placeholder="Bandra West"
-                    value={addressLine2}
-                    onChange={(e) => setAddressLine2(e.target.value)}
-                  />
-                  {voiceSettings.enabled && voiceSettings.field_address2 && (
-                    <VoiceInputButton
-                      value={addressLine2}
-                      onText={setAddressLine2}
-                      defaultLang={voiceSettings.default_language}
-                      showLangSwitcher={voiceSettings.show_language_switcher}
-                    />
-                  )}
-                </div>
+                <Input
+                  id="address2"
+                  name="address2"
+                  autoComplete="address-line2"
+                  placeholder="Bandra West"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="landmark">Landmark (optional)</Label>
-                <div className="relative">
-                  <Input
-                    id="landmark"
-                    className="pr-24"
-                    name="landmark"
-                    placeholder="Near City Hospital / Opposite SBI Bank"
-                    value={landmark}
-                    onChange={(e) => setLandmark(e.target.value)}
-                  />
-                  {voiceSettings.enabled && voiceSettings.field_landmark && (
-                    <VoiceInputButton
-                      value={landmark}
-                      onText={setLandmark}
-                      defaultLang={voiceSettings.default_language}
-                      showLangSwitcher={voiceSettings.show_language_switcher}
-                    />
-                  )}
-                </div>
+                <Input
+                  id="landmark"
+                  name="landmark"
+                  placeholder="Near City Hospital / Opposite SBI Bank"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                />
                 <p className="text-[11px] text-muted-foreground">
                   Helps our delivery partner find your address faster.
                 </p>

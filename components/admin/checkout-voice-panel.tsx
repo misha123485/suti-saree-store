@@ -9,36 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import {
   CheckoutVoiceSettings,
   DEFAULT_CHECKOUT_VOICE_SETTINGS,
-  VOICE_LANGUAGES,
+  VOICE_LANGUAGE_OPTIONS,
   fetchCheckoutVoiceSettings,
   saveCheckoutVoiceSettings,
 } from '@/lib/checkout-voice-settings';
-
-function ToggleRow({
-  id,
-  label,
-  hint,
-  checked,
-  onChange,
-  disabled,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <Label htmlFor={id}>{label}</Label>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      </div>
-      <Switch id={id} checked={checked} onCheckedChange={onChange} disabled={disabled} />
-    </div>
-  );
-}
 
 export default function CheckoutVoicePanel() {
   const [form, setForm] = useState<CheckoutVoiceSettings | null>(null);
@@ -55,9 +29,6 @@ export default function CheckoutVoicePanel() {
 
   if (!form) return <p className="py-4 text-sm text-muted-foreground">Loading…</p>;
 
-  const set = <K extends keyof CheckoutVoiceSettings>(key: K, value: CheckoutVoiceSettings[K]) =>
-    setForm((f) => (f ? { ...f, [key]: value } : f));
-
   const save = async () => {
     setSaving(true);
     try {
@@ -70,73 +41,49 @@ export default function CheckoutVoicePanel() {
     }
   };
 
-  const off = !form.enabled;
-
   return (
     <div className="mt-4 grid max-w-xl gap-4 rounded-lg border border-border/60 bg-card p-5">
-      <ToggleRow
-        id="voice-enabled"
-        label="Voice typing (mic button) on checkout address"
-        hint="ON = customers see a mic button inside the address fields and can speak instead of typing."
-        checked={form.enabled}
-        onChange={(v) => set('enabled', v)}
-      />
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <Label htmlFor="voice-enabled">“Speak your address” button on checkout</Label>
+          <p className="text-xs text-muted-foreground">
+            ON = customer taps the mic, says the full address once, and AI fills Street, Apartment,
+            Landmark and PIN code (City/State then fill automatically from the PIN).
+          </p>
+        </div>
+        <Switch
+          id="voice-enabled"
+          checked={form.enabled}
+          onCheckedChange={(v) => setForm((f) => (f ? { ...f, enabled: v } : f))}
+        />
+      </div>
 
-      <div className={off ? 'pointer-events-none opacity-50' : ''}>
-        <Label htmlFor="voice-lang">Default speaking language</Label>
+      <div className={form.enabled ? '' : 'pointer-events-none opacity-50'}>
+        <Label htmlFor="voice-lang">Speaking language</Label>
         <select
           id="voice-lang"
-          value={form.default_language}
-          onChange={(e) => set('default_language', e.target.value as CheckoutVoiceSettings['default_language'])}
+          value={form.language}
+          onChange={(e) =>
+            setForm((f) => (f ? { ...f, language: e.target.value as CheckoutVoiceSettings['language'] } : f))
+          }
           className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
-          {VOICE_LANGUAGES.map((l) => (
+          {VOICE_LANGUAGE_OPTIONS.map((l) => (
             <option key={l.code} value={l.code}>
               {l.label}
             </option>
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          Recommended: English (India) — it understands Hinglish names and writes in English letters, which
-          the courier can read. Hindi / Bengali are typed in Hindi / Bengali script.
+          Recommended: Auto detect. The address is always saved in English letters so the courier can read
+          it.
         </p>
       </div>
 
-      <div className={'grid gap-4 ' + (off ? 'pointer-events-none opacity-50' : '')}>
-        <ToggleRow
-          id="voice-switcher"
-          label="Let customer change language"
-          hint="Shows a small EN / हि / বা button next to the mic."
-          checked={form.show_language_switcher}
-          onChange={(v) => set('show_language_switcher', v)}
-        />
-        <div className="grid gap-3 rounded-md border border-border/60 p-3">
-          <p className="text-xs font-medium text-muted-foreground">Show the mic on these fields</p>
-          <ToggleRow
-            id="voice-f-address"
-            label="Street address"
-            checked={form.field_address}
-            onChange={(v) => set('field_address', v)}
-          />
-          <ToggleRow
-            id="voice-f-address2"
-            label="Apartment, suite, etc."
-            checked={form.field_address2}
-            onChange={(v) => set('field_address2', v)}
-          />
-          <ToggleRow
-            id="voice-f-landmark"
-            label="Landmark"
-            checked={form.field_landmark}
-            onChange={(v) => set('field_landmark', v)}
-          />
-        </div>
-      </div>
-
       <p className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs text-muted-foreground">
-        Works in Chrome, Edge and Safari (Android, iPhone, desktop). Browsers without speech support (e.g.
-        Firefox) simply do not show the mic. The browser sends the audio to its own speech service (Google /
-        Apple) — nothing is stored by this store.
+        Uses the same <b>GROQ_API_KEY</b> as the AI chat (Vercel environment variable) — no extra key. Groq
+        free tier is enough for normal traffic. If the key is missing, customers see “please type your
+        address” and checkout keeps working.
       </p>
 
       <Button type="button" onClick={save} disabled={saving} className="mt-2 w-fit bg-primary">

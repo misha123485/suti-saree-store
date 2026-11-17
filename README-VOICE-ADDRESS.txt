@@ -1,20 +1,22 @@
-VOICE ADDRESS (checkout mic button) - kaise lagana hai
-=====================================================
-1. Is zip ko suti-saree-store folder me extract karo, "Replace" / "Yes to all" dabao.
-2. Command Prompt me:
+SPEAK YOUR ADDRESS (AI voice) - kaise lagana hai
+================================================
+1. Zip ko C:\Users\bapan\suti-saree-store me extract karo, Replace / Yes to all.
+2. PEHLE ZIP ki purani file ho to DELETE karo:
+     components\checkout\voice-input-button.tsx   (ab nahi chahiye)
+3. Command Prompt:
      cd C:\Users\bapan\suti-saree-store
      git add .
-     git commit -m "Checkout: voice-to-text address + admin control"
+     git commit -m "Checkout: AI speak-your-address + admin control"
      git push
-3. SQL / migration ki zaroorat NAHI hai (purani `settings` table use hoti hai).
+4. Vercel me GROQ_API_KEY pehle se laga ho (AI chat wala) to kuch aur nahi karna.
+   SQL/migration ki zaroorat nahi.
 
 Admin: Admin > Settings > "Checkout Voice Typing (Address)"
-  - ON/OFF, default language (English-India / Hindi / Bengali)
-  - language switcher button, aur kaun se fields me mic dikhe.
 
-Files (2 replace, 3 naye):
+Files:
   REPLACE: app/checkout/page.tsx
   REPLACE: components/admin/settings-panel.tsx
-  NEW:     components/checkout/voice-input-button.tsx
-  NEW:     components/admin/checkout-voice-panel.tsx
-  NEW:     lib/checkout-voice-settings.ts
+  NEW: app/api/checkout/voice-address/route.ts
+  NEW: components/checkout/voice-address-button.tsx
+  NEW: components/admin/checkout-voice-panel.tsx
+  NEW: lib/checkout-voice-settings.ts

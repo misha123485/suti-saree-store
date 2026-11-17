@@ -2026,8 +2026,8 @@ export default function SettingsPanel() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl font-bold text-primary">Checkout Voice Typing (Address)</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Adds a mic button inside the checkout address fields so customers can speak their address
-          instead of typing it. Turn it on/off, choose the language, and pick which fields get a mic.
+          Adds a “Speak your address” button on checkout. The customer says the full address once and AI
+          fills the address fields. Turn it on/off and choose the language here.
         </p>
         <CheckoutVoicePanel />
       </div>

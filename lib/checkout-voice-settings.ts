@@ -1,48 +1,35 @@
 import { supabase } from './supabase';
 
 // ---------------------------------------------------------------------
-// Checkout "speak your address" (voice-to-text) -- admin controlled.
-// Stored under the 'checkout_voice_input' settings key (same `settings`
-// table as every other toggle, so NO SQL migration is needed).
+// Checkout "Speak your address" (AI voice) -- admin controlled.
+// Stored under the 'checkout_voice_input' settings key in the existing
+// `settings` table, so NO SQL migration is needed.
 //
-//   enabled:          show the mic button on the checkout address fields.
-//   default_language: language the mic listens in first.
-//   show_language_switcher: let the customer change language (EN/HI/BN)
-//                     next to the mic.
-//   fields:           which address fields get a mic button.
-//
-// Defaults: ON, English (India) -- English-India recognises Hinglish
-// names/places best AND returns Roman script, which couriers (Delhivery
-// etc.) read easily. Hindi/Bengali return Devanagari/Bengali script.
+//   enabled:  show the "Speak your address" button on checkout.
+//   language: hint for the speech model. 'auto' lets it detect Hindi /
+//             English / Bengali / Hinglish by itself (recommended).
 // ---------------------------------------------------------------------
-export type VoiceLang = 'en-IN' | 'hi-IN' | 'bn-IN';
+export type VoiceLanguage = 'auto' | 'hi' | 'en' | 'bn';
 
-export const VOICE_LANGUAGES: { code: VoiceLang; label: string; short: string }[] = [
-  { code: 'en-IN', label: 'English (India)', short: 'EN' },
-  { code: 'hi-IN', label: 'हिन्दी (Hindi)', short: 'हि' },
-  { code: 'bn-IN', label: 'বাংলা (Bengali)', short: 'বা' },
+export const VOICE_LANGUAGE_OPTIONS: { code: VoiceLanguage; label: string }[] = [
+  { code: 'auto', label: 'Auto detect (Hindi / English / Bengali / Hinglish)' },
+  { code: 'hi', label: 'Hindi / Hinglish' },
+  { code: 'en', label: 'English' },
+  { code: 'bn', label: 'Bengali' },
 ];
 
 export interface CheckoutVoiceSettings {
   enabled: boolean;
-  default_language: VoiceLang;
-  show_language_switcher: boolean;
-  field_address: boolean;
-  field_address2: boolean;
-  field_landmark: boolean;
+  language: VoiceLanguage;
 }
 
 export const DEFAULT_CHECKOUT_VOICE_SETTINGS: CheckoutVoiceSettings = {
   enabled: true,
-  default_language: 'en-IN',
-  show_language_switcher: true,
-  field_address: true,
-  field_address2: true,
-  field_landmark: true,
+  language: 'auto',
 };
 
-function isLang(v: unknown): v is VoiceLang {
-  return v === 'en-IN' || v === 'hi-IN' || v === 'bn-IN';
+function isLang(v: unknown): v is VoiceLanguage {
+  return v === 'auto' || v === 'hi' || v === 'en' || v === 'bn';
 }
 
 export async function fetchCheckoutVoiceSettings(): Promise<CheckoutVoiceSettings> {
@@ -53,15 +40,9 @@ export async function fetchCheckoutVoiceSettings(): Promise<CheckoutVoiceSetting
     .maybeSingle();
   if (error || !data) return DEFAULT_CHECKOUT_VOICE_SETTINGS;
   const v = (data.value ?? {}) as Partial<CheckoutVoiceSettings>;
-  const d = DEFAULT_CHECKOUT_VOICE_SETTINGS;
   return {
-    enabled: typeof v.enabled === 'boolean' ? v.enabled : d.enabled,
-    default_language: isLang(v.default_language) ? v.default_language : d.default_language,
-    show_language_switcher:
-      typeof v.show_language_switcher === 'boolean' ? v.show_language_switcher : d.show_language_switcher,
-    field_address: typeof v.field_address === 'boolean' ? v.field_address : d.field_address,
-    field_address2: typeof v.field_address2 === 'boolean' ? v.field_address2 : d.field_address2,
-    field_landmark: typeof v.field_landmark === 'boolean' ? v.field_landmark : d.field_landmark,
+    enabled: typeof v.enabled === 'boolean' ? v.enabled : true,
+    language: isLang(v.language) ? v.language : 'auto',
   };
 }
 
