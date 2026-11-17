@@ -120,6 +120,14 @@ function pinterestSafeImage(u: string): string {
   return u;
 }
 
+// Adds UTM tags to every product link in the Pinterest feeds so GA4 can show
+// "pinterest / social" as the source instead of lumping it into "Direct".
+// `campaign` tells you WHICH feed brought the visitor (e.g. cat_cotton-sarees).
+function withUtm(link: string, campaign: string): string {
+  const sep = link.includes("?") ? "&" : "?";
+  return `${link}${sep}utm_source=pinterest&utm_medium=social&utm_campaign=${encodeURIComponent(campaign)}`;
+}
+
 function imageMime(url: string): string {
   if (/[?&]fmt=jpg\b/.test(url)) return "image/jpeg";
   const u = url.split("?")[0].toLowerCase();
@@ -225,6 +233,8 @@ export interface PinterestChannel {
   title: string;
   link: string;
   description: string;
+  /** utm_campaign value for product links, e.g. "all", "cat_blouse", "tag_diwali". */
+  utmCampaign?: string;
 }
 
 /** Builds the full Pinterest RSS XML string for the given products. */
@@ -234,8 +244,10 @@ export async function buildPinterestRss(
     title: "Sutisaree",
     link: SITE_URL,
     description: "Latest products from Sutisaree",
+    utmCampaign: "all",
   }
 ): Promise<string> {
+  const utmCampaign = channel.utmCampaign || "all";
   const variantsByProduct = await fetchVariantsForFeed(products.map((p) => p.id));
 
   function renderItem(opts: {
@@ -251,8 +263,9 @@ export async function buildPinterestRss(
     size: string;
     product: Product;
   }) {
-    const { id, itemGroupId, title: rawTitle, link, images: rawImages, inStock, price, mrp, color, size, product } = opts;
+    const { id, itemGroupId, title: rawTitle, link: rawLink, images: rawImages, inStock, price, mrp, color, size, product } = opts;
 
+    const link = withUtm(rawLink, utmCampaign);
     const images = toPublicMediaUrls(rawImages).map(absUrl).map(pinterestSafeImage).filter(Boolean);
     const image = images[0] || "";
     const extraImages = images

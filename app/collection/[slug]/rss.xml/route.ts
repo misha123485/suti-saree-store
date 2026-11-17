@@ -24,6 +24,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
       title: `${name} | Sutisaree`,
       link: `${SITE_URL}/collection/${params.slug}/`,
       description: `${name} from Sutisaree`,
+      utmCampaign: `col_${params.slug}`,
     });
     return rssResponse(xml, true);
   }
@@ -53,6 +54,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     title: `${collection.name} | Sutisaree`,
     link: `${SITE_URL}/collection/${collection.slug}/`,
     description: `${collection.name} from Sutisaree`,
+    utmCampaign: `col_${collection.slug}`,
   });
   return rssResponse(xml, true);
 }

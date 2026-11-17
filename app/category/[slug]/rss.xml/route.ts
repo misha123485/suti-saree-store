@@ -24,6 +24,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     title: `${category.name} | Sutisaree`,
     link: `${SITE_URL}${categoryPath(category)}`,
     description: `${category.name} from Sutisaree`,
+    utmCampaign: `cat_${category.slug}`,
   });
   return rssResponse(xml, true);
 }
