@@ -1039,6 +1039,30 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]);
 
+  // GA4 funnel step "Add shipping": fires ONCE per checkout visit, as soon as the
+  // shopper has filled in the delivery details (name, phone, address, city, PIN).
+  // Without this GA4's Checkout journey report shows 0 for this step.
+  const addShippingFiredRef = useRef(false);
+  useEffect(() => {
+    if (addShippingFiredRef.current || items.length === 0) return;
+    const phoneDigits = shipPhone.replace(/[^0-9]/g, '');
+    if (!firstName.trim() || phoneDigits.length < 10 || !addressLine1.trim() || !city.trim() || pincode.trim().length < 5) return;
+    addShippingFiredRef.current = true;
+    fireGtagEvent('add_shipping_info', {
+      currency: 'INR',
+      value: subtotal,
+      shipping_tier: 'Standard',
+      items: items.map((item) => ({
+        item_id: item.feedItemId ?? item.product.id,
+        item_group_id: item.product.id,
+        item_name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity ?? 1,
+      })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstName, shipPhone, addressLine1, city, pincode, items.length]);
+
   const indiaShipping =
     shippingSettings.free_shipping_threshold > 0 &&
     subtotal >= shippingSettings.free_shipping_threshold
@@ -1538,6 +1562,22 @@ export default function CheckoutPage() {
       pincode,
       country: country || 'India',
     };
+
+    // GA4 funnel step "Add payment": shopper pressed Place Order with valid details and
+    // a chosen payment method (online / cod / partial). Drop-off between this step and
+    // `purchase` = payment failures / abandoned payment pages.
+    fireGtagEvent('add_payment_info', {
+      currency: 'INR',
+      value: payableTotal,
+      payment_type: paymentMethod,
+      items: items.map((item) => ({
+        item_id: item.feedItemId ?? item.product.id,
+        item_group_id: item.product.id,
+        item_name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity ?? 1,
+      })),
+    });
 
     setPlacing(true);
 
