@@ -111,6 +111,21 @@ export default function CheckoutVoicePanel() {
 
       <div className="flex items-center justify-between gap-4">
         <div>
+          <Label htmlFor="suggest-enabled">Address suggestions while typing (free)</Label>
+          <p className="text-xs text-muted-foreground">
+            ON = as the customer types in Street address, matching places appear below; tapping one fills
+            street, area, PIN, city and state. Free (OpenStreetMap), no key.
+          </p>
+        </div>
+        <Switch
+          id="suggest-enabled"
+          checked={form.suggest_enabled}
+          onCheckedChange={(v) => setForm((f) => (f ? { ...f, suggest_enabled: v } : f))}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div>
           <Label htmlFor="loc-enabled">“Use my current location” button (free)</Label>
           <p className="text-xs text-muted-foreground">
             ON = one tap fills street, area and PIN code from the customer’s phone GPS. No API key, no cost.

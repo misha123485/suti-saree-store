@@ -101,6 +101,7 @@ import {
 import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
 import VoiceAssistant from '@/components/checkout/voice-assistant';
 import UseLocationButton from '@/components/checkout/use-location-button';
+import AddressSuggestList from '@/components/checkout/address-suggest-list';
 import {
   DEFAULT_CHECKOUT_VOICE_SETTINGS,
   fetchCheckoutVoiceSettings,
@@ -311,6 +312,7 @@ export default function CheckoutPage() {
     DEFAULT_CHECKOUT_BUTTONS_SETTINGS
   );
   // Admin > Settings > Checkout Voice Typing ("Speak your address" AI button).
+  const [streetFocused, setStreetFocused] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState<CheckoutVoiceSettings>(
     DEFAULT_CHECKOUT_VOICE_SETTINGS
   );
@@ -2231,15 +2233,44 @@ export default function CheckoutPage() {
               )}
               <div className="grid gap-1.5">
                 <Label htmlFor="address">Street address *</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  autoComplete="address-line1"
-                  required
-                  placeholder="12, MG Road, Apt 304"
-                  value={addressLine1}
-                  onChange={(e) => setAddressLine1(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="address"
+                    name="address"
+                    autoComplete="address-line1"
+                    required
+                    placeholder="12, MG Road, Apt 304"
+                    value={addressLine1}
+                    onChange={(e) => setAddressLine1(e.target.value)}
+                    onFocus={() => setStreetFocused(true)}
+                    onBlur={() => setTimeout(() => setStreetFocused(false), 150)}
+                  />
+                  {voiceSettings.suggest_enabled && !isIntl && (
+                    <AddressSuggestList
+                      query={addressLine1}
+                      active={streetFocused}
+                      onPick={(a) => {
+                        setAddressLine1(a.line1);
+                        if (a.line2) setAddressLine2(a.line2);
+                        if (a.pincode) {
+                          // Same as typing a new PIN: the India Post lookup fills City/State.
+                          cityAutoFilledRef.current = true;
+                          stateAutoFilledRef.current = true;
+                          setPincode(a.pincode);
+                        } else {
+                          if (a.city) {
+                            setCity(a.city);
+                            cityAutoFilledRef.current = true;
+                          }
+                          if (a.state && INDIAN_STATES.includes(a.state)) {
+                            setStateName(a.state);
+                            stateAutoFilledRef.current = true;
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                </div>
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
