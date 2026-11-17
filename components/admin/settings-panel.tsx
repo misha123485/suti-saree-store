@@ -99,6 +99,7 @@ import {
 import OfferDisplayPanel from '@/components/admin/offer-display-panel';
 import TelegramNotifyCard from '@/components/admin/telegram-notify-card';
 import CheckoutButtonsPanel from '@/components/admin/checkout-buttons-panel';
+import CheckoutVoicePanel from '@/components/admin/checkout-voice-panel';
 import GalleryOverlaysCard from '@/components/admin/gallery-overlays-card';
 import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
 import {
@@ -2020,6 +2021,15 @@ export default function SettingsPanel() {
           method&apos;s button is the one shown.
         </p>
         <CheckoutButtonsPanel />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Voice Typing (Address)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Adds a mic button inside the checkout address fields so customers can speak their address
+          instead of typing it. Turn it on/off, choose the language, and pick which fields get a mic.
+        </p>
+        <CheckoutVoicePanel />
       </div>
 
       <div className="mt-8">
