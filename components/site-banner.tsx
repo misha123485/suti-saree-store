@@ -9,6 +9,22 @@ import { fetchSiteBanner, type SiteBanner as SiteBannerSettings } from '@/lib/se
 import { normalizeSiteBanner } from '@/lib/site-banner';
 import { toPublicMediaUrl } from '@/lib/media-url';
 
+// Fixed (not random) positions so server and client render identical markup (no hydration mismatch).
+// x / y are percentages of the banner, s = size in px, d = seconds, t = start delay in seconds.
+const SNOW = [
+  { x: 3, s: 3, d: 7, t: 0, dx: 10 }, { x: 10, s: 2, d: 9, t: 2.5, dx: -8 },
+  { x: 17, s: 4, d: 8, t: 4, dx: 12 }, { x: 25, s: 2, d: 10, t: 1, dx: -10 },
+  { x: 33, s: 3, d: 7.5, t: 5, dx: 8 }, { x: 41, s: 2, d: 9.5, t: 3, dx: -6 },
+  { x: 49, s: 3, d: 8.5, t: 6, dx: 10 }, { x: 57, s: 2, d: 7, t: 1.5, dx: -12 },
+  { x: 65, s: 4, d: 9, t: 3.5, dx: 8 }, { x: 73, s: 2, d: 8, t: 0.5, dx: -8 },
+  { x: 81, s: 3, d: 10, t: 4.5, dx: 12 }, { x: 89, s: 2, d: 7.5, t: 2, dx: -10 },
+  { x: 96, s: 3, d: 8.5, t: 5.5, dx: 6 },
+];
+const SPARKLES = [
+  { x: 6, y: 28, s: 9, t: 0 }, { x: 14, y: 68, s: 7, t: 1.1 }, { x: 22, y: 18, s: 6, t: 2.2 },
+  { x: 78, y: 22, s: 7, t: 0.6 }, { x: 87, y: 64, s: 9, t: 1.7 }, { x: 94, y: 30, s: 6, t: 2.6 },
+];
+
 /**
  * Promotional banner (set from Admin > Settings > Site Banner). Shows on
  * every page EXCEPT checkout, with one carve-out: the home page and
@@ -95,6 +111,9 @@ export default function SiteBanner({ initialBanner }: { initialBanner?: SiteBann
     '--sb-d': `${banner.desktop_height ?? 400}px`,
   } as React.CSSProperties;
 
+  const fxShine = !!banner.fx_shine;
+  const fxFestive = !!banner.fx_festive;
+
   const showControls = count > 1 && banner.show_controls !== false;
   const canPrev = loop || index > 0;
   const canNext = loop || index < count - 1;
@@ -153,6 +172,39 @@ export default function SiteBanner({ initialBanner }: { initialBanner?: SiteBann
           );
         })}
       </div>
+
+      {/* Decorative, CSS-only effects (transform/opacity only). Hidden for prefers-reduced-motion in globals.css. */}
+      {(fxShine || fxFestive) && (
+        <div className="sb-fx pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          {fxShine && <span className="sb-shine" />}
+          {fxFestive &&
+            SNOW.map((f, i) => (
+              <span
+                key={`f${i}`}
+                className="sb-flake"
+                style={
+                  {
+                    '--x': `${f.x}%`,
+                    '--s': `${f.s}px`,
+                    '--d': `${f.d}s`,
+                    '--t': `${f.t}s`,
+                    '--dx': `${f.dx}px`,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+          {fxFestive &&
+            SPARKLES.map((p, i) => (
+              <span
+                key={`p${i}`}
+                className="sb-spark"
+                style={
+                  { '--x': `${p.x}%`, '--y': `${p.y}%`, '--s': `${p.s}px`, '--t': `${p.t}s` } as React.CSSProperties
+                }
+              />
+            ))}
+        </div>
+      )}
 
       {showControls && (
         <>

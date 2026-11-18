@@ -1624,6 +1624,34 @@ export default function SettingsPanel() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <div>
+                <Label htmlFor="banner-fx-shine">Shine effect</Label>
+                <p className="text-xs text-muted-foreground">
+                  A soft gold shine sweeps across the banner every few seconds. Light and fast; does not change the image.
+                </p>
+              </div>
+              <Switch
+                id="banner-fx-shine"
+                checked={!!bannerForm.fx_shine}
+                onCheckedChange={(checked) => saveBanner({ ...bannerForm, fx_shine: checked })}
+                disabled={savingBanner}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="banner-fx-festive">Snow and sparkles</Label>
+                <p className="text-xs text-muted-foreground">
+                  Gently falling snow and twinkling gold sparkles over the banner (good for Christmas / New Year).
+                </p>
+              </div>
+              <Switch
+                id="banner-fx-festive"
+                checked={!!bannerForm.fx_festive}
+                onCheckedChange={(checked) => saveBanner({ ...bannerForm, fx_festive: checked })}
+                disabled={savingBanner}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
                 <Label htmlFor="banner-loop">Loop</Label>
                 <p className="text-xs text-muted-foreground">
                   On: after the last image it goes back to the first. Off: it stops at the last image.

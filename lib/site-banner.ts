@@ -45,6 +45,11 @@ export interface SiteBanner {
   desktop_height?: number;
   mobile_size_mode?: SiteBannerSizeMode;
   mobile_height?: number;
+
+  /** Light CSS effect over the banner image: a gold shine sweeping across every few seconds. */
+  fx_shine?: boolean;
+  /** Light CSS effect over the banner image: gently falling snow + twinkling gold sparkles. */
+  fx_festive?: boolean;
 }
 
 export const SITE_BANNER_MIN_INTERVAL = 2;
@@ -66,6 +71,8 @@ export const DEFAULT_SITE_BANNER: SiteBanner = {
   desktop_height: 400,
   mobile_size_mode: 'default',
   mobile_height: 160,
+  fx_shine: false,
+  fx_festive: false,
 };
 
 function clamp(n: unknown, min: number, max: number, fallback: number): number {
@@ -129,6 +136,8 @@ export function normalizeSiteBanner(raw: unknown): SiteBanner {
       SITE_BANNER_MAX_HEIGHT,
       DEFAULT_SITE_BANNER.mobile_height as number
     ),
+    fx_shine: !!r.fx_shine,
+    fx_festive: !!r.fx_festive,
   };
 }
 

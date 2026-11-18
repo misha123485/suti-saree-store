@@ -238,3 +238,79 @@ body[data-delivery-open] nav.fixed.bottom-0,
 body[data-delivery-open] .fixed.bottom-24 {
   display: none !important;
 }
+
+
+/* Site banner effects (components/site-banner.tsx). Only transform + opacity are animated so they
+   stay on the GPU and don't hurt page speed. Turned on from Admin > Settings > Site Banner. */
+.sb-shine {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: -40%;
+  width: 26%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 236, 170, 0.0) 15%,
+    rgba(255, 240, 190, 0.55) 50%,
+    rgba(255, 236, 170, 0.0) 85%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translate3d(0, 0, 0) skewX(-18deg);
+  animation: sb-shine 5.5s ease-in-out 1s infinite;
+  will-change: transform;
+}
+@keyframes sb-shine {
+  0% { transform: translate3d(0, 0, 0) skewX(-18deg); }
+  30% { transform: translate3d(570%, 0, 0) skewX(-18deg); }
+  100% { transform: translate3d(570%, 0, 0) skewX(-18deg); }
+}
+
+.sb-flake {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: var(--s);
+  height: 100%;
+  opacity: 0;
+  animation: sb-fall var(--d) linear var(--t) infinite;
+  will-change: transform, opacity;
+}
+.sb-flake::before {
+  content: '';
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.9);
+}
+@keyframes sb-fall {
+  0% { transform: translate3d(0, -100%, 0); opacity: 0; }
+  10% { opacity: 0.9; }
+  85% { opacity: 0.8; }
+  100% { transform: translate3d(var(--dx), 100%, 0); opacity: 0; }
+}
+
+.sb-spark {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s);
+  height: var(--s);
+  background: #ffe9a8;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0;
+  animation: sb-twinkle 2.8s ease-in-out var(--t) infinite;
+  will-change: transform, opacity;
+}
+@keyframes sb-twinkle {
+  0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1) rotate(45deg); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-fx {
+    display: none;
+  }
+}

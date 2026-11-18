@@ -1,0 +1,4 @@
+Extract this zip INTO the root of suti-saree-store (same folder that has app, components, lib). Allow replace when Windows asks.
+Files: components/site-banner.tsx, lib/site-banner.ts, components/admin/settings-panel.tsx, app/globals.css
+Then: git add -A && git commit -m "feat: banner shine and snow effects" && git push
+After deploy: Admin > Settings > Site Banner > turn on Shine effect / Snow and sparkles.
