@@ -46,6 +46,9 @@ export interface SiteBanner {
   mobile_size_mode?: SiteBannerSizeMode;
   mobile_height?: number;
 
+  /** Keep the banner stuck just below the header while the visitor scrolls. */
+  sticky?: boolean;
+
   /** Light CSS effect over the banner image: a gold shine sweeping across every few seconds. */
   fx_shine?: boolean;
   /** Light CSS effect over the banner image: gently falling snow + twinkling gold sparkles. */
@@ -71,6 +74,7 @@ export const DEFAULT_SITE_BANNER: SiteBanner = {
   desktop_height: 400,
   mobile_size_mode: 'default',
   mobile_height: 160,
+  sticky: false,
   fx_shine: false,
   fx_festive: false,
 };
@@ -136,6 +140,7 @@ export function normalizeSiteBanner(raw: unknown): SiteBanner {
       SITE_BANNER_MAX_HEIGHT,
       DEFAULT_SITE_BANNER.mobile_height as number
     ),
+    sticky: !!r.sticky,
     fx_shine: !!r.fx_shine,
     fx_festive: !!r.fx_festive,
   };

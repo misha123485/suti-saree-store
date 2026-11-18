@@ -1624,6 +1624,20 @@ export default function SettingsPanel() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <div>
+                <Label htmlFor="banner-sticky">Sticky banner</Label>
+                <p className="text-xs text-muted-foreground">
+                  On: the banner stays fixed just below the header while the visitor scrolls. Off: it scrolls away with the page.
+                </p>
+              </div>
+              <Switch
+                id="banner-sticky"
+                checked={!!bannerForm.sticky}
+                onCheckedChange={(checked) => saveBanner({ ...bannerForm, sticky: checked })}
+                disabled={savingBanner}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
                 <Label htmlFor="banner-fx-shine">Shine effect</Label>
                 <p className="text-xs text-muted-foreground">
                   A soft gold shine sweeps across the banner every few seconds. Light and fast; does not change the image.

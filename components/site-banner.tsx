@@ -91,6 +91,25 @@ export default function SiteBanner({ initialBanner }: { initialBanner?: SiteBann
     return () => window.clearTimeout(t);
   }, [autoplay, count, index, intervalMs, loop, goTo, tick]);
 
+  // Sticky mode: the storefront header is `sticky top-0` and its height changes (mobile / desktop,
+  // search open...), so measure it and park the banner right under it.
+  const isSticky = !!banner.sticky;
+  const [headerH, setHeaderH] = useState(0);
+  useEffect(() => {
+    if (!isSticky) return;
+    const header = document.querySelector('header');
+    if (!header) return;
+    const update = () => setHeaderH(Math.round(header.getBoundingClientRect().height));
+    update();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    ro?.observe(header);
+    window.addEventListener('resize', update);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [isSticky]);
+
   const isCheckout = pathname?.startsWith('/checkout');
   const isHome = pathname === '/';
   const isProduct = pathname?.startsWith('/product/');
@@ -109,6 +128,7 @@ export default function SiteBanner({ initialBanner }: { initialBanner?: SiteBann
   const sizeVars = {
     '--sb-m': `${banner.mobile_height ?? 160}px`,
     '--sb-d': `${banner.desktop_height ?? 400}px`,
+    ...(isSticky ? { top: headerH } : {}),
   } as React.CSSProperties;
 
   const fxShine = !!banner.fx_shine;
@@ -120,7 +140,7 @@ export default function SiteBanner({ initialBanner }: { initialBanner?: SiteBann
 
   return (
     <div
-      className={`group relative w-full overflow-hidden ${boxCls}`}
+      className={`group w-full overflow-hidden ${isSticky ? 'sticky z-30' : 'relative'} ${boxCls}`}
       style={sizeVars}
       onMouseEnter={() => (pausedRef.current = true)}
       onMouseLeave={() => (pausedRef.current = false)}

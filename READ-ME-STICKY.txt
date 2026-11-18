@@ -1,0 +1,5 @@
+Extract INTO the root of suti-saree-store (folder that has app, components, lib). Replace when asked.
+Files: components/site-banner.tsx, lib/site-banner.ts, components/admin/settings-panel.tsx
+Then: git add -A && git commit -m "feat: sticky banner toggle" && git push
+After deploy: Admin > Settings > Site Banner > Sticky banner ON.
+(Banner effects zip must already be applied - this zip includes it.)
