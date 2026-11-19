@@ -100,6 +100,7 @@ import {
 import OfferDisplayPanel from '@/components/admin/offer-display-panel';
 import TelegramNotifyCard from '@/components/admin/telegram-notify-card';
 import CheckoutButtonsPanel from '@/components/admin/checkout-buttons-panel';
+import CheckoutGuestBannerPanel from '@/components/admin/checkout-guest-banner-panel';
 import CheckoutVoicePanel from '@/components/admin/checkout-voice-panel';
 import GalleryOverlaysCard from '@/components/admin/gallery-overlays-card';
 import InternationalSettingsPanel from '@/components/admin/international-settings-panel';
@@ -2150,6 +2151,15 @@ export default function SettingsPanel() {
           method&apos;s button is the one shown.
         </p>
         <CheckoutButtonsPanel />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Guest Box (Log in / Sign up)</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The box at the top of checkout that says the customer is checking out as a guest, with Log in and
+          Sign up buttons. Edit its text or turn it off completely.
+        </p>
+        <CheckoutGuestBannerPanel />
       </div>
 
       <div className="mt-8">

@@ -98,6 +98,11 @@ import {
   resolveCheckoutButtons,
   type CheckoutButtonsSettings,
 } from '@/lib/checkout-buttons-settings';
+import {
+  DEFAULT_CHECKOUT_GUEST_BANNER_SETTINGS,
+  fetchCheckoutGuestBannerSettings,
+  type CheckoutGuestBannerSettings,
+} from '@/lib/checkout-guest-banner-settings';
 import PriceDetailsSheet from '@/components/checkout/price-details-sheet';
 import VoiceAssistant from '@/components/checkout/voice-assistant';
 import UseLocationButton from '@/components/checkout/use-location-button';
@@ -324,6 +329,22 @@ export default function CheckoutPage() {
         if (!cancelled) setVoiceSettings(v);
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  // Admin > Settings > Checkout Guest Box. null until loaded, so the box never
+  // flashes the default text (or shows at all) before the setting arrives.
+  const [guestBanner, setGuestBanner] = useState<CheckoutGuestBannerSettings | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchCheckoutGuestBannerSettings()
+      .then((s) => {
+        if (!cancelled) setGuestBanner(s);
+      })
+      .catch(() => {
+        if (!cancelled) setGuestBanner(DEFAULT_CHECKOUT_GUEST_BANNER_SETTINGS);
+      });
     return () => {
       cancelled = true;
     };
@@ -3033,6 +3054,7 @@ export default function CheckoutPage() {
         <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 max-lg:order-1">
           {/* Login status — always shown, whether the saved-address summary
               or the editable guest form is what's displayed below it. */}
+          {(user || guestBanner?.enabled) && (
           <section
             className={`mb-3 ${
               user
@@ -3047,7 +3069,7 @@ export default function CheckoutPage() {
             ) : (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs text-muted-foreground sm:text-sm">
-                  Checking out as a guest — no account needed.
+                  {guestBanner?.message}
                 </span>
                 <div className="grid shrink-0 grid-cols-2 gap-2">
                   <button
@@ -3055,19 +3077,20 @@ export default function CheckoutPage() {
                     onClick={goToLoginFromCheckout}
                     className="rounded-lg border border-primary bg-background px-3 py-2 text-center text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
                   >
-                    Have an account? Log in
+                    {guestBanner?.login_button_text}
                   </button>
                   <button
                     type="button"
                     onClick={goToSignupFromCheckout}
                     className="rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
                   >
-                    Sign up
+                    {guestBanner?.signup_button_text}
                   </button>
                 </div>
               </div>
             )}
           </section>
+          )}
 
           {hasSavedAddressSummary ? (
             <section className="rounded-lg border border-border/60 bg-card p-5">
