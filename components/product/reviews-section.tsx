@@ -43,7 +43,7 @@ function StarRow({
         <Star
           key={i}
           className={`${size} ${
-            i < Math.round(value) ? 'fill-secondary text-secondary' : 'text-muted-foreground/30'
+            i < Math.round(value) ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/30'
           }`}
         />
       ))}
@@ -75,7 +75,7 @@ function StarPicker({
             <Star
               className={`h-7 w-7 transition-colors ${
                 n <= (hover || value)
-                  ? 'fill-secondary text-secondary'
+                  ? 'fill-orange-500 text-orange-500'
                   : 'text-muted-foreground/30'
               }`}
             />
@@ -351,7 +351,7 @@ function RatingBars({
           >
             <span className="flex w-6 shrink-0 items-center gap-0.5 font-semibold text-foreground">
               {n}
-              <Star className="h-3 w-3 fill-foreground/70 text-foreground/70" />
+              <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
             </span>
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <span className={`block h-full rounded-full ${BAR_TONE[n]}`} style={{ width: `${pct}%` }} />
@@ -441,7 +441,10 @@ function ReviewerLine({
         (badge === 'pill' ? (
           <VerifiedBadge />
         ) : (
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-label="Verified purchase" />
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-700" title="Verified purchase">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            Verified
+          </span>
         ))}
     </div>
   );
@@ -832,7 +835,7 @@ function ReviewsSheet(p: SheetProps) {
                 <div className="flex shrink-0 flex-col items-center">
                   <p className="flex items-center gap-1 text-4xl font-bold leading-none text-foreground">
                     {summary.totalRatings > 0 ? summary.average.toFixed(1) : '—'}
-                    <Star className={`h-6 w-6 ${summary.totalRatings > 0 ? 'fill-emerald-600 text-emerald-600' : 'text-muted-foreground/30'}`} />
+                    <Star className={`h-6 w-6 ${summary.totalRatings > 0 ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/30'}`} />
                   </p>
                   <p className="mt-1.5 text-center text-[11px] leading-tight text-muted-foreground">
                     {summary.totalRatings.toLocaleString('en-IN')} verified
@@ -857,7 +860,7 @@ function ReviewsSheet(p: SheetProps) {
                   onClick={p.writeCta.onClick}
                   className="w-full bg-black text-white shadow-sm hover:bg-black/90"
                 >
-                  <Star className="mr-1.5 h-4 w-4 fill-secondary text-secondary" />
+                  <Star className="mr-1.5 h-4 w-4 fill-orange-500 text-orange-500" />
                   {p.writeCta.label}
                 </Button>
               )}
@@ -1511,7 +1514,7 @@ export default function ReviewsSection({
               onClick={writeCta.onClick}
               className="w-full bg-black text-white shadow-sm transition-transform hover:scale-[1.01] hover:bg-black/90 hover:shadow-md"
             >
-              <Star className="mr-1.5 h-4 w-4 fill-secondary text-secondary" />
+              <Star className="mr-1.5 h-4 w-4 fill-orange-500 text-orange-500" />
               {writeCta.label}
             </Button>
           )}

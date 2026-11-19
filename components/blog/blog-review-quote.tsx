@@ -21,7 +21,7 @@ export default function BlogReviewQuote({ review }: { review: ReviewQuoteData })
         {Array.from({ length: 5 }).map((_, i) => (
           <Star
             key={i}
-            className={`h-4 w-4 ${i < rating ? 'fill-secondary text-secondary' : 'text-muted-foreground/30'}`}
+            className={`h-4 w-4 ${i < rating ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/30'}`}
           />
         ))}
       </div>

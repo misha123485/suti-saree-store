@@ -26,7 +26,7 @@ function scoreCandidate(current: Product, c: Product): number {
 }
 
 function ratingTone(v: number) {
-  return v >= 3.5 ? 'fill-emerald-600 text-emerald-600' : v >= 2.5 ? 'fill-amber-500 text-amber-500' : 'fill-red-500 text-red-500';
+  return 'fill-orange-500 text-orange-500';
 }
 
 /** "Similar Products" popup: bottom sheet on mobile, centred panel on desktop. */

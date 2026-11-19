@@ -97,7 +97,7 @@ function StarPicker({
             >
               <Star
                 className={`h-10 w-10 transition-colors sm:h-11 sm:w-11 ${
-                  n <= shown ? 'fill-secondary text-secondary drop-shadow-sm' : 'text-muted-foreground/30'
+                  n <= shown ? 'fill-orange-500 text-orange-500 drop-shadow-sm' : 'text-muted-foreground/30'
                 }`}
               />
             </button>
@@ -393,7 +393,7 @@ function ReviewItemCard({
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
-                    className={`h-5 w-5 ${i < rating ? 'fill-secondary text-secondary' : 'text-muted-foreground/30'}`}
+                    className={`h-5 w-5 ${i < rating ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/30'}`}
                   />
                 ))}
               </div>

@@ -1201,7 +1201,7 @@ function ProductInfo({
                   key={i}
                   className={`h-4 w-4 ${
                     i < Math.round(displayRating)
-                      ? 'fill-secondary text-secondary'
+                      ? 'fill-orange-500 text-orange-500'
                       : 'text-muted-foreground/40'
                   }`}
                 />

@@ -189,12 +189,7 @@ export default function ProductCard({
   const startPreloadImmediate = () => preloadImages(detailPagePreloadImages);
 
   const fmtCount = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n));
-  const ratingStar =
-    product.rating >= 3.5
-      ? 'fill-emerald-600 text-emerald-600'
-      : product.rating >= 2.5
-      ? 'fill-amber-500 text-amber-500'
-      : 'fill-red-500 text-red-500';
+  const ratingStar = 'fill-orange-500 text-orange-500';
   const subtitle = [product.fabric, product.category].filter(Boolean).join(' ');
 
   return (

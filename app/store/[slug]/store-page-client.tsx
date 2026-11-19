@@ -72,7 +72,7 @@ export default function StorePageClient() {
         {showRating && rating != null && reviewCount != null && reviewCount > 0 && (
           <div className="mt-3 flex items-center gap-2 text-sm">
             <div className="flex items-center gap-1 rounded-full bg-secondary/10 px-3 py-1">
-              <Star className="h-4 w-4 fill-secondary text-secondary" />
+              <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
               <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
             </div>
             <span className="text-muted-foreground">

@@ -426,7 +426,7 @@ export default function ProductGallery({
                 <Star
                   className={cn(
                     'h-3.5 w-3.5',
-                    rating >= 3.5 ? 'fill-emerald-600 text-emerald-600' : rating >= 2.5 ? 'fill-amber-500 text-amber-500' : 'fill-red-500 text-red-500'
+                    'fill-orange-500 text-orange-500'
                   )}
                 />
                 <span className="h-3 w-px bg-border" />

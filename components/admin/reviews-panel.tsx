@@ -285,6 +285,17 @@ export default function ReviewsPanel() {
                   <Badge variant={r.is_approved ? 'default' : 'outline'} className="text-xs">
                     {r.is_approved ? 'Published' : 'Pending'}
                   </Badge>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${r.verified_purchase ? 'border-emerald-300 text-emerald-700' : 'text-muted-foreground'}`}
+                    title={
+                      r.verified_purchase
+                        ? 'Reviewer had a real order for this product'
+                        : 'No matching order was found when this review was submitted, so no Verified badge is shown'
+                    }
+                  >
+                    {r.verified_purchase ? 'Verified' : 'Not verified'}
+                  </Badge>
                   {displaySettings.featuredReviewIds.includes(r.id) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       <Pin className="h-3 w-3" /> Pinned

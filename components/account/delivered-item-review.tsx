@@ -45,7 +45,7 @@ function MiniStarPicker({
           >
             <Star
               className={`h-5 w-5 transition-colors ${
-                n <= (hover || value) ? 'fill-secondary text-secondary' : 'text-muted-foreground/30'
+                n <= (hover || value) ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/30'
               }`}
             />
           </button>
