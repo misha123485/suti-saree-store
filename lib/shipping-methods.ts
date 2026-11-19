@@ -76,7 +76,7 @@ export function shippingMethodsPolicyText(methods: ShippingMethodsConfig): strin
   for (const id of SHIPPING_METHOD_IDS) {
     const m = methods[id];
     if (!m.enabled) continue;
-    const price = id === 'free' ? 'Free' : `Rs ${m.price.toLocaleString('en-IN')}`;
+    const price = id === 'free' || m.price === 0 ? 'Free' : `Rs ${m.price.toLocaleString('en-IN')}`;
     const eta = formatMethodEta(m);
     const cond = m.min_order > 0 ? ` (on orders of Rs ${m.min_order.toLocaleString('en-IN')} or more)` : '';
     lines.push(`${m.label}: ${price}${cond}${eta ? ` - delivery in ${eta} after dispatch` : ''}`);
