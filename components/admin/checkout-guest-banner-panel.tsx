@@ -23,7 +23,7 @@ export default function CheckoutGuestBannerPanel() {
       .then(setForm)
       .catch(() => {
         setForm(DEFAULT_CHECKOUT_GUEST_BANNER_SETTINGS);
-        toast.error('Failed to load guest checkout box settings');
+        toast.error('Failed to load guest checkout line settings');
       });
   }, []);
 
@@ -36,7 +36,7 @@ export default function CheckoutGuestBannerPanel() {
     setSaving(true);
     try {
       await saveCheckoutGuestBannerSettings(form);
-      toast.success('Guest checkout box saved');
+      toast.success('Guest checkout line saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -50,9 +50,9 @@ export default function CheckoutGuestBannerPanel() {
     <div className="mt-4 grid max-w-xl gap-4 rounded-lg border border-border/60 bg-card p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <Label htmlFor="guest-banner-enabled">Show guest box on checkout</Label>
+          <Label htmlFor="guest-banner-enabled">Show guest line on checkout</Label>
           <p className="text-xs text-muted-foreground">
-            ON = guests see the message with Log in / Sign up buttons at the top of checkout. OFF = the whole box is hidden.
+            ON = guests see one line of text with Log in | Sign up links at the top of checkout. OFF = the whole line is hidden.
             Logged-in customers still see “Logged in as …”.
           </p>
         </div>
@@ -65,17 +65,17 @@ export default function CheckoutGuestBannerPanel() {
 
       <div className={`grid gap-4 ${form.enabled ? '' : 'pointer-events-none opacity-50'}`}>
         <div className="grid gap-1.5">
-          <Label htmlFor="guest-banner-message">Message</Label>
+          <Label htmlFor="guest-banner-message">Text (left side)</Label>
           <Input
             id="guest-banner-message"
             value={form.message}
-            maxLength={160}
+            maxLength={60}
             onChange={(e) => set('message', e.target.value)}
             placeholder={d.message}
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="guest-banner-login">Log in button text</Label>
+          <Label htmlFor="guest-banner-login">Log in link text</Label>
           <Input
             id="guest-banner-login"
             value={form.login_button_text}
@@ -85,7 +85,7 @@ export default function CheckoutGuestBannerPanel() {
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="guest-banner-signup">Sign up button text</Label>
+          <Label htmlFor="guest-banner-signup">Sign up link text</Label>
           <Input
             id="guest-banner-signup"
             value={form.signup_button_text}
@@ -95,18 +95,17 @@ export default function CheckoutGuestBannerPanel() {
           />
         </div>
 
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+        <div className="rounded-lg border border-dashed border-border/70 p-3">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preview</p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-xs text-muted-foreground sm:text-sm">{form.message || d.message}</span>
-            <div className="grid shrink-0 grid-cols-2 gap-2">
-              <span className="rounded-lg border border-primary bg-background px-3 py-2 text-center text-xs font-semibold text-primary">
-                {form.login_button_text || d.login_button_text}
-              </span>
-              <span className="rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground shadow-sm">
-                {form.signup_button_text || d.signup_button_text}
-              </span>
-            </div>
+          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+            <span className="min-w-0 flex-1 truncate">{form.message || d.message}</span>
+            <span className="shrink-0 font-semibold text-primary underline underline-offset-2">
+              {form.login_button_text || d.login_button_text}
+            </span>
+            <span className="shrink-0 text-primary/30" aria-hidden="true">|</span>
+            <span className="shrink-0 font-semibold text-primary underline underline-offset-2">
+              {form.signup_button_text || d.signup_button_text}
+            </span>
           </div>
         </div>
       </div>
@@ -114,7 +113,7 @@ export default function CheckoutGuestBannerPanel() {
       <div className="mt-2 flex flex-wrap gap-2">
         <Button type="button" onClick={save} disabled={saving} className="w-fit bg-primary">
           {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
-          {saving ? 'Saving…' : 'Save Guest Box'}
+          {saving ? 'Saving…' : 'Save Guest Line'}
         </Button>
         <Button
           type="button"

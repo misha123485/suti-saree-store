@@ -2154,10 +2154,10 @@ export default function SettingsPanel() {
       </div>
 
       <div className="mt-8">
-        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Guest Box (Log in / Sign up)</h2>
+        <h2 className="font-serif text-2xl font-bold text-primary">Checkout Guest Line (Log in / Sign up)</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          The box at the top of checkout that says the customer is checking out as a guest, with Log in and
-          Sign up buttons. Edit its text or turn it off completely.
+          The single line of text at the top of checkout (no box) with Log in and Sign up links, shown to
+          guests. Edit its text or turn it off completely.
         </p>
         <CheckoutGuestBannerPanel />
       </div>

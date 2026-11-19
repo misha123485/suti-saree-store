@@ -3055,41 +3055,32 @@ export default function CheckoutPage() {
           {/* Login status — always shown, whether the saved-address summary
               or the editable guest form is what's displayed below it. */}
           {(user || guestBanner?.enabled) && (
-          <section
-            className={`mb-3 ${
-              user
-                ? 'flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-4'
-                : 'rounded-xl border border-primary/20 bg-primary/5 p-3.5'
-            }`}
-          >
-            {user ? (
+          user ? (
+            <section className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
               <span className="text-sm font-medium text-green-700">
                 ✓ Logged in as {user.email}
               </span>
-            ) : (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-xs text-muted-foreground sm:text-sm">
-                  {guestBanner?.message}
-                </span>
-                <div className="grid shrink-0 grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={goToLoginFromCheckout}
-                    className="rounded-lg border border-primary bg-background px-3 py-2 text-center text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-                  >
-                    {guestBanner?.login_button_text}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToSignupFromCheckout}
-                    className="rounded-lg bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
-                  >
-                    {guestBanner?.signup_button_text}
-                  </button>
-                </div>
-              </div>
-            )}
-          </section>
+            </section>
+          ) : (
+            <div className="mb-3 flex items-center gap-1.5 whitespace-nowrap px-0.5 text-xs text-muted-foreground sm:text-sm">
+              <span className="min-w-0 flex-1 truncate">{guestBanner?.message}</span>
+              <button
+                type="button"
+                onClick={goToLoginFromCheckout}
+                className="shrink-0 font-semibold text-primary underline underline-offset-2 hover:opacity-80"
+              >
+                {guestBanner?.login_button_text}
+              </button>
+              <span className="shrink-0 text-primary/30" aria-hidden="true">|</span>
+              <button
+                type="button"
+                onClick={goToSignupFromCheckout}
+                className="shrink-0 font-semibold text-primary underline underline-offset-2 hover:opacity-80"
+              >
+                {guestBanner?.signup_button_text}
+              </button>
+            </div>
+          )
           )}
 
           {hasSavedAddressSummary ? (
