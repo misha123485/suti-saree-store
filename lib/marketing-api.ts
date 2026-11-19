@@ -3,6 +3,7 @@ import { purgeSiteLayoutCache } from './purge-site-cache';
 import { fetchShippingSettings, type ShippingSettings } from './pincode-api';
 import { composeLegalText } from './legal-intl';
 import { STORE_POLICY } from './store-policy';
+import { shippingMethodsPolicyText, type ShippingMethodsConfig } from './shipping-methods';
 import { fetchIntlLegalContext } from './legal-intl-context';
 
 // NOTE: this file is imported from BOTH client components (admin panels,
@@ -152,7 +153,7 @@ export function shippingReturnsSummary(f: FulfillmentSettings, freeShippingThres
 export function applyFulfillmentTokens(
   text: string,
   f: FulfillmentSettings,
-  shipping?: Pick<ShippingSettings, 'flat_rate' | 'free_shipping_threshold'>,
+  shipping?: Pick<ShippingSettings, 'flat_rate' | 'free_shipping_threshold'> & { shipping_methods?: ShippingMethodsConfig },
 ): string {
   if (!text) return text;
   let result = text
@@ -164,6 +165,14 @@ export function applyFulfillmentTokens(
     .replace(/\{\{\s*order_cutoff\s*\}\}/g, `${STORE_POLICY.orderCutoffLabel} ${STORE_POLICY.orderCutoffTimezone}`)
     .replace(/\{\{\s*return_days\s*\}\}/g, String(f.return_window_days))
     .replace(/\{\{\s*cancellation_hours\s*\}\}/g, String(f.cancellation_window_hours));
+  // {{shipping_methods}} -> one line per enabled checkout method (name, price, delivery time),
+  // straight from Admin > Settings > Shipping Methods.
+  result = result.replace(
+    /\{\{\s*shipping_methods\s*\}\}/g,
+    shipping?.shipping_methods
+      ? shippingMethodsPolicyText(shipping.shipping_methods)
+      : 'We currently offer free shipping on all orders, with no minimum order value.',
+  );
   if (shipping) {
     // When the store is configured for free shipping on every order (no
     // minimum order value — threshold 0), the literal "free shipping on
@@ -217,7 +226,11 @@ Orders are dispatched within {{dispatch_days}} business days, and delivery takes
 These are estimated timelines and may vary depending on courier partner delays, weather conditions, or other unforeseen circumstances.
 
 Shipping Charges
-We offer free shipping on all orders, with no minimum order value.
+At checkout you can choose a shipping method. The options available for your order, with their charges and delivery times, are:
+
+{{shipping_methods}}
+
+The charge for your chosen method is shown in the Order Summary before you pay. Delivery time for each method is counted in business days after dispatch.
 
 Order Tracking
 Once your order is dispatched, you will receive a tracking link via email/WhatsApp/SMS to track your shipment in real time.

@@ -90,6 +90,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { SHIPPING_METHOD_IDS, normalizeShippingMethods, type ShippingMethodId, type ShippingMethodConfig } from '@/lib/shipping-methods';
 import {
   newBannerSlideId,
   prepareSiteBannerForSave,
@@ -1949,6 +1950,87 @@ export default function SettingsPanel() {
                 Set to 0 to always charge the shipping fee.
               </p>
             </div>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
+            <h3 className="font-serif text-base font-bold text-primary">Checkout Shipping Methods</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Customers pick one of the enabled methods in the Shipping box at checkout. Set the price,
+              delivery time (ETA) and switch each method on or off. If every method is off, checkout
+              falls back to the fee above.
+            </p>
+            <div className="mt-4 grid gap-4">
+              {SHIPPING_METHOD_IDS.map((id: ShippingMethodId) => {
+                const m = normalizeShippingMethods(checkoutForm.shipping_methods)[id];
+                const update = (patch: Partial<ShippingMethodConfig>) =>
+                  setCheckoutForm((f) => {
+                    if (!f) return f;
+                    const all = normalizeShippingMethods(f.shipping_methods);
+                    return { ...f, shipping_methods: { ...all, [id]: { ...all[id], ...patch } } };
+                  });
+                return (
+                  <div key={id} className="grid gap-3 rounded-md border border-border/60 bg-card p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold capitalize">{id} shipping</span>
+                      <label className="flex items-center gap-2 text-xs">
+                        <Switch checked={m.enabled} onCheckedChange={(v) => update({ enabled: v })} />
+                        {m.enabled ? 'Enabled' : 'Disabled'}
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                      <div className="col-span-2 grid gap-1.5 sm:col-span-1">
+                        <Label>Name</Label>
+                        <Input value={m.label} onChange={(e) => update({ label: e.target.value })} />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label>Price (₹)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="1"
+                          disabled={id === 'free'}
+                          value={id === 'free' ? 0 : m.price}
+                          onChange={(e) => update({ price: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label>ETA min (days)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="1"
+                          value={m.eta_min_days}
+                          onChange={(e) => update({ eta_min_days: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label>ETA max (days)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="1"
+                          value={m.eta_max_days}
+                          onChange={(e) => update({ eta_max_days: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label>Min order (₹)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="1"
+                          value={m.min_order}
+                          onChange={(e) => update({ min_order: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Min order 0 = always available. Free Shipping can be unlocked only above a cart value by
+              setting Min order. The Shipping Policy page updates automatically from these values.
+            </p>
           </div>
           <Button type="submit" disabled={savingCheckout} className="mt-2 w-fit bg-primary">
             <Save className="mr-1.5 h-4 w-4" />{' '}

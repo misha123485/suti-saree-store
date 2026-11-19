@@ -113,6 +113,7 @@ import { payWithCashfree } from '@/lib/cashfree-client';
 import { toast } from 'sonner';
 import { computeCheckoutGst } from '@/lib/gst-report';
 import { useIntlConfig } from '@/hooks/use-intl-config';
+import { getAvailableShippingMethods, formatMethodEta, type ShippingMethodId } from '@/lib/shipping-methods';
 import { isValidIntlPhone, isValidIntlPostal, estimateIntlShipping, formatEta } from '@/lib/intl-checkout';
 import { previewInrToMinor, formatMinor } from '@/lib/intl-api';
 import { setDisplayCurrency, getProviderDisplay, restoreProviderDisplay } from '@/lib/intl-pricing';
@@ -815,6 +816,7 @@ export default function CheckoutPage() {
   const [giftCardDiscount, setGiftCardDiscount] = useState(0);
   const [giftCardPanelOpen, setGiftCardPanelOpen] = useState(false);
 
+  const [shippingMethodId, setShippingMethodId] = useState<ShippingMethodId | null>(null);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings>(
     DEFAULT_SHIPPING_SETTINGS
   );
@@ -1075,7 +1077,7 @@ export default function CheckoutPage() {
     fireGtagEvent('add_shipping_info', {
       currency: 'INR',
       value: subtotal,
-      shipping_tier: 'Standard',
+      shipping_tier: activeShippingMethod?.label ?? 'Standard',
       items: items.map((item) => ({
         item_id: item.feedItemId ?? item.product.id,
         item_group_id: item.product.id,
@@ -1087,11 +1089,17 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstName, shipPhone, addressLine1, city, pincode, items.length]);
 
-  const indiaShipping =
+  // India shipping methods (Free / Standard / Express) are managed in Admin > Settings.
+  // If the admin has every method switched off we fall back to the legacy flat-rate logic.
+  const availableShippingMethods = getAvailableShippingMethods(shippingSettings.shipping_methods, subtotal);
+  const activeShippingMethod =
+    availableShippingMethods.find((m) => m.id === shippingMethodId) ?? availableShippingMethods[0] ?? null;
+  const legacyIndiaShipping =
     shippingSettings.free_shipping_threshold > 0 &&
     subtotal >= shippingSettings.free_shipping_threshold
       ? 0
       : shippingSettings.flat_rate;
+  const indiaShipping = activeShippingMethod ? activeShippingMethod.price : legacyIndiaShipping;
   // Both a coupon and a BOGO promo can be active at once — same as the cart drawer, they're
   // subtracted independently here rather than one feeding off the other.
   const afterCouponSubtotal = Math.max(0, subtotal - couponDiscount - bogoDiscount);
@@ -1725,7 +1733,9 @@ export default function CheckoutPage() {
             total_amount: payableTotal,
             status: 'pending',
             payment_method: paymentMethod,
-            shipping_address: shippingAddress,
+            shipping_address: activeShippingMethod && !isIntl
+              ? { ...shippingAddress, shipping_method: activeShippingMethod.id, shipping_method_label: activeShippingMethod.label }
+              : shippingAddress,
             customer_name: customerName,
             customer_email: customerEmail,
             customer_phone: customerPhone,
@@ -3290,6 +3300,44 @@ export default function CheckoutPage() {
 
         {/* Payment — on mobile it comes AFTER the order summary (order-3); desktop layout unchanged. */}
         <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 max-lg:order-3">
+          {!isIntl && availableShippingMethods.length > 0 && (
+            <section className="mb-3 rounded-lg border border-border/60 bg-card p-3.5 sm:p-5 lg:mt-4">
+              <h2 className="mb-2.5 font-serif text-lg font-bold text-primary">Shipping Method</h2>
+              <div className="grid gap-2" role="radiogroup" aria-label="Shipping method">
+                {availableShippingMethods.map((m) => {
+                  const selected = activeShippingMethod?.id === m.id;
+                  const eta = formatMethodEta(m);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setShippingMethodId(m.id)}
+                      className={`flex w-full items-center justify-between gap-3 rounded-md border p-3 text-left transition-colors ${
+                        selected ? 'border-primary bg-primary/5' : 'border-border/60 hover:border-primary/40'
+                      }`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <span
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                            selected ? 'border-primary' : 'border-muted-foreground/50'
+                          }`}
+                        >
+                          {selected && <span className="h-2 w-2 rounded-full bg-primary" />}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-medium">{m.label}</span>
+                          {eta && <span className="block text-xs text-muted-foreground">Delivery in {eta}</span>}
+                        </span>
+                      </span>
+                      <span className="text-sm font-semibold">{m.price === 0 ? 'FREE' : formatINR(m.price)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <section
             ref={paymentSectionRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
@@ -3784,7 +3832,15 @@ export default function CheckoutPage() {
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Shipping</span>
+                <span className="text-muted-foreground">
+                  Shipping
+                  {!isIntl && activeShippingMethod ? (
+                    <span className="block text-xs">
+                      {activeShippingMethod.label}
+                      {formatMethodEta(activeShippingMethod) ? ` · ${formatMethodEta(activeShippingMethod)}` : ''}
+                    </span>
+                  ) : null}
+                </span>
                 <span>{shipping === 0 ? 'FREE' : formatINR(shipping)}</span>
               </div>
               <div className="flex justify-between">

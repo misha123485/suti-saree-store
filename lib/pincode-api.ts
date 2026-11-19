@@ -1,6 +1,7 @@
 import { getServerSupabase } from './supabase-server';
 import { purgeSiteLayoutCache } from './purge-site-cache';
 import { STORE_POLICY } from './store-policy';
+import { DEFAULT_SHIPPING_METHODS, normalizeShippingMethods, type ShippingMethodsConfig } from './shipping-methods';
 
 export interface PincodeResult {
   serviceable: boolean;
@@ -128,6 +129,8 @@ export async function checkPincodeServiceability(pincode: string): Promise<Pinco
 }
 
 export interface ShippingSettings {
+  /** Checkout shipping methods (Free / Standard / Express) — managed in Admin > Settings. */
+  shipping_methods: ShippingMethodsConfig;
   /** Flat shipping fee in rupees, charged when subtotal is below the free-shipping threshold */
   flat_rate: number;
   /** Order subtotal (in rupees) at or above which shipping becomes free. Set to 0 to always charge. */
@@ -200,6 +203,7 @@ export interface ShippingSettings {
 }
 
 export const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
+  shipping_methods: DEFAULT_SHIPPING_METHODS,
   flat_rate: STORE_POLICY.flatShippingRate,
   free_shipping_threshold: STORE_POLICY.freeShippingThreshold,
   gst_rate_percent: 5,
@@ -230,6 +234,7 @@ export async function fetchShippingSettings(): Promise<ShippingSettings> {
   return {
     ...DEFAULT_SHIPPING_SETTINGS,
     ...(data.value as Partial<ShippingSettings>),
+    shipping_methods: normalizeShippingMethods((data.value as Partial<ShippingSettings>)?.shipping_methods),
     flat_rate: STORE_POLICY.flatShippingRate,
     free_shipping_threshold: STORE_POLICY.freeShippingThreshold,
   };
