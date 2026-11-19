@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Star, CheckCircle2, ImagePlus, X, Loader2, ThumbsUp, ChevronLeft, ChevronRight, ChevronDown, Camera, Pin, ArrowUpDown, BadgeCheck } from 'lucide-react';
+import { Star, CheckCircle2, ImagePlus, X, Loader2, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, ChevronDown, Camera, Pin, ArrowUpDown, BadgeCheck } from 'lucide-react';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -383,69 +383,104 @@ function helpfulScore(r: Review, votes: Record<string, number>) {
 /*  Inline (on-page) compact review card -- tap opens the popup        */
 /* ------------------------------------------------------------------ */
 
-/** Rating + date (+ colour chip) row. 'stars' = gold star row, 'chip' = green "5 ★" chip. */
-function ReviewTopRow({ r, settings }: { r: Review; settings: ReviewDisplaySettings }) {
-  const date = settings.showDate ? (
-    <span className="text-[11px] text-muted-foreground">{formatDate(r.created_at)}</span>
-  ) : null;
+/** Avatar + first name + date (+ colour chip) -- top of every review box. */
+function ReviewCardHeader({ r, settings }: { r: Review; settings: ReviewDisplaySettings }) {
+  const name = firstName(r.customer_name);
   const variant =
     settings.showVariantChip && r.variant_color ? (
-      <span className="max-w-[40%] truncate rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+      <span className="max-w-[40%] shrink-0 truncate rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
         {r.variant_color}
       </span>
     ) : null;
-
-  if (settings.cardStyle === 'chip') {
-    return (
-      <div className="flex items-center gap-2">
-        <RatingChip value={r.rating} />
-        {date}
-        {variant && <span className="ml-auto flex min-w-0">{variant}</span>}
-      </div>
-    );
-  }
   return (
-    <div className="flex items-center gap-2">
-      <StarRow value={r.rating} size="h-4 w-4" />
-      {variant}
-      {date && <span className="ml-auto shrink-0">{date}</span>}
-    </div>
-  );
-}
-
-/** Round initial + first name + verified tick (or full pill). */
-function ReviewerLine({
-  r,
-  settings,
-  badge = 'tick',
-}: {
-  r: Review;
-  settings: ReviewDisplaySettings;
-  badge?: 'tick' | 'pill';
-}) {
-  const name = firstName(r.customer_name);
-  const showAvatar = settings.showAvatar && settings.cardStyle === 'stars';
-  const verified = settings.showVerifiedBadge && r.verified_purchase;
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      {showAvatar && (
+    <div className="flex items-center gap-2.5">
+      {settings.showAvatar && (
         <span
           aria-hidden="true"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
         >
           {initials(name).charAt(0)}
         </span>
       )}
-      <span className="truncate text-xs font-semibold text-foreground/90">{name}</span>
-      {verified &&
-        (badge === 'pill' ? (
-          <VerifiedBadge />
-        ) : (
-          <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-700" title="Verified purchase">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            Verified
-          </span>
-        ))}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold leading-tight text-foreground">{name}</p>
+        {settings.showDate && (
+          <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{formatDate(r.created_at)}</p>
+        )}
+      </div>
+      {variant}
+    </div>
+  );
+}
+
+/** Soft rounded bar: "Verified purchase" on the left, the rating on the right. */
+function ReviewRatingPill({ r, settings }: { r: Review; settings: ReviewDisplaySettings }) {
+  const verified = settings.showVerifiedBadge && r.verified_purchase;
+  return (
+    <div className="flex items-center gap-2 rounded-full bg-muted/70 px-3 py-1.5">
+      {verified && (
+        <span className="inline-flex min-w-0 items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+          <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">Verified purchase</span>
+        </span>
+      )}
+      <span className="ml-auto shrink-0">
+        {settings.cardStyle === 'chip' ? <RatingChip value={r.rating} /> : <StarRow value={r.rating} size="h-3.5 w-3.5" />}
+      </span>
+    </div>
+  );
+}
+
+/** "Was this helpful?  👍 72  👎" footer. Votes are per-session (see toggleHelpful). */
+function ReviewHelpfulRow({
+  helpful,
+  helpfulCount,
+  onToggleHelpful,
+}: {
+  helpful: boolean;
+  helpfulCount: number;
+  onToggleHelpful: () => void;
+}) {
+  const [down, setDown] = useState(false);
+  return (
+    <div
+      className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"
+      // Lives inside the clickable preview card -- taps here must not open the popup.
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <span>Was this helpful?</span>
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          aria-label="Helpful"
+          aria-pressed={helpful}
+          onClick={() => {
+            if (down) setDown(false);
+            onToggleHelpful();
+          }}
+          className={`inline-flex items-center gap-1 transition-colors active:scale-95 ${
+            helpful ? 'text-primary' : 'hover:text-primary'
+          }`}
+        >
+          <ThumbsUp className={`h-3.5 w-3.5 ${helpful ? 'fill-primary' : ''}`} />
+          {helpfulCount > 0 && <span className="font-medium">{helpfulCount}</span>}
+        </button>
+        <button
+          type="button"
+          aria-label="Not helpful"
+          aria-pressed={down}
+          onClick={() => {
+            if (!down && helpful) onToggleHelpful();
+            setDown((v) => !v);
+          }}
+          className={`inline-flex items-center transition-colors active:scale-95 ${
+            down ? 'text-foreground' : 'hover:text-foreground'
+          }`}
+        >
+          <ThumbsDown className={`h-3.5 w-3.5 ${down ? 'fill-foreground' : ''}`} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -465,11 +500,17 @@ function ReviewPreviewCard({
   settings,
   onOpen,
   onOpenPhoto,
+  helpful = false,
+  helpfulCount = 0,
+  onToggleHelpful,
 }: {
   r: Review;
   settings: ReviewDisplaySettings;
   onOpen: () => void;
   onOpenPhoto: (src: string) => void;
+  helpful?: boolean;
+  helpfulCount?: number;
+  onToggleHelpful?: () => void;
 }) {
   const photos = settings.showCardPhotos ? (r.photos ?? []).filter(Boolean) : [];
   const title = settings.showTitle ? r.title : null;
@@ -490,7 +531,8 @@ function ReviewPreviewCard({
         }}
         className="flex h-full min-h-[148px] cursor-pointer flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-[0_1px_12px_-6px_rgba(0,0,0,0.1)] transition-shadow hover:shadow-md active:scale-[0.99]"
       >
-        <ReviewTopRow r={r} settings={settings} />
+        <ReviewCardHeader r={r} settings={settings} />
+        <ReviewRatingPill r={r} settings={settings} />
 
         <div className="flex min-h-0 flex-1 items-start gap-3">
           <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground/85">
@@ -533,25 +575,12 @@ function ReviewPreviewCard({
           )}
         </div>
 
-        <ReviewerLine r={r} settings={settings} badge={settings.cardStyle === 'stars' ? 'tick' : 'pill'} />
         {reply && <StoreReplyBox text={reply} clamp />}
+        {settings.showHelpful && onToggleHelpful && (
+          <ReviewHelpfulRow helpful={helpful} helpfulCount={helpfulCount} onToggleHelpful={onToggleHelpful} />
+        )}
       </div>
     </li>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Verified purchase badge                                            */
-/* ------------------------------------------------------------------ */
-
-function VerifiedBadge({ className = '' }: { className?: string }) {
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400 ${className}`}
-    >
-      <BadgeCheck className="h-3.5 w-3.5" />
-      Verified Purchase
-    </span>
   );
 }
 
@@ -583,10 +612,13 @@ function SheetReviewItem({
   const reply = settings.showStoreReply ? r.store_reply?.trim() : '';
   const bold = settings.cardStyle === 'stars' ? 'font-bold' : 'font-semibold';
   return (
-    <li id={`rv-${r.id}`} className="scroll-mt-28 border-b border-border/60 py-4 last:border-b-0">
+    <li
+      id={`rv-${r.id}`}
+      className="mb-3 scroll-mt-28 flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 last:mb-0"
+    >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <div className="min-w-0 flex-1">
-          <ReviewTopRow r={r} settings={settings} />
+          <ReviewCardHeader r={r} settings={settings} />
         </div>
         {featured && (
           <span className="inline-flex items-center gap-1 rounded-full bg-secondary/15 px-2 py-0.5 text-[11px] font-semibold text-secondary">
@@ -596,28 +628,34 @@ function SheetReviewItem({
         )}
       </div>
 
-      {title && <p className={`mt-2.5 text-sm text-foreground ${bold}`}>{title}</p>}
-      {r.comment && (
-        <p
-          className={`mt-1.5 whitespace-pre-line break-words text-sm leading-relaxed text-foreground/85 ${
-            long && !expanded ? 'line-clamp-4' : ''
-          }`}
-        >
-          {r.comment}
-        </p>
-      )}
-      {long && (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-xs font-semibold text-primary underline-offset-2 hover:underline"
-        >
-          {expanded ? 'Show less' : 'Read more'}
-        </button>
+      <ReviewRatingPill r={r} settings={settings} />
+
+      {(title || r.comment || long) && (
+        <div>
+          {title && <p className={`text-sm text-foreground ${bold}`}>{title}</p>}
+          {r.comment && (
+            <p
+              className={`${title ? 'mt-1' : ''} whitespace-pre-line break-words text-sm leading-relaxed text-foreground/85 ${
+                long && !expanded ? 'line-clamp-4' : ''
+              }`}
+            >
+              {r.comment}
+            </p>
+          )}
+          {long && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-1 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              {expanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
+        </div>
       )}
 
       {photos.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           {photos.map((src, idx) => (
             <button
               key={idx}
@@ -636,28 +674,10 @@ function SheetReviewItem({
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <ReviewerLine r={r} settings={settings} badge={settings.cardStyle === 'stars' ? 'tick' : 'pill'} />
-        {settings.showHelpful && (
-          <button
-            type="button"
-            onClick={onToggleHelpful}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-all active:scale-95 ${
-              helpful
-                ? 'border-primary/40 bg-primary/10 text-primary'
-                : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary'
-            }`}
-          >
-            <ThumbsUp className={`h-3 w-3 ${helpful ? 'fill-primary' : ''}`} />
-            Helpful{helpfulCount ? ` (${helpfulCount})` : ''}
-          </button>
-        )}
-      </div>
+      {reply && <StoreReplyBox text={reply} />}
 
-      {reply && (
-        <div className="mt-3">
-          <StoreReplyBox text={reply} />
-        </div>
+      {settings.showHelpful && (
+        <ReviewHelpfulRow helpful={helpful} helpfulCount={helpfulCount} onToggleHelpful={onToggleHelpful} />
       )}
     </li>
   );
@@ -1737,7 +1757,16 @@ export default function ReviewsSection({
 
               <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-2 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:[&>li:nth-child(n+5)]:hidden">
                 {previewReviews.map((r) => (
-                  <ReviewPreviewCard key={r.id} r={r} settings={settings} onOpen={() => openSheet({ focusId: r.id })} onOpenPhoto={(src) => openPhotoOfReview(r.id, src)} />
+                  <ReviewPreviewCard
+                    key={r.id}
+                    r={r}
+                    settings={settings}
+                    onOpen={() => openSheet({ focusId: r.id })}
+                    onOpenPhoto={(src) => openPhotoOfReview(r.id, src)}
+                    helpful={!!markedHelpful[r.id]}
+                    helpfulCount={helpfulVotes[r.id] ?? 0}
+                    onToggleHelpful={() => toggleHelpful(r.id)}
+                  />
                 ))}
               </ul>
 
