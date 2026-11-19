@@ -221,7 +221,7 @@ Where Partial Pay is offered at checkout, you pay a part of the order total onli
 Where an online-payment discount applies, it is shown at checkout before you pay and applies to full online payment only (not to Partial Pay or COD). Product prices and delivery charges are otherwise the same for every payment method, and the delivery timelines below apply from the date of dispatch for all of them.
 
 Delivery Timelines
-Orders are dispatched within {{dispatch_days}} business days, and delivery takes {{metro_days}} business days after dispatch to every destination in India (Monday to Sunday). In total, expect your order to arrive in {{total_days}} business days. Our order cut-off time is {{order_cutoff}}.
+Orders are dispatched within {{dispatch_days}} business days, and Standard delivery takes {{metro_days}} business days after dispatch to every destination in India (Monday to Sunday). In total, expect a Standard order to arrive in {{total_days}} business days. Faster options, if available, are listed under Shipping Charges below. Our order cut-off time is {{order_cutoff}}.
 
 These are estimated timelines and may vary depending on courier partner delays, weather conditions, or other unforeseen circumstances.
 

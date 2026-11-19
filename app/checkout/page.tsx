@@ -3328,7 +3328,7 @@ export default function CheckoutPage() {
                         </span>
                         <span>
                           <span className="block text-sm font-medium">{m.label}</span>
-                          {eta && <span className="block text-xs text-muted-foreground">Delivery in {eta}</span>}
+                          {eta && <span className="block text-xs text-muted-foreground">Delivery in {eta} after dispatch</span>}
                         </span>
                       </span>
                       <span className="text-sm font-semibold">{m.price === 0 ? 'FREE' : formatINR(m.price)}</span>
@@ -3837,7 +3837,7 @@ export default function CheckoutPage() {
                   {!isIntl && activeShippingMethod ? (
                     <span className="block text-xs">
                       {activeShippingMethod.label}
-                      {formatMethodEta(activeShippingMethod) ? ` · ${formatMethodEta(activeShippingMethod)}` : ''}
+                      {formatMethodEta(activeShippingMethod) ? ` · ${formatMethodEta(activeShippingMethod)} after dispatch` : ''}
                     </span>
                   ) : null}
                 </span>

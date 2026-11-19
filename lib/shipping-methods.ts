@@ -1,8 +1,10 @@
 // Checkout shipping methods (India): Free / Standard / Express.
 // Every method is managed from Admin > Settings > Shipping Methods:
 // price, delivery-time (ETA) text, and an enable/disable switch.
-// Defaults keep today's behaviour: only "Free Shipping" is on, so nothing
-// changes at checkout until the admin switches Standard/Express on.
+// Defaults match Google Merchant Center ("Free shipping, all orders", transit 3-5 days after
+// dispatch, see lib/store-policy.ts): Standard is free for everyone, Express is an optional paid
+// upgrade, and the separate "Free" method is off so customers don't see two identical free options.
+import { STORE_POLICY } from './store-policy';
 
 export type ShippingMethodId = 'free' | 'standard' | 'express';
 
@@ -24,9 +26,23 @@ export type ShippingMethodsConfig = Record<ShippingMethodId, ShippingMethodConfi
 export const SHIPPING_METHOD_IDS: ShippingMethodId[] = ['free', 'standard', 'express'];
 
 export const DEFAULT_SHIPPING_METHODS: ShippingMethodsConfig = {
-  free: { enabled: true, label: 'Free Shipping', price: 0, eta_min_days: 5, eta_max_days: 7, min_order: 0 },
-  standard: { enabled: false, label: 'Standard Shipping', price: 79, eta_min_days: 4, eta_max_days: 6, min_order: 0 },
-  express: { enabled: false, label: 'Express Shipping', price: 149, eta_min_days: 2, eta_max_days: 3, min_order: 0 },
+  free: {
+    enabled: false,
+    label: 'Free Shipping',
+    price: 0,
+    eta_min_days: STORE_POLICY.transitMinDays,
+    eta_max_days: STORE_POLICY.transitMaxDays,
+    min_order: 0,
+  },
+  standard: {
+    enabled: true,
+    label: 'Standard Shipping',
+    price: 0,
+    eta_min_days: STORE_POLICY.transitMinDays,
+    eta_max_days: STORE_POLICY.transitMaxDays,
+    min_order: 0,
+  },
+  express: { enabled: true, label: 'Express Shipping', price: 149, eta_min_days: 1, eta_max_days: 2, min_order: 0 },
 };
 
 /** Merge whatever is saved in the DB over the defaults (safe for old/partial data). */
@@ -82,4 +98,32 @@ export function shippingMethodsPolicyText(methods: ShippingMethodsConfig): strin
     lines.push(`${m.label}: ${price}${cond}${eta ? ` - delivery in ${eta} after dispatch` : ''}`);
   }
   return lines.length ? lines.join('\n') : 'We currently offer free shipping on all orders, with no minimum order value.';
+}
+
+/**
+ * Admin-side warnings: settings that would make the site disagree with Google Merchant Center
+ * ("Free shipping, all orders", transit 3-5 days after dispatch). Empty array = all good.
+ */
+export function shippingMethodsMerchantWarnings(methods: ShippingMethodsConfig): string[] {
+  const warnings: string[] = [];
+  const enabled = SHIPPING_METHOD_IDS.filter((id) => methods[id].enabled);
+  if (!enabled.length) return warnings; // legacy flat-rate fallback is already pinned to free
+  const freeForAll = enabled.filter((id) => methods[id].min_order === 0 && (id === 'free' || methods[id].price === 0));
+  if (!freeForAll.length) {
+    warnings.push(
+      'No enabled method is free for every order. Merchant Center says "Free shipping, all orders", so keep one method (e.g. Standard) at price 0 and Min order 0.',
+    );
+  }
+  for (const id of freeForAll) {
+    const m = methods[id];
+    if (m.eta_min_days !== STORE_POLICY.transitMinDays || m.eta_max_days !== STORE_POLICY.transitMaxDays) {
+      warnings.push(
+        `${m.label}: delivery time is ${m.eta_min_days}-${m.eta_max_days} days, but Merchant Center has ${STORE_POLICY.transitMinDays}-${STORE_POLICY.transitMaxDays} days after dispatch. Use ${STORE_POLICY.transitMinDays} and ${STORE_POLICY.transitMaxDays} to avoid a mismatch.`,
+      );
+    }
+  }
+  if (methods.free.enabled && methods.standard.enabled && methods.standard.price === 0 && methods.standard.min_order === 0) {
+    warnings.push('Free Shipping and Standard Shipping are both free for everyone, so customers will see two identical options. Disable one.');
+  }
+  return warnings;
 }

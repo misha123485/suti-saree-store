@@ -90,7 +90,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { SHIPPING_METHOD_IDS, normalizeShippingMethods, type ShippingMethodId, type ShippingMethodConfig } from '@/lib/shipping-methods';
+import { SHIPPING_METHOD_IDS, normalizeShippingMethods, shippingMethodsMerchantWarnings, type ShippingMethodId, type ShippingMethodConfig } from '@/lib/shipping-methods';
 import {
   newBannerSlideId,
   prepareSiteBannerForSave,
@@ -1958,6 +1958,11 @@ export default function SettingsPanel() {
               delivery time (ETA) and switch each method on or off. If every method is off, checkout
               falls back to the fee above.
             </p>
+            {shippingMethodsMerchantWarnings(normalizeShippingMethods(checkoutForm.shipping_methods)).map((w) => (
+              <p key={w} className="mt-3 rounded-md border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-900">
+                Merchant Center: {w}
+              </p>
+            ))}
             <div className="mt-4 grid gap-4">
               {SHIPPING_METHOD_IDS.map((id: ShippingMethodId) => {
                 const m = normalizeShippingMethods(checkoutForm.shipping_methods)[id];
@@ -2028,8 +2033,8 @@ export default function SettingsPanel() {
               })}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Min order 0 = always available. Free Shipping can be unlocked only above a cart value by
-              setting Min order. The Shipping Policy page updates automatically from these values.
+              Min order 0 = always available. Keep one method (Standard, 3-5 days) at price 0 and Min order 0 so the
+              site matches Google Merchant Center. Express can be a paid upgrade. The Shipping Policy page updates automatically from these values.
             </p>
           </div>
           <Button type="submit" disabled={savingCheckout} className="mt-2 w-fit bg-primary">
