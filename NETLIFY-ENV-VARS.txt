@@ -1,0 +1,34 @@
+NETLIFY DEPLOY FIX - ENV VARIABLES
+===================================
+Netlify build fail hone ka main reason: Environment Variables set nahi the.
+Vercel me ye variables the, Netlify me alag se dalne padte hain.
+
+Kahan dalna hai:
+Netlify -> Project (suti-saree-store) -> Project configuration -> Environment variables -> Add a variable
+(ya "Import from a .env file" se ek saath paste kar do)
+
+Sabse zaroori (inke bina BUILD hi fail hoga):
+  NEXT_PUBLIC_SUPABASE_URL
+  NEXT_PUBLIC_SUPABASE_ANON_KEY
+  SUPABASE_SERVICE_ROLE_KEY
+  NEXT_PUBLIC_SITE_URL           (abhi test ke liye https://suti-saree-store.netlify.app, live hone pe https://www.sutisaree.com)
+
+Site chalne ke liye (Vercel se copy karo - same values):
+  R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL
+  RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET
+  CASHFREE_APP_ID, CASHFREE_SECRET_KEY, CASHFREE_ENV
+  STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+  ADMIN_PASSWORD, ADMIN_SESSION_SECRET, SESSION_SECRET, CRON_SECRET
+  RESEND_API_KEY, ZEPTOMAIL_API_KEY, ZEPTOMAIL_REGION, EMAIL_FROM_NAME, EMAIL_FROM_ADDRESS
+  GA4_PROPERTY_ID, GA4_SERVICE_ACCOUNT_JSON
+  NVIDIA_API_KEY, GROQ_API_KEY
+  CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID
+  DELHIVERY_API_TOKEN, DELHIVERY_ENV
+  TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+  WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET
+  GOOGLE_INDEXING_CLIENT_EMAIL, GOOGLE_INDEXING_PRIVATE_KEY
+  NEXT_PUBLIC_GCR_MERCHANT_ID, NEXT_PUBLIC_GCR_BADGE
+  BLOCK_INDEXING   (Netlify test site pe "true" rakho taaki Google index na kare)
+
+Tip: Vercel -> Project -> Settings -> Environment Variables se values copy karo.
+Value dalne ke baad Netlify me "Deploys -> Trigger deploy -> Clear cache and deploy site" karo.
