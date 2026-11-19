@@ -43,10 +43,26 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Store replies live in their own table (see review-reply route). If the
+  // migration hasn't been run yet this just comes back empty.
+  const replyById = new Map<string, { reply: string; replied_at: string; email_sent_at: string | null }>();
+  try {
+    const { data: replyRows } = await supabase
+      .from('review_replies')
+      .select('review_id, reply, replied_at, email_sent_at');
+    for (const r of (replyRows ?? []) as any[]) replyById.set(r.review_id, r);
+  } catch {
+    /* table missing -> no replies */
+  }
+
   const reviews = (data ?? []).map((row: any) => {
     const { products: product, ...review } = row;
+    const rep = replyById.get(review.id);
     return {
       ...review,
+      store_reply: rep?.reply ?? null,
+      store_replied_at: rep?.replied_at ?? null,
+      store_reply_emailed: Boolean(rep?.email_sent_at),
       product_name: product?.name ?? 'Deleted product',
       product_slug: product?.slug ?? '',
     };

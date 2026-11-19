@@ -27,6 +27,9 @@ export interface Review {
    *  shopper currently has selected on the product page. */
   variant_color?: string | null;
   variant_slug?: string | null;
+  /** "Reply from store" text, merged in from the review_replies table. */
+  store_reply?: string | null;
+  store_replied_at?: string | null;
 }
 
 export interface RatingSummary {
@@ -66,7 +69,31 @@ export async function fetchApprovedReviews(productId: string): Promise<Review[]>
     .eq('is_approved', true)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ ...r, photos: r.photos ?? [] })) as Review[];
+  const reviews = (data ?? []).map((r: any) => ({ ...r, photos: r.photos ?? [] })) as Review[];
+
+  // Store replies (separate, admin-write-only table). Never let a missing
+  // table / network hiccup break the reviews list.
+  try {
+    const { data: replies } = await supabase
+      .from('review_replies')
+      .select('review_id, reply, replied_at')
+      .eq('product_id', productId);
+    if (replies && replies.length > 0) {
+      const byId = new Map<string, { reply: string; replied_at: string }>(
+        (replies as any[]).map((x) => [x.review_id, x])
+      );
+      for (const r of reviews) {
+        const rep = byId.get(r.id);
+        if (rep) {
+          r.store_reply = rep.reply;
+          r.store_replied_at = rep.replied_at;
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return reviews;
 }
 
 /**
@@ -117,6 +144,32 @@ export async function fetchMyReviewForProduct(productId: string): Promise<Review
 export interface AdminReview extends Review {
   product_name: string;
   product_slug: string;
+  /** True when the reply was also emailed to the customer. */
+  store_reply_emailed?: boolean;
+}
+
+export interface SaveReplyResult {
+  reply: { review_id: string; reply: string; replied_at: string };
+  email: { requested: boolean; sent: boolean; to?: string; note?: string };
+}
+
+/** Admin: save (or update) the store's reply to a review, optionally emailing it. */
+export async function saveReviewReplyAdmin(reviewId: string, reply: string, sendEmail: boolean): Promise<SaveReplyResult> {
+  const res = await fetch('/api/admin/review-reply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reviewId, reply, sendEmail }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || 'Failed to save reply');
+  return json as SaveReplyResult;
+}
+
+/** Admin: remove the store's reply from a review. */
+export async function deleteReviewReplyAdmin(reviewId: string): Promise<void> {
+  const res = await fetch(`/api/admin/review-reply?reviewId=${encodeURIComponent(reviewId)}`, { method: 'DELETE' });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || 'Failed to delete reply');
 }
 
 /**

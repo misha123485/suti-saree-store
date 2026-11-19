@@ -13,6 +13,9 @@
 // ---------------------------------------------------------------------
 
 export type ReviewSort = 'newest' | 'highest' | 'lowest' | 'photos';
+/** 'stars' = star row + bold title + avatar line (default).
+ *  'chip'  = green "5 ★" chip + date, compact. */
+export type ReviewCardStyle = 'stars' | 'chip';
 
 export interface ReviewDisplaySettings {
   /** Reviews shown before the shopper taps "Load more". */
@@ -35,6 +38,31 @@ export interface ReviewDisplaySettings {
   allowGuestReviews: boolean;
   /** Publish guest reviews right away. Off = they wait for admin approval. */
   autoPublishGuestReviews: boolean;
+
+  /** Card look on the product page and in the popup. */
+  cardStyle: ReviewCardStyle;
+  /** Show the review date on every review. */
+  showDate: boolean;
+  /** Show the bold review title (when the customer wrote one). */
+  showTitle: boolean;
+  /** Show the round initial avatar next to the reviewer name. */
+  showAvatar: boolean;
+  /** Show the "Verified Purchase" tick / badge. */
+  showVerifiedBadge: boolean;
+  /** Show the colour/variation chip on a review. */
+  showVariantChip: boolean;
+  /** Show customer photos inside the review cards. */
+  showCardPhotos: boolean;
+  /** Show the "Helpful" button in the popup. */
+  showHelpful: boolean;
+  /** Show the star-breakdown bars (5★ 4★ ...) next to the average. */
+  showRatingBreakdown: boolean;
+  /** Show the black "Rate this product" button. */
+  showRateButton: boolean;
+  /** Show "Reply from store" under a review that has a reply. */
+  showStoreReply: boolean;
+  /** Admin default: tick "Email this reply to the customer" when replying. */
+  emailReplyByDefault: boolean;
 }
 
 export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
@@ -48,9 +76,36 @@ export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
   featuredReviewIds: [],
   allowGuestReviews: true,
   autoPublishGuestReviews: false,
+  cardStyle: 'stars',
+  showDate: true,
+  showTitle: true,
+  showAvatar: true,
+  showVerifiedBadge: true,
+  showVariantChip: true,
+  showCardPhotos: true,
+  showHelpful: true,
+  showRatingBreakdown: true,
+  showRateButton: true,
+  showStoreReply: true,
+  emailReplyByDefault: true,
 };
 
 const SORTS: ReviewSort[] = ['newest', 'highest', 'lowest', 'photos'];
+const CARD_STYLES: ReviewCardStyle[] = ['stars', 'chip'];
+
+const BOOL_KEYS = [
+  'showDate',
+  'showTitle',
+  'showAvatar',
+  'showVerifiedBadge',
+  'showVariantChip',
+  'showCardPhotos',
+  'showHelpful',
+  'showRatingBreakdown',
+  'showRateButton',
+  'showStoreReply',
+  'emailReplyByDefault',
+] as const;
 
 const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
   const n = typeof v === 'number' ? v : parseInt(String(v), 10);
@@ -66,7 +121,11 @@ export function mergeReviewDisplaySettings(
   const ids = Array.isArray(v.featuredReviewIds)
     ? Array.from(new Set(v.featuredReviewIds.filter((x): x is string => typeof x === 'string' && x.length > 0)))
     : d.featuredReviewIds;
+  const flags = {} as Pick<ReviewDisplaySettings, (typeof BOOL_KEYS)[number]>;
+  for (const k of BOOL_KEYS) flags[k] = typeof v[k] === 'boolean' ? (v[k] as boolean) : d[k];
   return {
+    ...flags,
+    cardStyle: CARD_STYLES.includes(v.cardStyle as ReviewCardStyle) ? (v.cardStyle as ReviewCardStyle) : d.cardStyle,
     initialCount: clampInt(v.initialCount, 1, 50, d.initialCount),
     loadMoreCount: clampInt(v.loadMoreCount, 1, 50, d.loadMoreCount),
     showPhotoGallery: typeof v.showPhotoGallery === 'boolean' ? v.showPhotoGallery : d.showPhotoGallery,

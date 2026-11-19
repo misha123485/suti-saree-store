@@ -1914,3 +1914,49 @@ export function vendorProductStatusEmail(input: {
   `);
   return { subject, html };
 }
+
+// Sent when the store replies to a customer's product review (Admin ->
+// Reviews -> Reply). Every dynamic value is HTML-escaped because the reply
+// text and the customer's own review text are free-form.
+function escReviewHtml(input: string): string {
+  return String(input ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function reviewReplyEmail(params: {
+  customer_name?: string;
+  product_name: string;
+  product_url: string;
+  rating: number;
+  review_text?: string | null;
+  reply: string;
+}) {
+  const name = (params.customer_name || '').trim().split(/\s+/)[0] || 'there';
+  const rating = Math.min(5, Math.max(1, Math.round(params.rating || 5)));
+  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  const reviewText = (params.review_text || '').trim();
+  const subject = `${SITE_NAME} replied to your review`;
+  const html = wrapper(`
+    <h2 style="margin-top:0; color:${BRAND_COLOR};">Hi ${escReviewHtml(name)},</h2>
+    <p>Thank you for reviewing <strong>${escReviewHtml(params.product_name)}</strong>. Our team has replied to your review:</p>
+    <div style="margin:18px 0; padding:14px 16px; background:#ffffff; border:1px solid #ecdfd2; border-radius:8px;">
+      <p style="margin:0 0 6px; color:${GOLD_ACCENT}; font-size:16px; letter-spacing:2px;">${stars}</p>
+      ${reviewText ? `<p style="margin:0; color:#6b5f57; font-size:14px; white-space:pre-wrap;">${escReviewHtml(reviewText)}</p>` : ''}
+    </div>
+    <div style="margin:18px 0; padding:14px 16px; background:#f6efe7; border-left:4px solid ${BRAND_COLOR}; border-radius:6px;">
+      <p style="margin:0 0 6px; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#9a8f87;">Reply from ${SITE_NAME}</p>
+      <p style="margin:0; white-space:pre-wrap;">${escReviewHtml(params.reply)}</p>
+    </div>
+    <p style="text-align:center; margin-top: 22px;">
+      <a href="${escReviewHtml(params.product_url)}" style="background:${BRAND_COLOR}; color:#fff; padding: 12px 28px; text-decoration:none; border-radius: 4px; font-size: 14px; display:inline-block;">
+        View your review
+      </a>
+    </p>
+    <p style="font-size:13px; color:#6b5f57; margin-top:20px;">— Team ${SITE_NAME}</p>
+  `);
+  return { subject, html };
+}

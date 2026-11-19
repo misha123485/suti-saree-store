@@ -383,9 +383,96 @@ function helpfulScore(r: Review, votes: Record<string, number>) {
 /*  Inline (on-page) compact review card -- tap opens the popup        */
 /* ------------------------------------------------------------------ */
 
-function ReviewPreviewCard({ r, onOpen, onOpenPhoto }: { r: Review; onOpen: () => void; onOpenPhoto: (src: string) => void }) {
-  const photos = (r.photos ?? []).filter(Boolean);
-  const hasText = !!(r.title || r.comment);
+/** Rating + date (+ colour chip) row. 'stars' = gold star row, 'chip' = green "5 ★" chip. */
+function ReviewTopRow({ r, settings }: { r: Review; settings: ReviewDisplaySettings }) {
+  const date = settings.showDate ? (
+    <span className="text-[11px] text-muted-foreground">{formatDate(r.created_at)}</span>
+  ) : null;
+  const variant =
+    settings.showVariantChip && r.variant_color ? (
+      <span className="max-w-[40%] truncate rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+        {r.variant_color}
+      </span>
+    ) : null;
+
+  if (settings.cardStyle === 'chip') {
+    return (
+      <div className="flex items-center gap-2">
+        <RatingChip value={r.rating} />
+        {date}
+        {variant && <span className="ml-auto flex min-w-0">{variant}</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <StarRow value={r.rating} size="h-4 w-4" />
+      {variant}
+      {date && <span className="ml-auto shrink-0">{date}</span>}
+    </div>
+  );
+}
+
+/** Round initial + first name + verified tick (or full pill). */
+function ReviewerLine({
+  r,
+  settings,
+  badge = 'tick',
+}: {
+  r: Review;
+  settings: ReviewDisplaySettings;
+  badge?: 'tick' | 'pill';
+}) {
+  const name = firstName(r.customer_name);
+  const showAvatar = settings.showAvatar && settings.cardStyle === 'stars';
+  const verified = settings.showVerifiedBadge && r.verified_purchase;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      {showAvatar && (
+        <span
+          aria-hidden="true"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
+        >
+          {initials(name).charAt(0)}
+        </span>
+      )}
+      <span className="truncate text-xs font-semibold text-foreground/90">{name}</span>
+      {verified &&
+        (badge === 'pill' ? (
+          <VerifiedBadge />
+        ) : (
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-label="Verified purchase" />
+        ))}
+    </div>
+  );
+}
+
+/** "Reply from store" box under a review. */
+function StoreReplyBox({ text, clamp = false }: { text: string; clamp?: boolean }) {
+  return (
+    <div className="rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed">
+      <p className="text-xs font-semibold text-foreground">Reply from store</p>
+      <p className={`mt-0.5 whitespace-pre-line break-words text-foreground/80 ${clamp ? 'line-clamp-3' : ''}`}>{text}</p>
+    </div>
+  );
+}
+
+function ReviewPreviewCard({
+  r,
+  settings,
+  onOpen,
+  onOpenPhoto,
+}: {
+  r: Review;
+  settings: ReviewDisplaySettings;
+  onOpen: () => void;
+  onOpenPhoto: (src: string) => void;
+}) {
+  const photos = settings.showCardPhotos ? (r.photos ?? []).filter(Boolean) : [];
+  const title = settings.showTitle ? r.title : null;
+  const hasText = !!(title || r.comment);
+  const reply = settings.showStoreReply ? r.store_reply?.trim() : '';
+  const bold = settings.cardStyle === 'stars' ? 'font-bold text-[15px]' : 'font-semibold';
   return (
     <li className="w-[86%] shrink-0 snap-start sm:w-[60%] lg:w-auto">
       <div
@@ -398,23 +485,15 @@ function ReviewPreviewCard({ r, onOpen, onOpenPhoto }: { r: Review; onOpen: () =
             onOpen();
           }
         }}
-        className="flex h-full min-h-[148px] cursor-pointer flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-card p-3.5 shadow-[0_1px_12px_-6px_rgba(0,0,0,0.1)] transition-shadow hover:shadow-md active:scale-[0.99]"
+        className="flex h-full min-h-[148px] cursor-pointer flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-[0_1px_12px_-6px_rgba(0,0,0,0.1)] transition-shadow hover:shadow-md active:scale-[0.99]"
       >
-        <div className="flex items-center gap-2">
-          <RatingChip value={r.rating} />
-          <span className="text-[11px] text-muted-foreground">{formatDate(r.created_at)}</span>
-          {r.variant_color && (
-            <span className="ml-auto truncate rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {r.variant_color}
-            </span>
-          )}
-        </div>
+        <ReviewTopRow r={r} settings={settings} />
 
         <div className="flex min-h-0 flex-1 items-start gap-3">
           <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground/85">
             {hasText ? (
               <>
-                {r.title && <p className="line-clamp-1 font-semibold text-foreground">{r.title}</p>}
+                {title && <p className={`line-clamp-1 text-foreground ${bold}`}>{title}</p>}
                 {r.comment && <p className="line-clamp-3 break-words">{r.comment}</p>}
                 {(r.comment?.length ?? 0) > 90 && (
                   <span className="text-xs font-semibold text-primary">read more</span>
@@ -451,10 +530,8 @@ function ReviewPreviewCard({ r, onOpen, onOpenPhoto }: { r: Review; onOpen: () =
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span className="truncate font-medium text-foreground/80">{firstName(r.customer_name)}</span>
-          {r.verified_purchase && <VerifiedBadge />}
-        </div>
+        <ReviewerLine r={r} settings={settings} badge={settings.cardStyle === 'stars' ? 'tick' : 'pill'} />
+        {reply && <StoreReplyBox text={reply} clamp />}
       </div>
     </li>
   );
@@ -481,6 +558,7 @@ function VerifiedBadge({ className = '' }: { className?: string }) {
 
 function SheetReviewItem({
   r,
+  settings,
   featured,
   helpful,
   helpfulCount,
@@ -488,6 +566,7 @@ function SheetReviewItem({
   onOpenPhoto,
 }: {
   r: Review;
+  settings: ReviewDisplaySettings;
   featured: boolean;
   helpful: boolean;
   helpfulCount: number;
@@ -496,17 +575,16 @@ function SheetReviewItem({
 }) {
   const [expanded, setExpanded] = useState(false);
   const long = (r.comment?.length ?? 0) > COMMENT_CLAMP;
-  const photos = (r.photos ?? []).filter(Boolean);
+  const photos = settings.showCardPhotos ? (r.photos ?? []).filter(Boolean) : [];
+  const title = settings.showTitle ? r.title : null;
+  const reply = settings.showStoreReply ? r.store_reply?.trim() : '';
+  const bold = settings.cardStyle === 'stars' ? 'font-bold' : 'font-semibold';
   return (
     <li id={`rv-${r.id}`} className="scroll-mt-28 border-b border-border/60 py-4 last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <RatingChip value={r.rating} />
-        <span className="text-xs text-muted-foreground">{formatDate(r.created_at)}</span>
-        {r.variant_color && (
-          <span className="rounded-full border border-border/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {r.variant_color}
-          </span>
-        )}
+        <div className="min-w-0 flex-1">
+          <ReviewTopRow r={r} settings={settings} />
+        </div>
         {featured && (
           <span className="inline-flex items-center gap-1 rounded-full bg-secondary/15 px-2 py-0.5 text-[11px] font-semibold text-secondary">
             <Pin className="h-3 w-3" />
@@ -515,7 +593,7 @@ function SheetReviewItem({
         )}
       </div>
 
-      {r.title && <p className="mt-2.5 text-sm font-semibold text-foreground">{r.title}</p>}
+      {title && <p className={`mt-2.5 text-sm text-foreground ${bold}`}>{title}</p>}
       {r.comment && (
         <p
           className={`mt-1.5 whitespace-pre-line break-words text-sm leading-relaxed text-foreground/85 ${
@@ -556,23 +634,28 @@ function SheetReviewItem({
       )}
 
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          <span className="truncate font-medium text-foreground/80">{firstName(r.customer_name)}</span>
-          {r.verified_purchase && <VerifiedBadge />}
-        </span>
-        <button
-          type="button"
-          onClick={onToggleHelpful}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-all active:scale-95 ${
-            helpful
-              ? 'border-primary/40 bg-primary/10 text-primary'
-              : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary'
-          }`}
-        >
-          <ThumbsUp className={`h-3 w-3 ${helpful ? 'fill-primary' : ''}`} />
-          Helpful{helpfulCount ? ` (${helpfulCount})` : ''}
-        </button>
+        <ReviewerLine r={r} settings={settings} badge={settings.cardStyle === 'stars' ? 'tick' : 'pill'} />
+        {settings.showHelpful && (
+          <button
+            type="button"
+            onClick={onToggleHelpful}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-all active:scale-95 ${
+              helpful
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary'
+            }`}
+          >
+            <ThumbsUp className={`h-3 w-3 ${helpful ? 'fill-primary' : ''}`} />
+            Helpful{helpfulCount ? ` (${helpfulCount})` : ''}
+          </button>
+        )}
       </div>
+
+      {reply && (
+        <div className="mt-3">
+          <StoreReplyBox text={reply} />
+        </div>
+      )}
     </li>
   );
 }
@@ -757,20 +840,22 @@ function ReviewsSheet(p: SheetProps) {
                     rating{summary.totalRatings === 1 ? '' : 's'}
                   </p>
                 </div>
-                <div className="min-w-0 flex-1 border-l border-border/60 pl-3">
-                  <RatingBars
-                    breakdown={summary.breakdown as unknown as Record<number, number>}
-                    total={summary.totalRatings}
-                    active={p.ratingFilter}
-                    onPick={p.setRatingFilter}
-                  />
-                </div>
+                {settings.showRatingBreakdown && (
+                  <div className="min-w-0 flex-1 border-l border-border/60 pl-3">
+                    <RatingBars
+                      breakdown={summary.breakdown as unknown as Record<number, number>}
+                      total={summary.totalRatings}
+                      active={p.ratingFilter}
+                      onPick={p.setRatingFilter}
+                    />
+                  </div>
+                )}
               </div>
 
-              {p.writeCta && (
+              {p.writeCta && settings.showRateButton && (
                 <Button
                   onClick={p.writeCta.onClick}
-                  className="w-full bg-gradient-to-r from-primary via-primary to-primary/90 text-primary-foreground shadow-sm"
+                  className="w-full bg-black text-white shadow-sm hover:bg-black/90"
                 >
                   <Star className="mr-1.5 h-4 w-4 fill-secondary text-secondary" />
                   {p.writeCta.label}
@@ -906,6 +991,7 @@ function ReviewsSheet(p: SheetProps) {
                         <SheetReviewItem
                           key={r.id}
                           r={r}
+                          settings={p.settings}
                           featured={p.featuredSet.has(r.id)}
                           helpful={!!p.markedHelpful[r.id]}
                           helpfulCount={p.helpfulVotes[r.id] ?? 0}
@@ -1380,11 +1466,13 @@ export default function ReviewsSection({
                     </p>
                   </div>
                 </button>
-                <RatingBars
-                  breakdown={summary.breakdown as unknown as Record<number, number>}
-                  total={summary.totalRatings}
-                  onPick={(f) => openSheet({ filter: f })}
-                />
+                {settings.showRatingBreakdown && (
+                  <RatingBars
+                    breakdown={summary.breakdown as unknown as Record<number, number>}
+                    total={summary.totalRatings}
+                    onPick={(f) => openSheet({ filter: f })}
+                  />
+                )}
               </div>
 
               {/* Photo strip: 3 photos + "+N" tile */}
@@ -1418,10 +1506,10 @@ export default function ReviewsSection({
 
           {statusNote}
 
-          {writeCta && (
+          {writeCta && settings.showRateButton && (
             <Button
               onClick={writeCta.onClick}
-              className="w-full bg-gradient-to-r from-primary via-primary to-primary/90 text-primary-foreground shadow-sm transition-transform hover:scale-[1.01] hover:shadow-md"
+              className="w-full bg-black text-white shadow-sm transition-transform hover:scale-[1.01] hover:bg-black/90 hover:shadow-md"
             >
               <Star className="mr-1.5 h-4 w-4 fill-secondary text-secondary" />
               {writeCta.label}
@@ -1646,7 +1734,7 @@ export default function ReviewsSection({
 
               <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-2 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:[&>li:nth-child(n+5)]:hidden">
                 {previewReviews.map((r) => (
-                  <ReviewPreviewCard key={r.id} r={r} onOpen={() => openSheet({ focusId: r.id })} onOpenPhoto={(src) => openPhotoOfReview(r.id, src)} />
+                  <ReviewPreviewCard key={r.id} r={r} settings={settings} onOpen={() => openSheet({ focusId: r.id })} onOpenPhoto={(src) => openPhotoOfReview(r.id, src)} />
                 ))}
               </ul>
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAdminFocus } from './use-admin-focus';
 import Link from 'next/link';
-import { Check, EyeOff, Trash2, Star, Search, X, Pin, PinOff, Settings2, Loader2 } from 'lucide-react';
+import { Check, EyeOff, Trash2, Star, Search, X, Pin, PinOff, Settings2, Loader2, Reply, Mail } from 'lucide-react';
 import {
   fetchAllReviewsAdmin,
   approveReviewAdmin,
@@ -11,6 +11,8 @@ import {
   deleteReviewAdmin,
   fetchReviewDisplaySettingsAdmin,
   saveReviewDisplaySettingsAdmin,
+  saveReviewReplyAdmin,
+  deleteReviewReplyAdmin,
   hasWrittenContent,
   AdminReview,
 } from '@/lib/reviews-api';
@@ -19,10 +21,13 @@ import {
   mergeReviewDisplaySettings,
   type ReviewDisplaySettings,
   type ReviewSort,
+  type ReviewCardStyle,
 } from '@/lib/review-display-settings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -59,6 +64,11 @@ export default function ReviewsPanel() {
   const [displaySettings, setDisplaySettings] = useState<ReviewDisplaySettings>(DEFAULT_REVIEW_DISPLAY_SETTINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  // "Reply from store" editor (one review at a time).
+  const [replyOpenId, setReplyOpenId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyEmail, setReplyEmail] = useState(true);
+  const [replySaving, setReplySaving] = useState(false);
   // The list can hold hundreds of reviews -- render it in pages.
   const PAGE = 40;
   const [listLimit, setListLimit] = useState(PAGE);
@@ -198,6 +208,47 @@ export default function ReviewsPanel() {
     }
   };
 
+  const openReply = (r: AdminReview) => {
+    setReplyOpenId(r.id);
+    setReplyText(r.store_reply ?? '');
+    // Default follows the admin setting; an already-emailed reply is not re-sent unless ticked.
+    setReplyEmail(displaySettings.emailReplyByDefault && !r.store_reply_emailed);
+  };
+
+  const submitReply = async (r: AdminReview) => {
+    const text = replyText.trim();
+    if (!text) {
+      toast.error('Write a reply first');
+      return;
+    }
+    setReplySaving(true);
+    try {
+      const res = await saveReviewReplyAdmin(r.id, text, replyEmail);
+      if (res.email.sent) toast.success(`Reply saved and emailed to ${res.email.to}`);
+      else if (res.email.requested) toast.warning(`Reply saved. ${res.email.note ?? 'Email was not sent.'}`);
+      else toast.success('Reply saved — it now shows on the product page');
+      setReplyOpenId(null);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save reply');
+    } finally {
+      setReplySaving(false);
+    }
+  };
+
+  const removeReply = async (r: AdminReview) => {
+    setBusyId(r.id);
+    try {
+      await deleteReviewReplyAdmin(r.id);
+      toast.success('Reply removed');
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not remove reply');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const renderList = (list: AdminReview[], emptyLabel: string) => {
     if (loading) {
       return (
@@ -275,6 +326,64 @@ export default function ReviewsPanel() {
                 <p className="mt-2 text-xs text-muted-foreground">
                   {new Date(r.created_at).toLocaleString()}
                 </p>
+
+                {r.store_reply && replyOpenId !== r.id && (
+                  <div className="mt-3 rounded-md bg-muted/60 p-3">
+                    <p className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                      Reply from store
+                      {r.store_reply_emailed && (
+                        <span className="inline-flex items-center gap-1 font-normal text-muted-foreground">
+                          <Mail className="h-3 w-3" /> emailed
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 whitespace-pre-line text-sm">{r.store_reply}</p>
+                    <div className="mt-2 flex gap-3 text-xs">
+                      <button type="button" className="font-medium text-secondary hover:underline" onClick={() => openReply(r)}>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="font-medium text-destructive hover:underline"
+                        onClick={() => removeReply(r)}
+                        disabled={busyId === r.id}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {replyOpenId === r.id && (
+                  <div className="mt-3 grid gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                    <Textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      maxLength={1000}
+                      rows={3}
+                      placeholder={`Reply to ${r.customer_name}… e.g. Thank you! We're glad you love it.`}
+                    />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={replyEmail}
+                        onChange={(e) => setReplyEmail(e.target.checked)}
+                      />
+                      Also email this reply to the customer
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" className="bg-primary" onClick={() => submitReply(r)} disabled={replySaving}>
+                        {replySaving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Reply className="mr-1 h-3.5 w-3.5" />}
+                        {r.store_reply ? 'Update reply' : 'Post reply'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setReplyOpenId(null)} disabled={replySaving}>
+                        Cancel
+                      </Button>
+                      <span className="text-[11px] text-muted-foreground">{replyText.length}/1000</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex shrink-0 gap-2">
                 {!r.is_approved ? (
@@ -315,6 +424,14 @@ export default function ReviewsPanel() {
                     )}
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openReply(r)}
+                  title={r.store_reply ? 'Edit your reply' : 'Reply from store'}
+                >
+                  <Reply className="mr-1 h-3.5 w-3.5" /> {r.store_reply ? 'Replied' : 'Reply'}
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -370,7 +487,7 @@ export default function ReviewsPanel() {
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <Settings2 className="h-4 w-4 text-secondary" />
-            Product page display settings
+            Review settings — toggles, date, card look, replies
           </span>
           <span className="text-xs text-muted-foreground">
             {displaySettings.initialCount} shown first · +{displaySettings.loadMoreCount} per &ldquo;Load more&rdquo; ·{' '}
@@ -412,25 +529,70 @@ export default function ReviewsPanel() {
               </label>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3">
-              {([
-                ['showPhotoGallery', 'Show "Photos from customers" strip'],
-                ['showFilters', 'Show filters and sort menu'],
-                ['showColorFilter', 'Show variation (colour) filter'],
-                ['allowGuestReviews', 'Allow reviews without login (guest reviews)'],
-                ['autoPublishGuestReviews', 'Auto-publish guest reviews (off = wait for my approval)'],
-              ] as [keyof ReviewDisplaySettings, string][]).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-primary"
-                    checked={Boolean(displaySettings[key])}
-                    onChange={(e) => setDisplaySettings((d) => ({ ...d, [key]: e.target.checked }))}
-                  />
-                  {label}
-                </label>
-              ))}
+            <div className="grid gap-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Card look</p>
+              <Select
+                value={displaySettings.cardStyle}
+                onValueChange={(v) => setDisplaySettings((d) => ({ ...d, cardStyle: v as ReviewCardStyle }))}
+              >
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stars">Stars + bold title + avatar</SelectItem>
+                  <SelectItem value="chip">Green rating chip (compact)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {([
+              [
+                'What to show on each review',
+                [
+                  ['showDate', 'Show review date'],
+                  ['showTitle', 'Show review title'],
+                  ['showAvatar', 'Show reviewer initial avatar (stars card)'],
+                  ['showVerifiedBadge', 'Show Verified Purchase tick / badge'],
+                  ['showVariantChip', 'Show colour / variation chip'],
+                  ['showCardPhotos', 'Show customer photos inside reviews'],
+                  ['showHelpful', 'Show Helpful button (popup)'],
+                  ['showStoreReply', 'Show "Reply from store"'],
+                ],
+              ],
+              [
+                'Summary & page sections',
+                [
+                  ['showRatingBreakdown', 'Show star breakdown bars (5★ 4★ …)'],
+                  ['showPhotoGallery', 'Show "Photos from customers" strip'],
+                  ['showFilters', 'Show filters and sort menu'],
+                  ['showColorFilter', 'Show variation (colour) filter'],
+                  ['showRateButton', 'Show black "Rate this product" button'],
+                ],
+              ],
+              [
+                'Guest reviews & emails',
+                [
+                  ['allowGuestReviews', 'Allow reviews without login (guest reviews)'],
+                  ['autoPublishGuestReviews', 'Auto-publish guest reviews (off = wait for my approval)'],
+                  ['emailReplyByDefault', 'Tick "email this reply to customer" by default'],
+                ],
+              ],
+            ] as [string, [keyof ReviewDisplaySettings, string][]][]).map(([heading, items]) => (
+              <div key={heading} className="grid gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{heading}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {items.map(([key, label]) => (
+                    <label key={key} className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2 text-sm">
+                      <span>{label}</span>
+                      <Switch
+                        checked={Boolean(displaySettings[key])}
+                        onCheckedChange={(checked) => setDisplaySettings((d) => ({ ...d, [key]: checked }))}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
 
             <label className="grid max-w-xs gap-1 text-xs font-medium text-muted-foreground">
               Default sort (pinned reviews always stay first)
