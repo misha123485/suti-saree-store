@@ -2119,9 +2119,7 @@ export default function CheckoutPage() {
   const inlineForm = !hasSavedAddressSummary && !(user && savedAddresses.length > 0);
   const phoneSheetActive = phoneFormOpen && !inlineForm;
 
-  const detailsFields = (
-    <>
-{/* Contact */}
+  const contactFields = (
               <section>
                 <h2 className="mb-4 font-serif text-lg font-bold text-primary">
                   Contact Information
@@ -2208,9 +2206,10 @@ export default function CheckoutPage() {
               </div>
             </div>
           </section>
+  );
 
-          {/* Shipping */}
-          <section className="mt-7">
+  const shippingFields = (
+          <section className={inlineForm ? '' : 'mt-7'}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
             </div>
@@ -2451,6 +2450,12 @@ export default function CheckoutPage() {
               )}
             </div>
           </section>
+  );
+
+  const detailsFields = (
+    <>
+      {contactFields}
+      {shippingFields}
     </>
   );
 
@@ -3113,17 +3118,17 @@ export default function CheckoutPage() {
             </section>
           ) : (
             inlineForm ? (
-            <section
+            <div
               onInputCapture={() => {
                 if (invalidField) hideSheetError();
               }}
-              className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5 [&_input]:h-11 [&_[role=combobox]]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
+              className="grid gap-4 [&_input]:h-11 [&_[role=combobox]]:h-11 [&_[aria-invalid=true]]:border-red-400 [&_[aria-invalid=true]]:ring-2 [&_[aria-invalid=true]]:ring-red-200"
             >
               {sheetError?.visible && (
                 <div
                   role="alert"
                   style={{ top: (phoneHeaderH || 0) + 8 }}
-                  className="sticky z-30 mb-3 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm"
+                  className="sticky z-30 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-sm"
                 >
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span className="flex-1 leading-snug">{sheetError.message}</span>
@@ -3137,11 +3142,18 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               )}
-              {detailsFields}
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                <Lock className="h-3 w-3" /> Your details are used only to deliver this order.
-              </p>
-            </section>
+              {/* Card 1: Contact Information */}
+              <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+                {contactFields}
+              </div>
+              {/* Card 2: Shipping Address */}
+              <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+                {shippingFields}
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Lock className="h-3 w-3" /> Your details are used only to deliver this order.
+                </p>
+              </div>
+            </div>
             ) : (
             <>
               {/* Delivery details card -- tap to open the bottom sheet */}
