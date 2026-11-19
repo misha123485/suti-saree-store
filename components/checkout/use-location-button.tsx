@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, MapPin } from 'lucide-react';
+import { Loader2, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface LocationAddress {
@@ -79,19 +79,15 @@ export default function UseLocationButton({ onResult }: { onResult: (a: Location
   };
 
   return (
-    <div className="grid gap-1">
-      <button
-        type="button"
-        onClick={run}
-        disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-        {busy ? 'Finding your address…' : 'Use my current location'}
-      </button>
-      <p className="text-[11px] text-muted-foreground">
-        Fills street, area and PIN code from your phone’s location. Add your house/flat number after.
-      </p>
-    </div>
+    <button
+      type="button"
+      onClick={run}
+      disabled={busy}
+      title="Fills street, area and PIN code from your phone's location"
+      className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-60"
+    >
+      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
+      {busy ? 'Finding…' : 'Use my location'}
+    </button>
   );
 }

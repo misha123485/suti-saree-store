@@ -314,3 +314,58 @@ body[data-delivery-open] .fixed.bottom-24 {
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------
+   Checkout form fields: label sits INSIDE the bordered box, tiny, above
+   the value (Contact / Delivery address cards). Required "*" stays in the
+   label text. Scoped to .ckf-field so nothing else on the site changes.
+   --------------------------------------------------------------------- */
+.ckf-field {
+  display: block;
+  min-width: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  background: hsl(var(--card));
+  padding: 0.45rem 0.75rem 0.4rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ckf-field:focus-within {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.12);
+}
+.ckf-field > label {
+  display: block;
+  margin-bottom: 0.125rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: hsl(var(--primary));
+}
+.ckf-field input,
+.ckf-field button[role='combobox'] {
+  height: 1.5rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 0.9375rem;
+  box-shadow: none;
+}
+.ckf-field input:focus-visible,
+.ckf-field button[role='combobox']:focus {
+  outline: none;
+  box-shadow: none;
+}
+.ckf-field input.ckf-autofilled {
+  color: hsl(var(--foreground));
+}
+.ckf-field:has(input.ckf-autofilled) {
+  background: hsl(var(--muted));
+}
+.ckf-field input::placeholder {
+  color: hsl(var(--muted-foreground) / 0.8);
+}
+.ckf-field p {
+  margin-top: 0.25rem;
+}
