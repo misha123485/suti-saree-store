@@ -2123,8 +2123,8 @@ export default function CheckoutPage() {
     <>
 {/* Contact */}
               <section>
-                <h2 className="mb-3 font-serif text-lg font-bold text-primary">
-                  Contact
+                <h2 className="mb-4 font-serif text-lg font-bold text-primary">
+                  Contact Information
                 </h2>
             {voiceSettings.enabled && !isIntl && (
               <VoiceAssistant
@@ -2152,32 +2152,32 @@ export default function CheckoutPage() {
                 }}
               />
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="ckf-field">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
+              <div className="grid gap-1.5">
                 <Label htmlFor="firstName">First name *</Label>
                 <Input
                   id="firstName"
                   name="firstName"
                   autoComplete="given-name"
                   required
-                  placeholder="First name"
+                  placeholder="Aanya"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                 />
               </div>
-              <div className="ckf-field">
+              <div className="grid gap-1.5">
                 <Label htmlFor="lastName">Last name *</Label>
                 <Input
                   id="lastName"
                   name="lastName"
                   autoComplete="family-name"
                   required
-                  placeholder="Last name"
+                  placeholder="Sharma"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
-              <div className="ckf-field col-span-2">
+              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
@@ -2185,7 +2185,7 @@ export default function CheckoutPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  placeholder="name@example.com"
+                  placeholder="aanya@example.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -2193,7 +2193,7 @@ export default function CheckoutPage() {
                   }}
                 />
               </div>
-              <div className="ckf-field col-span-2">
+              <div className="col-span-2 grid gap-1.5 sm:col-span-1">
                 <Label htmlFor="phone">Phone *</Label>
                 <Input
                   id="phone"
@@ -2212,34 +2212,11 @@ export default function CheckoutPage() {
           {/* Shipping */}
           <section className="mt-7">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="font-serif text-lg font-bold text-primary">Delivery address</h2>
-              {voiceSettings.location_enabled && !isIntl && (
-            <UseLocationButton
-              onResult={(a) => {
-                if (a.line1) setAddressLine1(a.line1);
-                if (a.line2) setAddressLine2(a.line2);
-                if (a.pincode) {
-                  // Same as typing a new PIN: the India Post lookup then fills City/State.
-                  cityAutoFilledRef.current = true;
-                  stateAutoFilledRef.current = true;
-                  setPincode(a.pincode);
-                } else {
-                  if (a.city) {
-                    setCity(a.city);
-                    cityAutoFilledRef.current = true;
-                  }
-                  if (a.state && INDIAN_STATES.includes(a.state)) {
-                    setStateName(a.state);
-                    stateAutoFilledRef.current = true;
-                  }
-                }
-              }}
-            />
-          )}
+              <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
             </div>
             <div className="grid gap-4">
               {intl.active && (
-                <div className="ckf-field">
+                <div className="grid gap-1.5">
                   <Label htmlFor="country">Country *</Label>
                   <Select
                     value={country || 'India'}
@@ -2262,7 +2239,30 @@ export default function CheckoutPage() {
                   </Select>
                 </div>
               )}
-                            <div className="ckf-field">
+              {voiceSettings.location_enabled && !isIntl && (
+                <UseLocationButton
+                  onResult={(a) => {
+                    if (a.line1) setAddressLine1(a.line1);
+                    if (a.line2) setAddressLine2(a.line2);
+                    if (a.pincode) {
+                      // Same as typing a new PIN: the India Post lookup then fills City/State.
+                      cityAutoFilledRef.current = true;
+                      stateAutoFilledRef.current = true;
+                      setPincode(a.pincode);
+                    } else {
+                      if (a.city) {
+                        setCity(a.city);
+                        cityAutoFilledRef.current = true;
+                      }
+                      if (a.state && INDIAN_STATES.includes(a.state)) {
+                        setStateName(a.state);
+                        stateAutoFilledRef.current = true;
+                      }
+                    }
+                  }}
+                />
+              )}
+              <div className="grid gap-1.5">
                 <Label htmlFor="address">Street address *</Label>
                 <div className="relative">
                   <Input
@@ -2270,7 +2270,7 @@ export default function CheckoutPage() {
                     name="address"
                     autoComplete="address-line1"
                     required
-                    placeholder="House no., street, area"
+                    placeholder="12, MG Road, Apt 304"
                     value={addressLine1}
                     onChange={(e) => setAddressLine1(e.target.value)}
                     onFocus={() => setStreetFocused(true)}
@@ -2303,7 +2303,7 @@ export default function CheckoutPage() {
                   )}
                 </div>
               </div>
-              <div className="ckf-field">
+              <div className="grid gap-1.5">
                 <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
                 <Input
                   id="address2"
@@ -2314,18 +2314,20 @@ export default function CheckoutPage() {
                   onChange={(e) => setAddressLine2(e.target.value)}
                 />
               </div>
-              <div className="ckf-field">
+              <div className="grid gap-1.5">
                 <Label htmlFor="landmark">Landmark (optional)</Label>
                 <Input
                   id="landmark"
                   name="landmark"
-                  placeholder="Near…"
+                  placeholder="Near City Hospital / Opposite SBI Bank"
                   value={landmark}
                   onChange={(e) => setLandmark(e.target.value)}
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Helps our delivery partner find your address faster.
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="ckf-field">
+              <div className="grid gap-1.5">
                 <Label htmlFor="pincode">{isIntl ? `Postal code${intlPostalOptional ? ' (optional)' : ' *'}` : 'PIN code *'}</Label>
                 <Input
                   id="pincode"
@@ -2351,27 +2353,7 @@ export default function CheckoutPage() {
                     setPincode(e.target.value);
                   }}
                 />
-                </div>
-                <div className="ckf-field">
-                  <Label htmlFor="city">City *</Label>
-                  <Input
-                    id="city"
-                    className={deliveryEstimate?.serviceable && city ? 'ckf-autofilled' : undefined}
-                    name="city"
-                    autoComplete="address-level2"
-                    required
-                    placeholder="Auto-filled"
-                    value={city}
-                    onChange={(e) => {
-                      // Shopper is typing city by hand — stop treating it as
-                      // ours to overwrite on the next pincode lookup.
-                      cityAutoFilledRef.current = false;
-                      setCity(e.target.value);
-                    }}
-                  />
-                </div>
-              </div>
-              {verifyingPincode && (
+                {verifyingPincode && (
                   <p className="text-[11px] text-muted-foreground">Checking pincode…</p>
                 )}
                 {!verifyingPincode && deliveryEstimate?.pincode === pincode.trim() && (
@@ -2393,8 +2375,26 @@ export default function CheckoutPage() {
                     Auto-filled City/State below — you can edit if needed.
                   </p>
                 )}
-              <div className={`grid gap-3 ${!intl.active ? 'grid-cols-2' : ''}`}>
-                <div className="ckf-field">
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="city">City *</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    autoComplete="address-level2"
+                    required
+                    placeholder="Mumbai"
+                    value={city}
+                    onChange={(e) => {
+                      // Shopper is typing city by hand — stop treating it as
+                      // ours to overwrite on the next pincode lookup.
+                      cityAutoFilledRef.current = false;
+                      setCity(e.target.value);
+                    }}
+                  />
+                </div>
+                <div className="grid gap-1.5">
                   <Label htmlFor="state">{isIntl ? `State / Province${intlStateOptional ? ' (optional)' : ' *'}` : 'State *'}</Label>
                   {isIntl ? (
                     <Input
@@ -2434,8 +2434,10 @@ export default function CheckoutPage() {
                   </Select>
                   )}
                 </div>
-                {!intl.active && (
-                <div className="ckf-field">
+              </div>
+              {/* Country sits at the top of this section when international selling is active. */}
+              {!intl.active && (
+                <div className="grid gap-1.5">
                   <Label htmlFor="country">Country *</Label>
                   <Select value={country || 'India'} onValueChange={setCountry}>
                     <SelectTrigger id="country">
@@ -2447,7 +2449,6 @@ export default function CheckoutPage() {
                   </Select>
                 </div>
               )}
-              </div>
             </div>
           </section>
     </>
