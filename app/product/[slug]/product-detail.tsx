@@ -39,7 +39,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCountry } from '@/components/country-provider';
-import { fetchApprovedReviews, summarizeReviews, RatingSummary } from '@/lib/reviews-api';
+import { fetchApprovedReviews, fetchReviewDisplaySettings, summarizeReviews, RatingSummary } from '@/lib/reviews-api';
+import type { ReviewDisplaySettings } from '@/lib/review-display-settings';
+
+// Remembered for the session so later product pages show/hide the rating
+// badge + title stars instantly (no flash when the admin turned them off).
+let cachedReviewDisplay: ReviewDisplaySettings | null = null;
 import DeliveryInfo from '@/components/product/delivery-info';
 import VariantSwatches from '@/components/product/variant-swatches';
 import ProductHighlights from '@/components/product/product-highlights';
@@ -204,6 +209,21 @@ export default function ProductDetail({
   // until the product has at least one real approved rating, so brand-new
   // listings still show their seeded social-proof numbers.
   const [liveSummary, setLiveSummary] = useState<RatingSummary | null>(null);
+  // Admin > Reviews > Review settings: image badge + title stars toggles.
+  // Hidden until the setting loads so an admin who switched them off never sees a flash.
+  const [reviewDisplay, setReviewDisplay] = useState<ReviewDisplaySettings | null>(() => cachedReviewDisplay);
+  useEffect(() => {
+    let cancelled = false;
+    fetchReviewDisplaySettings()
+      .then((st) => {
+        cachedReviewDisplay = st;
+        if (!cancelled) setReviewDisplay(st);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [similarOpen, setSimilarOpen] = useState(false);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
   const [loyaltyBalance, setLoyaltyBalance] = useState(0);
@@ -824,8 +844,8 @@ export default function ProductDetail({
               productName={product.name}
               productPrice={product.price}
               productMrp={product.mrp}
-              rating={displayRating}
-              ratingsCount={displayRatingsCount}
+              rating={reviewDisplay?.showImageRatingBadge ? displayRating : undefined}
+              ratingsCount={reviewDisplay?.showImageRatingBadge ? displayRatingsCount : undefined}
               onRatingClick={goToReviews}
               onViewSimilar={() => setSimilarOpen(true)}
             />
@@ -847,6 +867,7 @@ export default function ProductDetail({
           displayRating={displayRating}
           displayRatingsCount={displayRatingsCount}
           displayReviewsCount={displayReviewsCount}
+          showTitleRating={!!reviewDisplay?.showTitleRating}
           selectedSize={selectedSize}
           setSelectedSize={setSelectedSize}
           selectedSizeStock={selectedSizeStock}
@@ -1021,6 +1042,7 @@ function ProductInfo({
   displayRating,
   displayRatingsCount,
   displayReviewsCount,
+  showTitleRating,
   selectedSize,
   setSelectedSize,
   selectedSizeStock,
@@ -1049,6 +1071,8 @@ function ProductInfo({
   displayRating: number;
   displayRatingsCount: number;
   displayReviewsCount: number;
+  /** Admin toggle: small stars + (count) line under the title. */
+  showTitleRating: boolean;
   selectedSize: string | null;
   setSelectedSize: (s: string) => void;
   selectedSizeStock: number;
@@ -1145,6 +1169,26 @@ function ProductInfo({
             <ShareButton title={displayName} text={`Check out ${displayName} on Sutisaree`} />
           </div>
         </div>
+        {showTitleRating && !showRatings && displayRatingsCount > 0 && (
+          <button
+            type="button"
+            onClick={onReviewsClick}
+            aria-label={`Rated ${displayRating.toFixed(1)} out of 5 by ${displayRatingsCount} customers. See reviews`}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs hover:underline"
+          >
+            <span className="flex items-center gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3.5 w-3.5 ${
+                    i < Math.round(displayRating) ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/40'
+                  }`}
+                />
+              ))}
+            </span>
+            <span className="text-muted-foreground">({displayRatingsCount})</span>
+          </button>
+        )}
         {showRatings && displayRatingsCount > 0 && (
           <button
             type="button"

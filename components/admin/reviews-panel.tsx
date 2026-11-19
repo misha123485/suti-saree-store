@@ -562,6 +562,8 @@ export default function ReviewsPanel() {
               [
                 'Summary & page sections',
                 [
+                  ['showImageRatingBadge', 'Show rating badge on product image (5.0 ★ 137)'],
+                  ['showTitleRating', 'Show ★★★★★ (count) under product title'],
                   ['showRatingBreakdown', 'Show star breakdown bars (5★ 4★ …)'],
                   ['showPhotoGallery', 'Show "Photos from customers" strip'],
                   ['showFilters', 'Show filters and sort menu'],

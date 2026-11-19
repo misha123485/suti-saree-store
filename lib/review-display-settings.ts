@@ -57,6 +57,10 @@ export interface ReviewDisplaySettings {
   showHelpful: boolean;
   /** Show the star-breakdown bars (5★ 4★ ...) next to the average. */
   showRatingBreakdown: boolean;
+  /** Small "5.0 ★ | 137" badge on the product image. */
+  showImageRatingBadge: boolean;
+  /** Small "★★★★★ (22)" line right under the product title. */
+  showTitleRating: boolean;
   /** Show the black "Rate this product" button. */
   showRateButton: boolean;
   /** Show "Reply from store" under a review that has a reply. */
@@ -86,6 +90,8 @@ export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
   showHelpful: true,
   showRatingBreakdown: true,
   showRateButton: true,
+  showImageRatingBadge: true,
+  showTitleRating: true,
   showStoreReply: true,
   emailReplyByDefault: true,
 };
@@ -103,6 +109,8 @@ const BOOL_KEYS = [
   'showHelpful',
   'showRatingBreakdown',
   'showRateButton',
+  'showImageRatingBadge',
+  'showTitleRating',
   'showStoreReply',
   'emailReplyByDefault',
 ] as const;
