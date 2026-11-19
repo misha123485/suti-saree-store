@@ -1174,7 +1174,7 @@ function ProductInfo({
             type="button"
             onClick={onReviewsClick}
             aria-label={`Rated ${displayRating.toFixed(1)} out of 5 by ${displayRatingsCount} customers. See reviews`}
-            className="mt-1.5 inline-flex items-center gap-1 text-xs hover:underline"
+            className="mt-1.5 inline-flex items-center gap-1 text-xs leading-none hover:underline"
           >
             <span className="flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -1193,7 +1193,7 @@ function ProductInfo({
           <button
             type="button"
             onClick={onReviewsClick}
-            className="mt-2 flex items-center gap-2 text-sm hover:underline"
+            className="mt-1.5 flex items-center gap-2 text-sm leading-none hover:underline"
           >
             <div className="flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -1217,7 +1217,14 @@ function ProductInfo({
         )}
       </div>
 
-      <div className="flex items-baseline gap-3">
+      {/* When a rating row sits between the title and the price, pull the price
+          up by the same 6px the stars sit below the title (flex gap-3 = 12px
+          minus 6px) so the stars land exactly midway and the block stays tight. */}
+      <div
+        className={`flex items-baseline gap-3 ${
+          displayRatingsCount > 0 && (showRatings || showTitleRating) ? '-mt-1.5' : ''
+        }`}
+      >
         <span className="font-serif text-3xl font-bold text-primary">
           {formatINR(selectedSizePrice)}
         </span>
