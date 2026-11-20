@@ -15,8 +15,6 @@ import {
   Wallet,
   PartyPopper,
   Gift,
-  MapPin,
-  Truck,
   Undo2,
   Check,
   Receipt,
@@ -46,58 +44,10 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { checkPincodeServiceability, isValidPincode, PincodeResult } from '@/lib/pincode-api';
 import { STORE_POLICY } from '@/lib/store-policy';
-import {
-  fetchFulfillmentSettings,
-  DEFAULT_FULFILLMENT_SETTINGS,
-  FulfillmentSettings,
-} from '@/lib/marketing-api';
+import DeliveryBar from '@/components/delivery/delivery-bar';
 import CartBump from '@/components/cart/cart-bump';
 import LowStockBadge from '@/components/growth/low-stock-badge';
-
-// ---- Delivery date estimate: SAME rules as components/product/pincode-checker.tsx
-// (2 PM IST order cut-off, handling days + zone transit days from Admin >
-// Marketing > Shipping & Returns Timing) so both places always show one date. ----
-const ORDER_CUTOFF_HOUR = 14;
-type DeliveryTier = 'metro' | 'other' | 'remote';
-const ZONE_TIER: Record<string, DeliveryTier> = {
-  '1': 'metro',
-  '2': 'other',
-  '3': 'other',
-  '4': 'metro',
-  '5': 'other',
-  '6': 'other',
-  '7': 'metro',
-  '8': 'remote',
-  '9': 'remote',
-};
-const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const fmtDate = (d: Date) => `${d.getDate()} ${SHORT_MONTHS[d.getMonth()]}`;
-const addDaysTo = (d: Date, n: number) => {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-};
-function estimateDelivery(pincode: string, f: FulfillmentSettings) {
-  const now = new Date();
-  const cutoff = new Date(now);
-  cutoff.setHours(ORDER_CUTOFF_HOUR, 0, 0, 0);
-  const start = new Date(now);
-  if (now >= cutoff) start.setDate(start.getDate() + 1);
-  const tier = ZONE_TIER[pincode[0]] ?? 'other';
-  const w =
-    tier === 'metro'
-      ? { min: f.delivery_metro_min, max: f.delivery_metro_max }
-      : tier === 'remote'
-        ? { min: f.delivery_remote_min, max: f.delivery_remote_max }
-        : { min: f.delivery_other_min, max: f.delivery_other_max };
-  const minDate = addDaysTo(start, f.dispatch_days_min + w.min);
-  const maxDate = addDaysTo(start, f.dispatch_days_max + w.max);
-  return fmtDate(minDate) === fmtDate(maxDate)
-    ? `By ${fmtDate(maxDate)}`
-    : `${fmtDate(minDate)} – ${fmtDate(maxDate)}`;
-}
 
 /** Numbered section title shown above each card of the bag (1 Items, 2 Offers, 3 Price). */
 function SectionHeading({
@@ -244,62 +194,6 @@ export default function CartDrawer() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCartOpen]);
-
-  // ---- Delivery PIN code bar (same storage key as the product-page checker,
-  // so a PIN confirmed there shows up here automatically) ----
-  const PIN_KEY = 'aruhi_delivery_pincode';
-  const [pinPanelOpen, setPinPanelOpen] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinChecking, setPinChecking] = useState(false);
-  const [pinError, setPinError] = useState<string | null>(null);
-  const [pinResult, setPinResult] = useState<PincodeResult | null>(null);
-  const [fulfillment, setFulfillment] = useState<FulfillmentSettings>(DEFAULT_FULFILLMENT_SETTINGS);
-
-  useEffect(() => {
-    fetchFulfillmentSettings()
-      .then(setFulfillment)
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(PIN_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as PincodeResult;
-      if (saved?.serviceable) setPinResult(saved);
-    } catch {
-      /* storage unavailable -- bar just starts empty */
-    }
-  }, []);
-
-  const handleCheckPin = async () => {
-    const pin = pinInput.trim();
-    if (!isValidPincode(pin)) {
-      setPinError('Enter a valid 6-digit PIN code');
-      return;
-    }
-    setPinError(null);
-    setPinChecking(true);
-    try {
-      const result = await checkPincodeServiceability(pin);
-      if (!result.serviceable) {
-        setPinError(result.message || 'Delivery is not available at this PIN code');
-        return;
-      }
-      setPinResult(result);
-      setPinPanelOpen(false);
-      setPinInput('');
-      try {
-        window.localStorage.setItem(PIN_KEY, JSON.stringify({ ...result, savedAt: Date.now() }));
-      } catch {
-        /* ignore */
-      }
-    } catch {
-      setPinError('Could not check this PIN code. Please try again.');
-    } finally {
-      setPinChecking(false);
-    }
-  };
 
   // ---- Tabs (Items / Coupons & Offers / Price Details) that scroll the one
   // long bag to the matching section and follow the scroll position back ----
@@ -559,63 +453,8 @@ export default function CartDrawer() {
           </div>
         ) : (
           <>
-            {/* Delivery PIN code bar */}
-            <div className="border-b border-primary/10 bg-primary/5">
-              <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                {pinResult ? (
-                  <span className="flex min-w-0 items-start gap-2 text-sm text-foreground">
-                    <Truck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span className="min-w-0">
-                      <span className="block leading-snug">
-                        Delivering to <b>{pinResult.pincode}</b>
-                        {pinResult.city ? `, ${pinResult.city}` : ''}
-                      </span>
-                      <span className="block text-xs font-semibold text-emerald-700">
-                        Delivery: {estimateDelivery(pinResult.pincode, fulfillment)}
-                      </span>
-                    </span>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                    Check delivery time &amp; services
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setPinPanelOpen((o) => !o)}
-                  className="shrink-0 text-xs font-bold tracking-wide text-primary"
-                >
-                  {pinResult ? 'CHANGE' : 'ENTER PIN CODE'}
-                </button>
-              </div>
-              {pinPanelOpen && (
-                <div className="px-4 pb-3">
-                  <div className="flex gap-2">
-                    <Input
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="6-digit PIN code"
-                      value={pinInput}
-                      onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleCheckPin();
-                      }}
-                      className="h-9 bg-card"
-                    />
-                    <Button
-                      type="button"
-                      className="h-9 shrink-0 bg-primary"
-                      disabled={pinChecking || pinInput.length !== 6}
-                      onClick={handleCheckPin}
-                    >
-                      {pinChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Check'}
-                    </Button>
-                  </div>
-                  {pinError && <p className="mt-1.5 text-xs text-destructive">{pinError}</p>}
-                </div>
-              )}
-            </div>
+            {/* Delivery PIN code bar (shared with the product page) */}
+            <DeliveryBar className="border-b border-primary/10 bg-primary/5" />
 
             {/* Tabs */}
             <div className="flex gap-2 overflow-x-auto border-b border-border/60 bg-card px-4 py-2.5">

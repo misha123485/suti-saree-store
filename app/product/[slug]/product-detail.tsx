@@ -1393,10 +1393,10 @@ function ProductInfo({
         )}
         {selectedSizeStock > 0 ? (
           <>
-            {/* Light gap + hairlines above and below so the delivery check
-                reads as its own section between the offers and the CTA. */}
-            <div className="my-1 border-y border-border/50 py-3">
-              <DeliveryCheck fulfillment={fulfillment} />
+            {/* Light gap above and below so the delivery bar reads as its
+                own section between the offers and the CTA. */}
+            <div className="my-2">
+              <DeliveryCheck />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Button
