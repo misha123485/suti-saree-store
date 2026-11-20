@@ -394,6 +394,9 @@ export default function CheckoutPage() {
   // "Resell this product" is for resellers only — keep it tucked away so retail
   // customers aren't confused by it mid-checkout.
   const [showResellBox, setShowResellBox] = useState(false);
+  // Mobile: Order Summary starts collapsed (header still shows item count + total).
+  // Desktop (lg+) always shows the full summary.
+  const [summaryOpen, setSummaryOpen] = useState(false);
   // Mobile sticky pay bar: price-details popup + portal mount flag.
   const [priceSheetOpen, setPriceSheetOpen] = useState(false);
   const [barMounted, setBarMounted] = useState(false);
@@ -3449,9 +3452,54 @@ export default function CheckoutPage() {
           <div
             ref={orderSummaryRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
-            className="sticky top-24 rounded-lg border border-border/60 bg-card p-5"
+            className="sticky top-24 flex flex-col gap-3"
           >
-            <h2 className="font-serif text-lg font-bold text-primary">Order Summary</h2>
+            <div className="rounded-lg border border-border/60 bg-card p-5">
+            {/* Mobile: tappable header (item count + total always visible). Desktop: plain heading. */}
+            <button
+              type="button"
+              onClick={() => setSummaryOpen((o) => !o)}
+              aria-expanded={summaryOpen}
+              aria-controls="order-summary-body"
+              className="flex w-full items-center gap-3 text-left lg:hidden"
+            >
+              {items[0] && (
+                <span className="relative h-11 w-9 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <Image
+                    src={toPublicMediaUrl(items[0].product.images[0]) || 'https://placehold.co/36x44?text=No+Image'}
+                    alt=""
+                    fill
+                    sizes="36px"
+                    className="object-cover"
+                  />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block font-serif text-base font-bold text-primary">Order Summary</span>
+                <span className="block text-xs text-muted-foreground">
+                  {items.reduce((n, i) => n + i.quantity, 0)} item
+                  {items.reduce((n, i) => n + i.quantity, 0) === 1 ? '' : 's'}
+                  {' · '}
+                  {summaryOpen ? 'Tap to hide' : 'Tap to view'}
+                </span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end leading-tight">
+                {!isIntl &&
+                  items.reduce((sum, i) => sum + (i.product.mrp && i.product.mrp > i.product.price ? i.product.mrp : i.product.price) * i.quantity, 0) > payableTotal && (
+                    <span className="text-[11px] text-muted-foreground line-through">
+                      {formatINR(
+                        items.reduce((sum, i) => sum + (i.product.mrp && i.product.mrp > i.product.price ? i.product.mrp : i.product.price) * i.quantity, 0)
+                      )}
+                    </span>
+                  )}
+                <span className={`font-serif text-lg font-bold ${isResale ? 'text-green-600' : 'text-primary'}`}>
+                  {isIntl && intlChargeEstimate ? intlChargeEstimate : formatINR(payableTotal)}
+                </span>
+              </span>
+              <ChevronDown className={`h-5 w-5 shrink-0 text-primary transition-transform ${summaryOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <h2 className="font-serif text-lg font-bold text-primary max-lg:hidden">Order Summary</h2>
+            <div id="order-summary-body" className={summaryOpen ? undefined : 'max-lg:hidden'}>
             <Separator className="my-4" />
             <ul className="flex max-h-72 flex-col gap-3 overflow-y-auto">
               {items.map((item) => {
@@ -3877,8 +3925,44 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {deliveryEstimate?.serviceable && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                📦 Estimated delivery in {TOTAL_DELIVERY_LABEL}
+                {deliveryEstimate.city ? ` to ${deliveryEstimate.city}, ${deliveryEstimate.state}` : ''}, dispatched from our Naihati, West Bengal facility.
+              </p>
+            )}
+            <Separator className="my-4" />
+            {paymentMethod === 'partial' && partialOption && (
+              <div className="mb-3 space-y-1 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
+                <div className="flex items-center justify-between font-semibold text-primary">
+                  <span>Pay now (advance {partialOption.percent}%)</span>
+                  <span>{formatINR(partialOption.advance)}</span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Pay on delivery</span>
+                  <span>{formatINR(partialOption.balance)}</span>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="font-serif text-base font-semibold">Total</span>
+              <span
+                className={`font-serif text-xl font-bold ${isResale ? 'text-green-600' : 'text-primary'}`}
+              >
+                {formatINR(payableTotal)}
+              </span>
+            </div>
+            {isIntl && intlChargeEstimate && selectedIntlCountry && (
+              <p className="mt-1 text-right text-xs text-muted-foreground">
+                You will be charged in {selectedIntlCountry.currency}: about {intlChargeEstimate}. The exact amount is
+                confirmed on the next step.
+              </p>
+            )}
+            </div>
+            </div>
+
             {bumpSettings.enabled && bumpProduct && !bumpInCart && (
-              <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+              <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
                 <p className="text-sm font-semibold text-primary">{bumpSettings.headline}</p>
                 <label className="mt-2 flex cursor-pointer items-start gap-3">
                   <Checkbox
@@ -3917,13 +4001,13 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setShowResellBox(true)}
-                className="mt-4 text-xs text-muted-foreground underline underline-offset-2 hover:text-primary"
+                className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-primary"
               >
                 Are you a reseller?
               </button>
             )}
             {!isIntl && (isResale || showResellBox) && (
-            <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+            <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
               <label className="flex cursor-pointer items-start gap-3">
                 <Checkbox
                   className="mt-1"
@@ -4036,44 +4120,11 @@ export default function CheckoutPage() {
               </AlertDialogContent>
             </AlertDialog>
 
-            {deliveryEstimate?.serviceable && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                📦 Estimated delivery in {TOTAL_DELIVERY_LABEL}
-                {deliveryEstimate.city ? ` to ${deliveryEstimate.city}, ${deliveryEstimate.state}` : ''}, dispatched from our Naihati, West Bengal facility.
-              </p>
-            )}
-            <Separator className="my-4" />
-            {paymentMethod === 'partial' && partialOption && (
-              <div className="mb-3 space-y-1 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
-                <div className="flex items-center justify-between font-semibold text-primary">
-                  <span>Pay now (advance {partialOption.percent}%)</span>
-                  <span>{formatINR(partialOption.advance)}</span>
-                </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Pay on delivery</span>
-                  <span>{formatINR(partialOption.balance)}</span>
-                </div>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="font-serif text-base font-semibold">Total</span>
-              <span
-                className={`font-serif text-xl font-bold ${isResale ? 'text-green-600' : 'text-primary'}`}
-              >
-                {formatINR(payableTotal)}
-              </span>
-            </div>
-            {isIntl && intlChargeEstimate && selectedIntlCountry && (
-              <p className="mt-1 text-right text-xs text-muted-foreground">
-                You will be charged in {selectedIntlCountry.currency}: about {intlChargeEstimate}. The exact amount is
-                confirmed on the next step.
-              </p>
-            )}
             <Button
               type="submit"
               size="lg"
               disabled={placing || intlBlocked || resalePriceTooLow || (isResale && resaleSellingPriceNum <= 0)}
-              className="mt-5 w-full bg-primary max-lg:hidden"
+              className="w-full bg-primary max-lg:hidden"
             >
               {placing ? (
                 <>
