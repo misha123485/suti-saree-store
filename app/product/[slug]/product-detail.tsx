@@ -13,8 +13,6 @@ import {
   Gift,
   Lock,
   ChevronRight,
-  Minus,
-  Plus,
   Zap,
 } from 'lucide-react';
 import { useProducts, usePaymentDiscount, useCart, getVisibleBogoPromotion, formatBogoLabel } from '@/lib/cart-context';
@@ -45,6 +43,7 @@ import type { ReviewDisplaySettings } from '@/lib/review-display-settings';
 // badge + title stars instantly (no flash when the admin turned them off).
 let cachedReviewDisplay: ReviewDisplaySettings | null = null;
 import DeliveryInfo from '@/components/product/delivery-info';
+import DeliveryCheck from '@/components/product/delivery-check';
 import VariantSwatches from '@/components/product/variant-swatches';
 import ProductHighlights from '@/components/product/product-highlights';
 import PriceQuickBrowseBar from '@/components/product/price-quick-browse-bar';
@@ -1394,27 +1393,10 @@ function ProductInfo({
         )}
         {selectedSizeStock > 0 ? (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Quantity</span>
-              <div className="flex shrink-0 items-center rounded-lg border border-border">
-                <button
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                  className="p-2.5 text-muted-foreground hover:text-primary disabled:opacity-40"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-8 text-center text-sm font-semibold">{quantity}</span>
-                <button
-                  onClick={() => setQuantity((q) => Math.min(selectedSizeStock, q + 1))}
-                  disabled={quantity >= selectedSizeStock}
-                  className="p-2.5 text-muted-foreground hover:text-primary disabled:opacity-40"
-                  aria-label="Increase quantity"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+            {/* Light gap + hairlines above and below so the delivery check
+                reads as its own section between the offers and the CTA. */}
+            <div className="my-1 border-y border-border/50 py-3">
+              <DeliveryCheck fulfillment={fulfillment} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Button
@@ -1442,6 +1424,56 @@ function ProductInfo({
         )}
       </div>
 
+      {/* Trust section right under Buy Now. Return days come from
+          Admin > Marketing > Shipping & Returns Timing. */}
+      <div className="mt-1 flex flex-col gap-2 border-t border-border/50 pt-4">
+        <div className="grid grid-cols-2 gap-2.5">
+          {[
+            {
+              icon: RefreshCw,
+              title: `${returnWindowBadgeText(fulfillment)} easy return`,
+              sub: 'Pickup from home',
+            },
+            { icon: Truck, title: 'Cash on Delivery', sub: 'Pay when it arrives' },
+            { icon: ShieldCheck, title: 'Authentic handloom', sub: 'Direct from weavers' },
+            { icon: Lock, title: 'Secure payment', sub: 'UPI · Cards · NetBanking' },
+          ].map((t) => (
+            <div key={t.title} className="flex items-start gap-2 rounded-lg border border-border/60 bg-card px-3 py-2.5">
+              <t.icon className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold leading-tight text-foreground">{t.title}</p>
+                <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{t.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="group flex w-fit items-center gap-0.5 text-xs font-semibold text-primary"
+            >
+              Return Policy
+              <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-serif text-lg text-primary">Return Policy</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm leading-relaxed text-foreground/80">
+              {shippingReturnsSummary(fulfillment, freeShippingThreshold)}
+            </p>
+            <Link
+              href="/legal/refund-policy"
+              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+            >
+              Read the full policy →
+            </Link>
+          </DialogContent>
+        </Dialog>
+      </div>
+
       {/* Right under the disabled Out of Stock button, above Shop by price. */}
       {!product.inStock && (
         <NotifyMeForm
@@ -1464,65 +1496,6 @@ function ProductInfo({
       {reviewsSlot}
 
       <DeliveryInfo />
-
-      <div className="rounded-lg border border-border/60 bg-card p-4">
-        <div className="grid grid-cols-3 gap-3 text-center">
-          {[
-            {
-              icon: Truck,
-              label: 'Free Shipping',
-              title: 'Free shipping on all orders. Pan-India delivery in 4–7 business days, tracked from dispatch to your door.',
-            },
-            {
-              icon: ShieldCheck,
-              label: 'Authentic',
-              title: 'Sourced directly from handloom weavers across India — no third-party resellers.',
-            },
-            {
-              icon: RefreshCw,
-              label: `${returnWindowBadgeText(fulfillment)} Returns`,
-              title: `${returnWindowBadgeText(fulfillment)} free returns on unworn items with original packaging.`,
-            },
-          ].map((a) => (
-            <div key={a.label} title={a.title} className="flex flex-col items-center gap-1">
-              <a.icon className="h-5 w-5 text-secondary" />
-              <span className="text-[11px] font-medium leading-tight">{a.label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button
-                type="button"
-                className="group flex items-center gap-0.5 text-xs font-semibold text-primary"
-              >
-                Return Policy
-                <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-serif text-lg text-primary">Return Policy</DialogTitle>
-              </DialogHeader>
-              <p className="text-sm leading-relaxed text-foreground/80">
-                {shippingReturnsSummary(fulfillment, freeShippingThreshold)}
-              </p>
-              <Link
-                href="/legal/refund-policy"
-                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-              >
-                Read the full policy →
-              </Link>
-            </DialogContent>
-          </Dialog>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            <Lock className="h-3 w-3" />
-            Secure Payments
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

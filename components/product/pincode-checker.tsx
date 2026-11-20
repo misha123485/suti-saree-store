@@ -16,11 +16,11 @@ import { Button } from '@/components/ui/button';
 // reused everywhere PincodeChecker is rendered, until they tap "Change".
 const STORAGE_KEY = 'aruhi_delivery_pincode';
 
-interface SavedLocation extends PincodeResult {
+export interface SavedLocation extends PincodeResult {
   savedAt: number;
 }
 
-function loadSavedLocation(): SavedLocation | null {
+export function loadSavedLocation(): SavedLocation | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -32,7 +32,7 @@ function loadSavedLocation(): SavedLocation | null {
   }
 }
 
-function saveLocation(result: PincodeResult) {
+export function saveLocation(result: PincodeResult) {
   if (typeof window === 'undefined') return;
   try {
     const toSave: SavedLocation = { ...result, savedAt: Date.now() };
@@ -58,7 +58,7 @@ function nextCutoff(now: Date): Date {
   return cutoff;
 }
 
-function effectiveHandlingStart(now: Date): Date {
+export function effectiveHandlingStart(now: Date): Date {
   const cutoff = new Date(now);
   cutoff.setHours(ORDER_CUTOFF_HOUR, 0, 0, 0);
   const start = new Date(now);
@@ -85,11 +85,11 @@ const ZONE_TIER: Record<string, Tier> = {
   '9': 'remote', // Army post offices / remote
 };
 
-function tierForPincode(pincode: string): Tier {
+export function tierForPincode(pincode: string): Tier {
   return ZONE_TIER[pincode[0]] ?? 'other';
 }
 
-function tierWindow(f: FulfillmentSettings, tier: Tier): { min: number; max: number } {
+export function tierWindow(f: FulfillmentSettings, tier: Tier): { min: number; max: number } {
   if (tier === 'metro') return { min: f.delivery_metro_min, max: f.delivery_metro_max };
   if (tier === 'remote') return { min: f.delivery_remote_min, max: f.delivery_remote_max };
   return { min: f.delivery_other_min, max: f.delivery_other_max };
@@ -101,7 +101,7 @@ function formatDeliveryDate(date: Date): string {
   return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
 }
 
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
