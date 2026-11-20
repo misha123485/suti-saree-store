@@ -205,7 +205,7 @@ export default function StickyOrderBar({
                 {itemCount} item{itemCount > 1 ? 's' : ''}
               </span>
               {totalSavings > 0 && (
-                <span className="whitespace-nowrap rounded-full bg-green-100 px-1.5 py-px text-[10px] font-semibold text-green-700">
+                <span className="max-w-full truncate whitespace-nowrap rounded-full bg-green-100 px-1.5 py-px text-[10px] font-semibold text-green-700">
                   You save {formatINR(totalSavings)}
                 </span>
               )}
