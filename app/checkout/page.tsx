@@ -3583,239 +3583,121 @@ export default function CheckoutPage() {
             </ul>
             <Separator className="my-4" />
 
-            {/* Coupon + Gift card — one combined card */}
-            <div className="divide-y divide-border/60 rounded-lg border border-border/60">
-              <div>
-              {appliedCoupon ? (
-                <div className="flex items-center justify-between p-3 text-sm">
-                  <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
-                    <Tag className="h-3.5 w-3.5" /> {appliedCoupon.code} applied
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleRemoveCoupon}
-                    aria-label="Remove coupon"
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : !couponPanelOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setCouponPanelOpen(true)}
-                  className="flex w-full items-center justify-between gap-2 p-3 text-left"
-                >
-                  <span className="flex items-center gap-3">
+            {/* Coupons & offers — one card: what's applied + a row that opens the
+                full Coupons & Offers popup (coupons, payment offers, gift card). */}
+            {(() => {
+              const couponOnlyDiscount = couponDiscount - recoveryDiscount;
+              const appliedCount =
+                (appliedCoupon && couponOnlyDiscount > 0 ? 1 : 0) +
+                (recoveryOffer && recoveryDiscount > 0 ? 1 : 0) +
+                (bogoDiscount > 0 ? 1 : 0) +
+                (appliedGiftCard && clampedGiftCardDiscount > 0 ? 1 : 0) +
+                (loyaltyDiscount > 0 ? 1 : 0) +
+                (onlinePaymentDiscount > 0 ? 1 : 0);
+              const chip = 'flex items-center gap-2 rounded-lg bg-green-50 px-2.5 py-2 text-xs text-green-800';
+              return (
+                <div className="overflow-hidden rounded-xl border border-border/60">
+                  <div className="flex items-center gap-3 px-3 pb-2 pt-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
-                      <Tag className="h-4 w-4" />
+                      <BadgePercent className="h-4 w-4" />
                     </span>
-                    <span>
-                      <span className="block text-sm font-semibold">Coupons</span>
-                      <span className="block text-xs text-primary">Apply now and save extra!</span>
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block text-sm font-semibold">Coupons &amp; offers</span>
+                      <span className={`block text-xs ${appliedCount > 0 ? 'text-green-700' : 'text-primary'}`}>
+                        {appliedCount > 0
+                          ? `${appliedCount} applied, ${formatINR(totalSavings)} saved`
+                          : 'Apply now and save extra!'}
+                      </span>
                     </span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
-              ) : (
-                <div className="overflow-hidden border-t border-border/60">
-                  <div className="flex items-center justify-between px-3 pt-3">
-                    <span className="flex items-center gap-1.5 text-sm font-semibold">
-                      <Tag className="h-3.5 w-3.5 text-primary" /> Coupons
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setCouponPanelOpen(false)}
-                      aria-label="Collapse coupons"
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
                   </div>
-                  {availableCoupons.length > 0 ? (
-                    <div className="flex items-center justify-between gap-3 bg-card px-3 py-3">
-                      <div className="flex min-w-0 items-start gap-2.5">
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary/15 text-secondary">
-                          <Tag className="h-3.5 w-3.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            Save{' '}
-                            {availableCoupons[0].discount_type === 'percentage'
-                              ? `${availableCoupons[0].discount_value}%`
-                              : formatINR(availableCoupons[0].discount_value)}{' '}
-                            with &quot;{availableCoupons[0].code}&quot;
-                          </p>
-                          {availableCoupons.length > 1 ? (
-                            <button
-                              type="button"
-                              onClick={() => setOffersOpen(true)}
-                              className="mt-0.5 flex items-center gap-0.5 text-xs font-medium text-secondary hover:underline"
-                            >
-                              View all coupons <ChevronRight className="h-3 w-3" />
-                            </button>
-                          ) : (
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {availableCoupons[0].min_order_value > 0
-                                ? `On orders above ${formatINR(availableCoupons[0].min_order_value)}`
-                                : 'No minimum order value'}
-                            </p>
-                          )}
+
+                  {appliedCount > 0 && (
+                    <div className="flex flex-col gap-1.5 px-3 pb-3">
+                      {appliedCoupon && couponOnlyDiscount > 0 && (
+                        <div className={chip}>
+                          <Tag className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            <span className="font-semibold tracking-wide">{appliedCoupon.code}</span>
+                            <span className="text-green-700"> · {formatINR(couponOnlyDiscount)} off</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleRemoveCoupon}
+                            aria-label="Remove coupon"
+                            className="shrink-0 text-green-800/70 hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleApplyFromList(availableCoupons[0])}
-                        disabled={applyingFromList === availableCoupons[0].code}
-                        className="shrink-0 rounded-md border border-secondary px-3.5 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary hover:text-secondary-foreground disabled:opacity-60"
-                      >
-                        {applyingFromList === availableCoupons[0].code ? 'Applying…' : 'Apply'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 bg-card px-3 py-3">
-                      <Input
-                        placeholder="Coupon code"
-                        value={couponInput}
-                        onChange={(e) => setCouponInput(e.target.value)}
-                        className="h-9"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 shrink-0"
-                        disabled={applyingCoupon || !couponInput.trim()}
-                        onClick={handleApplyCoupon}
-                      >
-                        {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                      </Button>
+                      )}
+                      {recoveryOffer && recoveryDiscount > 0 && (
+                        <div className={chip}>
+                          <Sparkles className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            Special offer <span className="text-green-700">· {formatINR(recoveryDiscount)} off</span>
+                          </span>
+                        </div>
+                      )}
+                      {bogoDiscount > 0 && (
+                        <div className={chip}>
+                          <BadgeCheck className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            BOGO offer <span className="text-green-700">· {formatINR(bogoDiscount)} off</span>
+                          </span>
+                        </div>
+                      )}
+                      {appliedGiftCard && clampedGiftCardDiscount > 0 && (
+                        <div className={chip}>
+                          <Gift className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            <span className="font-semibold tracking-wide">{appliedGiftCard.code}</span>
+                            <span className="text-green-700"> · {formatINR(clampedGiftCardDiscount)} off</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleRemoveGiftCard}
+                            aria-label="Remove gift card"
+                            className="shrink-0 text-green-800/70 hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                      {loyaltyDiscount > 0 && (
+                        <div className={chip}>
+                          <Sparkles className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            Reward points <span className="text-green-700">· {formatINR(loyaltyDiscount)} off</span>
+                          </span>
+                        </div>
+                      )}
+                      {onlinePaymentDiscount > 0 && (
+                        <div className={chip}>
+                          <CreditCard className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">
+                            Online payment <span className="text-green-700">· {formatINR(onlinePaymentDiscount)} off</span>
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-              {couponError && <p className="mt-1.5 text-xs text-destructive">{couponError}</p>}
-              </div>
 
-              <div>
-              {appliedGiftCard ? (
-                <div className="flex items-center justify-between p-3 text-sm">
-                  <span className="flex items-center gap-1.5 font-medium text-secondary-foreground">
-                    <Gift className="h-3.5 w-3.5" /> {appliedGiftCard.code} applied (-
-                    {formatINR(clampedGiftCardDiscount)})
-                  </span>
+                  {couponError && <p className="px-3 pb-2 text-xs text-destructive">{couponError}</p>}
+
                   <button
                     type="button"
-                    onClick={handleRemoveGiftCard}
-                    aria-label="Remove gift card"
-                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => setOffersOpen(true)}
+                    className="flex w-full items-center justify-between gap-2 border-t border-border/60 px-3 py-2.5 text-left"
                   >
-                    <X className="h-4 w-4" />
+                    <span className="leading-tight">
+                      <span className="block text-sm font-semibold text-primary">View all coupons and offers</span>
+                      <span className="block text-[11px] text-muted-foreground">Coupons, gift card, payment offers</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setGiftCardPanelOpen((o) => !o)}
-                  className="flex w-full items-center justify-between gap-2 p-3 text-left"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
-                      <Gift className="h-4 w-4" />
-                    </span>
-                    <span>
-                      <span className="block text-sm font-semibold">Gift card</span>
-                      <span className="block text-xs text-primary">Redeem your gift card balance</span>
-                    </span>
-                  </span>
-                  {giftCardPanelOpen ? (
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                </button>
-              )}
-              {!appliedGiftCard && giftCardPanelOpen && (
-                <div className="border-t border-border/60 p-3">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Apply gift card code"
-                        value={giftCardInput}
-                        onChange={(e) => setGiftCardInput(e.target.value)}
-                        className="h-9"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 shrink-0"
-                        disabled={applyingGiftCard || !giftCardInput.trim()}
-                        onClick={handleApplyGiftCard}
-                      >
-                        {applyingGiftCard ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                      </Button>
-                    </div>
-                    {giftCardError && <p className="text-xs text-destructive">{giftCardError}</p>}
-                  </div>
-                </div>
-              )}
-              </div>
-            </div>
-
-            {/* Expanded view: full coupon list + a manual-code fallback for
-                private/referral codes that aren't in the "Show on Product
-                Page" list. Only reachable via "View all coupons" above, and
-                only while nothing is applied yet. */}
-            {!appliedCoupon && couponPanelOpen && showAllCoupons && availableCoupons.length > 0 && (
-              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/30 p-3">
-                <div className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Tag className="h-3.5 w-3.5 text-secondary" />
-                  Available Coupons
-                </div>
-                {availableCoupons.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-secondary/60 bg-secondary/10 px-3 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-sm font-bold tracking-wide text-primary">{c.code}</span>
-                        <span className="text-xs font-semibold text-secondary-foreground">
-                          {c.discount_type === 'percentage' ? `${c.discount_value}% OFF` : `${formatINR(c.discount_value)} OFF`}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {c.min_order_value > 0 ? `On orders above ${formatINR(c.min_order_value)}` : 'No minimum order value'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyFromList(c)}
-                      disabled={applyingFromList === c.code}
-                      className="flex shrink-0 items-center gap-1 rounded-md border border-primary bg-background px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
-                    >
-                      {applyingFromList === c.code ? 'Applying…' : 'Apply'}
-                    </button>
-                  </div>
-                ))}
-                <div className="mt-1 flex gap-2 border-t border-border/60 pt-2.5">
-                  <Input
-                    placeholder="Have a different code?"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    className="h-9"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-9 shrink-0"
-                    disabled={applyingCoupon || !couponInput.trim()}
-                    onClick={handleApplyCoupon}
-                  >
-                    {applyingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                  </Button>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Loyalty points redeem */}
             {loyaltySettings.enabled && pointsBalance > 0 && (
