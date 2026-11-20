@@ -92,6 +92,7 @@ import {
   type PartialPaySettings,
 } from '@/lib/partial-pay';
 import StickyOrderBar from '@/components/checkout/sticky-order-bar';
+import CheckoutStepsBar from '@/components/checkout/checkout-steps-bar';
 import {
   DEFAULT_CHECKOUT_BUTTONS_SETTINGS,
   fetchCheckoutButtonsSettings,
@@ -2135,7 +2136,7 @@ export default function CheckoutPage() {
   const phoneSheetActive = phoneFormOpen && !inlineForm;
 
   const contactFields = (
-              <section>
+              <section id="checkout-step-contact">
                 <h2 className="mb-4 font-serif text-lg font-bold text-primary">
                   Contact Information
                 </h2>
@@ -2224,7 +2225,7 @@ export default function CheckoutPage() {
   );
 
   const shippingFields = (
-          <section className={inlineForm ? '' : 'mt-7'}>
+          <section id="checkout-step-address" className={inlineForm ? '' : 'mt-7'}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
             </div>
@@ -2507,6 +2508,24 @@ export default function CheckoutPage() {
               </Button>
   ) : null;
 
+  // Mobile progress capsule: a step gets its tick only when its details are really filled.
+  const stepContactDone = (() => {
+    if (!firstName.trim() || !lastName.trim()) return false;
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return false;
+    let d = shipPhone.replace(/[^0-9]/g, '');
+    if (d.startsWith('91') && d.length === 12) d = d.slice(2);
+    if (d.startsWith('0') && d.length === 11) d = d.slice(1);
+    return isIntl ? isValidIntlPhone(shipPhone) : /^[6-9][0-9]{9}$/.test(d);
+  })();
+  const stepAddressDone =
+    !!addressLine1.trim() &&
+    (isIntl ? isValidIntlPostal(selectedIntlCountry?.postal_regex, pincode) : isValidPincode(pincode)) &&
+    !!city.trim() &&
+    (!!stateName.trim() || intlStateOptional);
+  const stepDeliveryDone =
+    stepAddressDone && (isIntl || availableShippingMethods.length === 0 || !!activeShippingMethod);
+  const stepPaymentDone = stepContactDone && stepAddressDone && stepDeliveryDone && !!paymentMethod;
+
   return (
     <>
       {phoneSheetActive && (
@@ -2633,6 +2652,16 @@ export default function CheckoutPage() {
           )}
         </div>
       )}
+
+      {/* Mobile progress capsule — sticky, clickable, tick only when details are filled */}
+      <CheckoutStepsBar
+        done={{
+          contact: stepContactDone,
+          address: stepAddressDone,
+          delivery: stepDeliveryDone,
+          payment: stepPaymentDone,
+        }}
+      />
 
       {/* Coupon card */}
       {appliedCoupon ? (
@@ -3124,7 +3153,7 @@ export default function CheckoutPage() {
           )}
 
           {hasSavedAddressSummary ? (
-            <section className="rounded-lg border border-border/60 bg-card p-5">
+            <section id="checkout-step-details" className="rounded-lg border border-border/60 bg-card p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="font-serif text-lg font-bold text-primary">
                   Contact &amp; Shipping Address
@@ -3192,7 +3221,7 @@ export default function CheckoutPage() {
             ) : (
             <>
               {/* Delivery details card -- tap to open the bottom sheet */}
-              <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+              <section id="checkout-step-details" className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
                 {detailsComplete ? (
                   <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
@@ -3362,7 +3391,7 @@ export default function CheckoutPage() {
         {/* Payment — on mobile it comes AFTER the order summary (order-3); desktop layout unchanged. */}
         <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 max-lg:order-3">
           {!isIntl && availableShippingMethods.length > 0 && (
-            <section className="mb-3 rounded-lg border border-border/60 bg-card p-3.5 sm:p-5 lg:mt-4">
+            <section id="checkout-step-delivery" className="mb-3 rounded-lg border border-border/60 bg-card p-3.5 sm:p-5 lg:mt-4">
               <h2 className="mb-2.5 font-serif text-lg font-bold text-primary">Shipping Method</h2>
               <div className="grid gap-2" role="radiogroup" aria-label="Shipping method">
                 {availableShippingMethods.map((m) => {
@@ -3400,6 +3429,7 @@ export default function CheckoutPage() {
             </section>
           )}
           <section
+            id="checkout-step-payment"
             ref={paymentSectionRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
             className="rounded-lg border border-border/60 bg-card p-3.5 sm:p-5 lg:mt-4"

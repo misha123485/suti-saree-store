@@ -1,12 +1,21 @@
-Premium coupon ticket (confetti sirf coupon card ke andar)
+MOBILE CHECKOUT PROGRESS CAPSULE (Contact / Address / Delivery / Payment)
 
-Replace karne wali files (same path pe):
-  app/checkout/page.tsx
-  components/coupon-celebration-toaster.tsx
+Is zip me 2 files hain. Zip ko suti-saree-store folder me extract karo (Replace all):
 
-Kya badla:
-- Poore page pe girne wala confetti hata diya.
-- Applied coupon card ab premium ticket hai: top "You saved Rs" badge, XMAS100 APPLIED row,
-  bada Saved amount, "View all coupons & Offers" aur Remove.
-- Sparkle + shine sirf ticket ke andar chalte hain.
-- Checkout pe upar wala "applied" chip/confetti overlay band (baaki pages pe waisa hi).
+1) app/checkout/page.tsx                          -> REPLACE (purani file badal jayegi)
+2) components/checkout/checkout-steps-bar.tsx     -> NEW file
+
+Ye zip last commit 0499389 ("Order summary collapsible, coupons and offers card...")
+ke upar bana hai. Agar uske baad page.tsx me aapne kuch aur badla ho to wo overwrite ho jayega.
+
+Fir:
+  git add .
+  git commit -m "Mobile sticky clickable checkout progress capsule"
+  git push
+
+Kya milega (sirf mobile, md se upar hide):
+- "You're saving" bar ke neeche capsule, header ke neeche sticky
+- Step pe tap karo to us section pe smooth scroll
+- Scroll ke saath current step maroon pill me
+- Step tab hi green + tick hota hai jab uski details sach me bhar jayein
+- Chhote (320px) aur bade sab phones pe fit, desktop ka purana progress waisa hi
