@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Gift,
   Lock,
-  ChevronRight,
   Sparkles,
   ClipboardList,
   RotateCcw,
@@ -896,7 +895,6 @@ export default function ProductDetail({
           appliedCoupon={appliedCoupon}
           couponDiscount={couponDiscount}
           fulfillment={fulfillment}
-          freeShippingThreshold={freeShippingThreshold}
           isLoggedIn={!!user}
           loyaltyBalance={loyaltyBalance}
           loyaltySettings={loyaltySettings}
@@ -916,7 +914,14 @@ export default function ProductDetail({
       )}
 
       {/* Desktop only: reviews sit full-width right above "You may also like". */}
-      {isDesktop === true && <div className="mt-8">{reviewsBlock}</div>}
+      {isDesktop === true && (
+        <>
+          <div className="mt-8">{reviewsBlock}</div>
+          <div className="mt-8">
+            <SectionSplitter />
+          </div>
+        </>
+      )}
 
       {/* Trending Now -- "You may also like" se pehle. Admin toggle, default OFF. */}
       <FeaturedCarousel placement="product" products={products} excludeIds={[product.id]} />
@@ -1109,10 +1114,8 @@ function SectionSplitter() {
   return (
     <div
       aria-hidden="true"
-      className="-mx-4 flex h-2.5 items-center bg-primary/10 sm:-mx-6 lg:mx-0 lg:rounded-full"
-    >
-      <div className="h-[2px] w-full bg-background/70" />
-    </div>
+      className="-mx-4 h-2.5 bg-primary/10 sm:-mx-6 lg:mx-0 lg:rounded-full"
+    />
   );
 }
 
@@ -1141,7 +1144,6 @@ function ProductInfo({
   onCouponApply,
   onCouponRemove,
   fulfillment,
-  freeShippingThreshold,
   isLoggedIn,
   loyaltySettings,
   loyaltyBalance,
@@ -1172,7 +1174,6 @@ function ProductInfo({
   onCouponApply: (coupon: Coupon, discount: number) => void;
   onCouponRemove: () => void;
   fulfillment: FulfillmentSettings;
-  freeShippingThreshold: number | undefined;
   isLoggedIn: boolean;
   loyaltySettings: LoyaltySettings;
   loyaltyBalance: number;
@@ -1524,31 +1525,6 @@ function ProductInfo({
             </div>
           ))}
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <button
-              type="button"
-              className="group flex w-fit items-center gap-0.5 text-xs font-semibold text-primary"
-            >
-              Return Policy
-              <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-serif text-lg text-primary">Return Policy</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm leading-relaxed text-foreground/80">
-              {shippingReturnsSummary(fulfillment, freeShippingThreshold)}
-            </p>
-            <Link
-              href="/legal/refund-policy"
-              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Read the full policy →
-            </Link>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Right under the disabled Out of Stock button, above Shop by price. */}
@@ -1568,11 +1544,15 @@ function ProductInfo({
           shopper is already looking at, gives a second clear path to
           purchase instead of relying on the fixed bar being noticed. */}
 
+      <SectionSplitter />
+
       <ProductHighlights product={product} />
 
       {reviewsSlot && <SectionSplitter />}
 
       {reviewsSlot}
+
+      {reviewsSlot && <SectionSplitter />}
 
       {detailsSlot}
 
