@@ -1398,7 +1398,7 @@ function ProductInfo({
         <LiveViewersBadge productId={product.id} />
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div id="product-inline-cta" className="flex flex-col gap-3">
         {quantity >= selectedSizeStock && selectedSizeStock > 0 && (
           <p className="text-xs text-muted-foreground">
             Only {selectedSizeStock} unit{selectedSizeStock > 1 ? 's' : ''} left in stock.
@@ -1406,7 +1406,8 @@ function ProductInfo({
         )}
         {selectedSizeStock > 0 ? (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Quantity</span>
               <div className="flex shrink-0 items-center rounded-lg border border-border">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -1426,23 +1427,25 @@ function ProductInfo({
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <Button
                 onClick={onAdd}
                 size="lg"
                 variant="outline"
-                className="flex-1 gap-2 border-primary text-base text-primary"
+                className="gap-2 border-primary text-base text-primary"
               >
                 <ShoppingBag className="h-4 w-4" />
                 Add to Bag
               </Button>
+              <Button
+                onClick={onBuyNow}
+                size="lg"
+                className="btn-shine gap-2 bg-primary text-base text-primary-foreground"
+              >
+                Buy Now
+              </Button>
             </div>
-            <Button
-              onClick={onBuyNow}
-              size="lg"
-              className="btn-shine w-full gap-2 bg-primary text-base text-primary-foreground"
-            >
-              Buy Now
-            </Button>
           </>
         ) : (
           <Button disabled size="lg" variant="outline" className="w-full gap-2 text-base">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatINR } from '@/lib/format';
@@ -35,11 +35,24 @@ export default function MobileStickyCartBar({
   // with the phone's safe-area inset) as --sticky-bar-h, so the floating
   // WhatsApp / chat button can sit just above it with only a small gap.
   const barRef = useRef<HTMLDivElement>(null);
+
+  // Show this bar only while the in-page Add to Bag / Buy Now buttons
+  // (#product-inline-cta) are OFF screen, so shoppers never see two sets of
+  // the same buttons at once. If that block does not exist, the bar stays.
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const target = document.getElementById('product-inline-cta');
+    if (!target || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) => setShow(!entry.isIntersecting), { threshold: 0.1 });
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
+
   useEffect(() => {
     const el = barRef.current;
     if (!el) return;
     const root = document.documentElement;
-    const publish = () => root.style.setProperty('--sticky-bar-h', `${el.offsetHeight}px`);
+    const publish = () => root.style.setProperty('--sticky-bar-h', show ? `${el.offsetHeight}px` : '0px');
     publish();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
     ro?.observe(el);
@@ -49,12 +62,13 @@ export default function MobileStickyCartBar({
       window.removeEventListener('resize', publish);
       root.style.removeProperty('--sticky-bar-h');
     };
-  }, []);
+  }, [show]);
 
   return (
     <div
       ref={barRef}
-      className="fixed inset-x-0 bottom-0 z-30 bg-background md:hidden"
+      className={`fixed inset-x-0 bottom-0 z-30 bg-background transition-transform duration-200 md:hidden ${show ? 'translate-y-0' : 'pointer-events-none translate-y-full'}`}
+      aria-hidden={!show}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {hasCoupon && (
