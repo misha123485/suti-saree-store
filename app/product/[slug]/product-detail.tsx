@@ -16,7 +16,6 @@ import {
   Minus,
   Plus,
   Zap,
-  HelpCircle,
 } from 'lucide-react';
 import { useProducts, usePaymentDiscount, useCart, getVisibleBogoPromotion, formatBogoLabel } from '@/lib/cart-context';
 import { fetchProductBySlug } from '@/lib/products-api';
@@ -1245,12 +1244,15 @@ function ProductInfo({
             <span className="text-base text-muted-foreground line-through">
               {formatINR(product.mrp)}
             </span>
-            <Badge className="bg-secondary/20 text-secondary-foreground">
-              Save {formatINR(product.mrp - selectedSizePrice)}
+            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400">
+              {Math.round(((product.mrp - selectedSizePrice) / product.mrp) * 100)}% OFF
             </Badge>
           </>
         )}
       </div>
+      <p className="-mt-1.5 text-xs text-muted-foreground">
+        Inclusive of all taxes · Free shipping
+      </p>
       {bogoPromotion && (
         <BogoOfferSheet promotion={bogoPromotion} collectionName={product.collection?.name} />
       )}
@@ -1275,23 +1277,9 @@ function ProductInfo({
           <DialogTrigger asChild>
             <button
               type="button"
-              className="group relative flex w-fit items-center gap-2 overflow-hidden rounded-full border border-emerald-600/25 bg-gradient-to-r from-emerald-50 via-secondary/10 to-transparent py-1.5 pl-1.5 pr-3.5 text-left transition-colors hover:border-emerald-600/40 dark:from-emerald-950/40"
+              className="-mt-1.5 w-fit text-left text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 shadow-sm shadow-emerald-600/30">
-                <Zap className="h-3.5 w-3.5 fill-white text-white" />
-              </span>
-              <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-800/70 dark:text-emerald-300/70">
-                  Get this at
-                </span>
-                <span className="font-serif text-lg font-bold leading-none text-emerald-700 dark:text-emerald-400">
-                  {formatINR(Math.max(0, priceAfterCoupon - onlinePaymentSavings))}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  via {paymentDiscount.label}
-                </span>
-              </span>
-              <HelpCircle className="h-3.5 w-3.5 shrink-0 text-emerald-700/50 transition-colors group-hover:text-emerald-700 dark:text-emerald-400/50" />
+              Pay online &amp; save {formatINR(onlinePaymentSavings)} more
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-sm">
