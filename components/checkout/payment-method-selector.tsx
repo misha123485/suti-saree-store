@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Info, Lock, Truck, Zap, BadgeCheck } from 'lucide-react';
+import { Check, Info, Lock, Tag, Truck, Zap, BadgeCheck } from 'lucide-react';
 import { formatINR } from '@/lib/format';
 
 /**
@@ -20,7 +20,16 @@ import { formatINR } from '@/lib/format';
  */
 export const PAYMENT_COPY = {
   onlineTitle: 'Pay Online',
-  onlineSub: 'UPI (GPay, PhonePe, Paytm) · Cards · Netbanking',
+  onlineSub: 'UPI · Cards · Netbanking',
+  recommended: 'Recommended',
+  payWith: 'Pay with',
+  payWithChips: ['GPay', 'PhonePe', 'Paytm', 'any UPI'],
+  secureNote: 'A secure payment window opens on the next step',
+  saveStripPrefix: 'You save',
+  saveStripSuffix: 'by paying online',
+  switchToOnline: 'Switch to online payment & save',
+  payNow: 'Pay now',
+  nothingDue: 'Nothing due on delivery',
   onlineNote: 'Prepaid orders are confirmed instantly and packed ahead of COD orders.',
   benefits: [
     { icon: 'zap', title: 'Dispatched first', sub: 'Priority packing' },
@@ -81,72 +90,38 @@ function RadioDot({ selected }: { selected: boolean }) {
   return (
     <span
       aria-hidden
-      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-200 ${
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-200 ${
         selected
           ? 'border-primary bg-primary text-primary-foreground'
           : 'border-muted-foreground/40 bg-background'
       }`}
     >
       <Check
-        className={`h-2.5 w-2.5 transition-opacity duration-200 ${selected ? 'opacity-100' : 'opacity-0'}`}
+        className={`h-3 w-3 transition-opacity duration-200 ${selected ? 'opacity-100' : 'opacity-0'}`}
         strokeWidth={3.5}
       />
     </span>
   );
 }
 
-/** Smooth open/close for the extra details of the selected option. */
+/** Smooth open/close (grid-rows 0fr -> 1fr + opacity). Closed content is `invisible`, so it can't be tabbed to. */
 function Expand({ open, children }: { open: boolean; children: React.ReactNode }) {
   return (
-    <span
-      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${
-        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+    <div
+      aria-hidden={!open}
+      className={`grid transition-[grid-template-rows,opacity,visibility] duration-300 ease-out motion-reduce:transition-none ${
+        open ? 'visible grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0'
       }`}
     >
-      <span className="block min-h-0 overflow-hidden">{children}</span>
-    </span>
-  );
-}
-
-/** Small payment-brand marks (UPI, Visa, Mastercard, RuPay, Netbanking) for the Pay Online card. */
-function PaymentLogos() {
-  const chip =
-    'inline-flex h-[22px] items-center justify-center rounded border border-border/70 bg-white px-1.5';
-  return (
-    <span className="mt-1.5 flex flex-wrap items-center gap-1" aria-label="UPI, cards and netbanking accepted">
-      <span className={chip}>
-        <span className="text-[10px] font-extrabold italic tracking-tight">
-          <span className="text-[#5f259f]">U</span>
-          <span className="text-[#ea7a1b]">P</span>
-          <span className="text-[#1b8a3d]">I</span>
-        </span>
-      </span>
-      <span className={chip}>
-        <span className="text-[11px] font-extrabold italic tracking-tight text-[#1a1f71]">VISA</span>
-      </span>
-      <span className={chip}>
-        <svg width="24" height="15" viewBox="0 0 24 15" aria-hidden="true">
-          <circle cx="8.5" cy="7.5" r="6.5" fill="#eb001b" />
-          <circle cx="15.5" cy="7.5" r="6.5" fill="#f79e1b" fillOpacity="0.9" />
-        </svg>
-      </span>
-      <span className={chip}>
-        <span className="text-[10px] font-extrabold tracking-tight">
-          <span className="text-[#1a4a9c]">Ru</span>
-          <span className="text-[#e8731a]">Pay</span>
-        </span>
-      </span>
-      <span className={chip}>
-        <span className="text-[9px] font-semibold text-muted-foreground">Netbanking</span>
-      </span>
-    </span>
+      <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
   );
 }
 
 /** "Secured by cashfree" trust badge shown under the Pay Online button. */
 function SecuredByCashfree() {
   return (
-    <span className="mt-2.5 flex justify-center">
+    <div className="mt-2.5 flex justify-center">
       <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-white px-2 py-1 text-[9px] text-muted-foreground">
         <Lock className="h-2.5 w-2.5" />
         Secured by
@@ -155,15 +130,32 @@ function SecuredByCashfree() {
           cashfree
         </span>
       </span>
-    </span>
+    </div>
   );
 }
 
-const cardBase =
-  'relative block w-full rounded-xl border bg-card px-3.5 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
+function Benefits({ items }: { items: ReadonlyArray<{ icon: keyof typeof BENEFIT_ICONS; title: string }> }) {
+  return (
+    <div className="flex flex-wrap gap-x-3.5 gap-y-1">
+      {items.map((b) => {
+        const Icon = BENEFIT_ICONS[b.icon];
+        return (
+          <span key={b.title} className="inline-flex items-center gap-1 text-[11px] font-medium leading-4 text-foreground">
+            <Icon className="h-3.5 w-3.5 text-secondary" />
+            {b.title}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+const cardBase = 'rounded-xl border transition-all duration-200';
 const cardOn =
-  'border-primary bg-gradient-to-b from-white to-primary/[0.06] shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]';
-const cardOff = 'border-border/70 hover:border-primary/40';
+  'border-[1.5px] border-primary bg-gradient-to-b from-white to-primary/5 dark:from-card dark:to-primary/5 shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]';
+const cardOff = 'border-border/70 bg-card hover:border-primary/40';
+const rowBtn =
+  'flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
 export default function PaymentMethodSelector({
   value,
@@ -180,208 +172,173 @@ export default function PaymentMethodSelector({
   const cod = value === 'cod';
   const part = value === 'partial';
   const hasSavings = savings > 0;
-
-  // The selected card and its button read as ONE box: the card loses its
-  // bottom border/radius and the action strip continues the same outline.
-  const joined = (selected: boolean) => (selected && action ? 'rounded-b-none border-b-0' : '');
-  const actionSlot = (selected: boolean, selectedIsOnline = false) =>
-    selected && action ? (
-      <div className="rounded-b-xl border border-t-0 border-primary bg-gradient-to-b from-primary/[0.06] to-primary/[0.08] px-3.5 pb-3 pt-1 shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]">
-        {action}
-        {selected && selectedIsOnline && gateway === 'cashfree' && <SecuredByCashfree />}
-      </div>
-    ) : null;
+  const showSavings = hasSavings && onlineAvailable;
 
   return (
-    <div role="radiogroup" aria-label="Payment method" className="flex flex-col gap-2.5">
-      {/* ───────── Pay Online (recommended) ───────── */}
-      {onlineAvailable && (
-      <div>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={online}
-        onClick={() => onChange('online')}
-        className={`${cardBase} ${online ? cardOn : 'border-primary/40 hover:border-primary'} ${joined(online)}`}
-      >
-        <span className="flex items-center gap-3">
-          <RadioDot selected={online} />
-          <span className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span className="font-serif text-[15px] font-bold leading-tight text-primary">
-                {PAYMENT_COPY.onlineTitle}
-              </span>
-              <span className="rounded-full bg-[#f1e2b0] px-1.5 py-px text-[9px] font-semibold leading-4 text-[#4a3a10]">
-                Recommended
-              </span>
-            </span>
-            <PaymentLogos />
-          </span>
-          <span className="shrink-0 text-right">
-            <span className="block font-serif text-base font-bold leading-tight text-primary">
-              {formatINR(onlineTotal)}
-            </span>
-            {hasSavings && (
-              <span className="mt-0.5 block text-[10px] font-semibold text-green-700">
-                Save {formatINR(savings)}
-              </span>
-            )}
-          </span>
-        </span>
-
-        {/* Benefits: always visible, one compact line */}
-        <span className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1">
-          {PAYMENT_COPY.benefits.map((b) => {
-            const Icon = BENEFIT_ICONS[b.icon];
-            return (
-              <span
-                key={b.title}
-                className="inline-flex items-center gap-1 text-[10px] font-medium leading-4 text-foreground"
-              >
-                <Icon className="h-3 w-3 text-secondary" />
-                {b.title}
-              </span>
-            );
-          })}
-        </span>
-
-      </button>
-      {actionSlot(online, true)}
-      </div>
-      )}
-
-      {/* ───────── Partial Pay (advance online, rest on delivery) ───────── */}
-      {onlineAvailable && partial && (
-        <div>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={part}
-          onClick={() => onChange('partial')}
-          className={`${cardBase} ${part ? cardOn : cardOff} ${joined(part)}`}
-        >
-          <span className="flex items-center gap-3">
-            <RadioDot selected={part} />
-            <span className="min-w-0 flex-1">
-              <span className="block font-serif text-[15px] font-bold leading-tight text-foreground">
-                {partial.title}
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                Pay {partial.percent}% now, rest on delivery
-              </span>
-            </span>
-            <span className="shrink-0 text-right">
-              <span
-                className={`block font-serif text-base font-bold leading-tight ${
-                  part ? 'text-primary' : 'text-foreground/80'
-                }`}
-              >
-                {formatINR(partial.advance)}
-              </span>
-              <span className="block text-[9px] text-muted-foreground">now</span>
-            </span>
-          </span>
-
-          {/* Split bar: online now vs on delivery */}
-          <span className="mt-2.5 block pl-[30px]">
-            <span className="flex h-1.5 overflow-hidden rounded-full bg-muted">
-              <span
-                className="block bg-primary/80 transition-all duration-300"
-                style={{ width: `${Math.min(Math.max(partial.percent, 5), 95)}%` }}
-              />
-              <span className="block flex-1 bg-secondary/60" />
-            </span>
-            <span className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-              <span>
-                Online now <b className="font-semibold text-foreground">{formatINR(partial.advance)}</b>
-              </span>
-              <span>
-                On delivery <b className="font-semibold text-foreground">{formatINR(partial.balance)}</b>
-              </span>
-            </span>
-          </span>
-
-          <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 pl-[30px]">
-            {PAYMENT_COPY.partialBenefits.map((b) => {
-              const Icon = BENEFIT_ICONS[b.icon];
-              return (
-                <span
-                  key={b.title}
-                  className="inline-flex items-center gap-1 text-[10px] font-medium leading-4 text-foreground"
-                >
-                  <Icon className="h-3 w-3 text-secondary" />
-                  {b.title}
-                </span>
-              );
-            })}
-          </span>
-
-          <Expand open={part}>
-            <span className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-snug text-amber-900">
-              <Info className="mt-px h-3.5 w-3.5 shrink-0" />
-              {PAYMENT_COPY.partialNote}
-            </span>
-          </Expand>
-        </button>
-        {actionSlot(part)}
+    <div className="flex flex-col gap-2.5">
+      {/* Green saving strip: only on Partial / COD (Online already shows the discount). */}
+      {showSavings && (part || cod) && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-100 px-3 py-2 text-[13px] font-bold text-green-900 dark:bg-green-950/60 dark:text-green-300">
+          <Tag className="h-4 w-4 shrink-0" />
+          {PAYMENT_COPY.saveStripPrefix} {formatINR(savings)} {PAYMENT_COPY.saveStripSuffix}
         </div>
       )}
 
-      {/* ───────── Cash on Delivery ───────── */}
-      <div>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={cod}
-          onClick={() => onChange('cod')}
-          className={`${cardBase} ${cod ? cardOn : cardOff} ${joined(cod)}`}
-        >
-          <span className="flex items-center gap-3">
+      <div role="radiogroup" aria-label="Payment method" className="flex flex-col gap-2.5">
+        {/* ───────── Pay Online (recommended) ───────── */}
+        {onlineAvailable && (
+          <div className={`${cardBase} ${online ? cardOn : cardOff}`}>
+            <button type="button" role="radio" aria-checked={online} onClick={() => onChange('online')} className={rowBtn}>
+              <RadioDot selected={online} />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="font-serif text-base font-bold leading-tight text-primary">{PAYMENT_COPY.onlineTitle}</span>
+                  <span className="rounded-full bg-[#f1e2b0] px-1.5 py-px text-[9px] font-semibold leading-4 text-[#4a3a10]">
+                    {PAYMENT_COPY.recommended}
+                  </span>
+                </span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">{PAYMENT_COPY.onlineSub}</span>
+              </span>
+              <span className="shrink-0 text-right">
+                {hasSavings && (
+                  <span className="block text-[10px] leading-none text-muted-foreground line-through">{formatINR(codTotal)}</span>
+                )}
+                <span className="block font-serif text-lg font-bold leading-tight text-primary">{formatINR(onlineTotal)}</span>
+              </span>
+            </button>
+            <Expand open={online}>
+              <div className="px-3.5 pb-3.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground">{PAYMENT_COPY.payWith}</span>
+                  {PAYMENT_COPY.payWithChips.map((c) => (
+                    <span
+                      key={c}
+                      className="rounded-lg border border-border/70 bg-white px-2 py-0.5 text-[11px] font-medium text-[#1d1740]"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2.5">
+                  <Benefits items={PAYMENT_COPY.benefits} />
+                </div>
+                {action && <div className="mt-3 [&_button]:rounded-xl [&_button]:shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.6)]">{action}</div>}
+                {action && gateway === 'cashfree' && <SecuredByCashfree />}
+                <p className="mt-2 text-center text-[10px] text-muted-foreground">{PAYMENT_COPY.secureNote}</p>
+              </div>
+            </Expand>
+          </div>
+        )}
+
+        {/* ───────── Partial Pay (advance online, rest on delivery) ───────── */}
+        {onlineAvailable && partial && (
+          <div className={`${cardBase} ${part ? cardOn : cardOff}`}>
+            <button type="button" role="radio" aria-checked={part} onClick={() => onChange('partial')} className={rowBtn}>
+              <RadioDot selected={part} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-serif text-base font-bold leading-tight text-foreground">{partial.title}</span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  Pay {partial.percent}% now, rest on delivery
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className={`block font-serif text-lg font-bold leading-tight ${part ? 'text-primary' : 'text-foreground/80'}`}>
+                  {formatINR(partial.advance)}
+                </span>
+                <span className="block text-[9px] leading-none text-secondary">now</span>
+              </span>
+            </button>
+            <Expand open={part}>
+              <div className="px-3.5 pb-3.5">
+                <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
+                  <span
+                    className="block bg-primary transition-all duration-300"
+                    style={{ width: `${Math.min(Math.max(partial.percent, 5), 95)}%` }}
+                  />
+                  <span className="block flex-1 bg-secondary/70" />
+                </div>
+                <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                  <span>
+                    Online now <b className="font-semibold text-foreground">{formatINR(partial.advance)}</b>
+                  </span>
+                  <span>
+                    On delivery <b className="font-semibold text-foreground">{formatINR(partial.balance)}</b>
+                  </span>
+                </div>
+                <div className="mt-2.5">
+                  <Benefits items={PAYMENT_COPY.partialBenefits} />
+                </div>
+                {action && <div className="mt-3 [&_button]:rounded-xl [&_button]:shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.6)]">{action}</div>}
+                <span className="mt-2.5 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] leading-snug text-amber-900">
+                  <Info className="mt-px h-3.5 w-3.5 shrink-0" />
+                  {PAYMENT_COPY.partialNote}
+                </span>
+              </div>
+            </Expand>
+          </div>
+        )}
+
+        {/* ───────── Cash on Delivery ───────── */}
+        <div className={`${cardBase} ${cod ? cardOn : cardOff}`}>
+          <button type="button" role="radio" aria-checked={cod} onClick={() => onChange('cod')} className={rowBtn}>
             <RadioDot selected={cod} />
             <span className="min-w-0 flex-1">
-              <span className="block font-serif text-[15px] font-bold leading-tight text-foreground">
-                {PAYMENT_COPY.codTitle}
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                {PAYMENT_COPY.codSub}
-              </span>
+              <span className="block font-serif text-base font-bold leading-tight text-foreground">{PAYMENT_COPY.codTitle}</span>
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">{PAYMENT_COPY.codSub}</span>
             </span>
-            <span
-              className={`shrink-0 font-serif text-base font-bold leading-tight ${
-                cod ? 'text-foreground' : 'text-foreground/70'
-              }`}
-            >
+            <span className={`shrink-0 font-serif text-lg font-bold leading-tight ${cod ? 'text-foreground' : 'text-foreground/70'}`}>
               {formatINR(codTotal)}
             </span>
-          </span>
-
-          <span className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-            <Truck className="h-3 w-3" />
-            {PAYMENT_COPY.codQueueNote}
-          </span>
-
-        </button>
-        {actionSlot(cod)}
-
-        {/* Separate button (not nested inside the card button) */}
-        {cod && hasSavings && onlineAvailable && (
-          <button
-            type="button"
-            onClick={() => onChange('online')}
-            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-secondary/60 bg-secondary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-secondary/20"
-          >
-            <Zap className="h-3.5 w-3.5 text-secondary" />
-            Switch to online payment &amp; save {formatINR(savings)}
           </button>
-        )}
+          <Expand open={cod}>
+            <div className="px-3.5 pb-3.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                <Truck className="h-3.5 w-3.5 shrink-0" />
+                {PAYMENT_COPY.codQueueNote}
+              </p>
+              {action && <div className="mt-3 [&_button]:rounded-xl [&_button]:shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.6)]">{action}</div>}
+              {showSavings && (
+                <button
+                  type="button"
+                  onClick={() => onChange('online')}
+                  className="mt-2.5 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-green-600 bg-green-50 px-3 py-2 text-[13px] font-semibold text-green-900 transition-colors hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/40 dark:border-green-500 dark:bg-green-950/50 dark:text-green-300 dark:hover:bg-green-950/80"
+                >
+                  <Zap className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                  {PAYMENT_COPY.switchToOnline} {formatINR(savings)}
+                </button>
+              )}
+            </div>
+          </Expand>
+        </div>
       </div>
 
+      {/* ───────── Pay now summary ───────── */}
+      {(() => {
+        const due = cod ? codTotal : part && partial ? partial.balance : 0;
+        const payNow = cod ? 0 : part && partial ? partial.advance : onlineTotal;
+        const sub = cod || (part && partial) ? `${formatINR(due)} due on delivery` : PAYMENT_COPY.nothingDue;
+        return (
+          <div className="mt-0.5 flex items-center justify-between gap-3 border-t border-dashed border-border px-1 pt-3" aria-live="polite">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{PAYMENT_COPY.payNow}</p>
+              <p className="text-[11px] text-muted-foreground">{sub}</p>
+            </div>
+            <p className={`font-serif text-xl font-bold ${cod ? 'text-muted-foreground' : 'text-primary'}`}>{formatINR(payNow)}</p>
+          </div>
+        );
+      })()}
+
       <p className="text-center text-[10px] leading-snug text-muted-foreground">
-        {!onlineAvailable
-          ? 'Online payment is temporarily unavailable — please choose Cash on Delivery.'
-          : partial
-          ? 'Same product price on every option — the online-payment discount applies to full online payment only.'
-          : 'Same price either way — the only difference is the online-payment discount shown above.'}
+        {!onlineAvailable ? (
+          'Online payment is temporarily unavailable — please choose Cash on Delivery.'
+        ) : partial ? (
+          <>
+            Same product price on every option — the{' '}
+            <span className="text-primary">online-payment discount applies to full online payment only.</span>
+          </>
+        ) : (
+          'Same price either way — the only difference is the online-payment discount shown above.'
+        )}
       </p>
     </div>
   );

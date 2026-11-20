@@ -8,7 +8,7 @@ import { toPublicMediaUrl } from '@/lib/media-url';
 import NextScript from 'next/script';
 import { useRouter } from 'next/navigation';
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Lock, Check, Loader2, CreditCard, Tag, X, AlertCircle, Wallet, Sparkles, Gift, Store, Minus, Plus, ChevronRight, ChevronDown, BadgePercent, BadgeCheck, MapPin, Phone, Pencil } from 'lucide-react';
+import { Lock, Check, Loader2, CreditCard, Tag, X, AlertCircle, Wallet, Truck, Sparkles, Gift, Store, Minus, Plus, ChevronRight, ChevronDown, BadgePercent, BadgeCheck, MapPin, Phone, Pencil } from 'lucide-react';
 import {
   useCart,
   usePaymentDiscount,
@@ -2491,7 +2491,7 @@ export default function CheckoutPage() {
                   </>
                 ) : paymentMethod === 'cod' ? (
                   <>
-                    <Wallet className="mr-2 h-4 w-4" />
+                    <Truck className="mr-2 h-4 w-4" />
                     Place Order (COD) — {formatINR(payableTotal)}
                   </>
                 ) : paymentMethod === 'partial' && partialOption ? (
@@ -3435,9 +3435,7 @@ export default function CheckoutPage() {
             className="rounded-2xl border border-border/60 bg-gradient-to-b from-white to-primary/[0.03] p-3.5 sm:p-5 lg:mt-4"
           >
             <h2 className="mb-0.5 font-serif text-lg font-bold text-primary">Payment</h2>
-            <p className="mb-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Lock className="h-3 w-3" /> Choose how you'd like to pay
-            </p>
+            <p className="mb-2.5 text-xs text-muted-foreground">Choose how you'd like to pay</p>
 
             {isIntl && selectedIntlCountry ? (
               <div className="space-y-3 text-sm">
