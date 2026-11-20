@@ -1045,6 +1045,19 @@ export default function ProductDetail({
 // Module-level so it survives navigating between product pages.
 let cachedShowRatings: boolean | null = null;
 
+/** Thin pink band that separates the sections of the product info column
+ *  (full width on mobile, column width on desktop). */
+function SectionSplitter() {
+  return (
+    <div
+      aria-hidden="true"
+      className="-mx-4 flex h-2.5 items-center bg-primary/10 sm:-mx-6 lg:mx-0 lg:rounded-full"
+    >
+      <div className="h-[2px] w-full bg-background/70" />
+    </div>
+  );
+}
+
 function ProductInfo({
   reviewsSlot,
   product,
@@ -1385,6 +1398,8 @@ function ProductInfo({
         <LiveViewersBadge productId={product.id} />
       </div>
 
+      <SectionSplitter />
+
       <div id="product-inline-cta" className="flex flex-col gap-3">
         {quantity >= selectedSizeStock && selectedSizeStock > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -1424,9 +1439,11 @@ function ProductInfo({
         )}
       </div>
 
+      <SectionSplitter />
+
       {/* Trust section right under Buy Now. Return days come from
           Admin > Marketing > Shipping & Returns Timing. */}
-      <div className="mt-1 flex flex-col gap-2 border-t border-border/50 pt-4">
+      <div className="flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2.5">
           {[
             {
@@ -1492,6 +1509,8 @@ function ProductInfo({
           purchase instead of relying on the fixed bar being noticed. */}
 
       <ProductHighlights product={product} />
+
+      {reviewsSlot && <SectionSplitter />}
 
       {reviewsSlot}
 
