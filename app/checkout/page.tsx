@@ -179,57 +179,69 @@ declare global {
 // overlay is mounted for ~3s only after a coupon is applied; the idle
 // shimmer/ring animations are skipped for "reduce motion" users.
 // ---------------------------------------------------------------------
+const seeded = (n: number) => {
+  const x = Math.sin(n * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+};
+
 const COUPON_CSS =
-  '@keyframes ssFall{0%{transform:translate3d(0,-30px,0) rotate(0deg);opacity:1}85%{opacity:1}100%{transform:translate3d(var(--dx),108vh,0) rotate(var(--rot));opacity:0}}' +
   '@keyframes ssPop{0%{transform:scale(.97)}40%{transform:scale(1.03)}100%{transform:scale(1)}}' +
   '@keyframes ssBadge{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.3);opacity:1}100%{transform:scale(1)}}' +
   '@keyframes ssRise{0%{transform:translateY(8px);opacity:0}100%{transform:translateY(0);opacity:1}}' +
   '@keyframes ssSweep{0%{transform:translateX(-120%) skewX(-18deg)}55%,100%{transform:translateX(340%) skewX(-18deg)}}' +
   '@keyframes ssRing{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.9);opacity:0}}' +
-  '@media (prefers-reduced-motion:no-preference){.ss-sweep{animation:ssSweep 3.2s ease-in-out infinite}.ss-ring{animation:ssRing 2s ease-out infinite}}';
+  '@media (prefers-reduced-motion:no-preference){.ss-sweep{animation:ssSweep 3.2s ease-in-out infinite}.ss-ring{animation:ssRing 2s ease-out infinite}}' +
+  // ---- Applied-coupon premium ticket (animations only inside the card) ----
+  '@keyframes ctDraw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}' +
+  '@keyframes ctPop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}' +
+  '@keyframes ctRing{0%{opacity:.7;transform:scale(.6)}100%{opacity:0;transform:scale(1.5)}}' +
+  '@keyframes ctShine{from{transform:translateX(-130%) skewX(-18deg)}to{transform:translateX(450%) skewX(-18deg)}}' +
+  '@keyframes ctSpark{0%{opacity:0;transform:scale(0) rotate(0deg)}40%{opacity:1;transform:scale(1) rotate(45deg)}100%{opacity:0;transform:scale(.3) rotate(120deg)}}' +
+  '.ct-wrap{position:relative;overflow:hidden;border-radius:15px;padding:1px;background:linear-gradient(120deg,#e9cf7a,#c9971f 35%,#f6e8b0 65%,#c9971f)}' +
+  '.ct-in{position:relative;overflow:hidden;border-radius:14px;background:linear-gradient(100deg,#eefaf3 0%,#fffdf6 50%,#fcf3d6 100%)}' +
+  '.ct-badge{display:flex;align-items:center;justify-content:center;gap:6px;height:24px;background:#dcfce7;border-bottom:1px solid rgba(201,151,31,.55);color:#14532d;font-size:12px;font-weight:500;letter-spacing:.02em}' +
+  '.ct-badge b{font-family:Georgia,"Times New Roman",serif;font-weight:500;font-size:13.5px;font-variant-numeric:tabular-nums;color:#166534}' +
+  '.ct-row{display:flex;align-items:center;gap:10px;height:50px;padding:0 12px 0 10px}' +
+  '.ct-seal{flex:none;width:30px;height:30px}' +
+  '.ct-seal .bgc{fill:#15803d;transform-origin:center}' +
+  '.ct-seal .rg{fill:none;stroke:#15803d;stroke-width:1.5;opacity:0;transform-origin:center}' +
+  '.ct-seal .ol{fill:none;stroke:#DAAA2F;stroke-width:1}' +
+  '.ct-seal path{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:18;stroke-dashoffset:0;--len:18}' +
+  '.ct-go .ct-seal .bgc{animation:ctPop .45s ease-out}' +
+  '.ct-go .ct-seal path{animation:ctDraw .35s .3s ease-out both}' +
+  '.ct-go .ct-seal .rg{animation:ctRing .9s .2s ease-out}' +
+  '.ct-mid{flex:1;min-width:0;line-height:1.2}' +
+  '.ct-code{font-size:12.5px;font-weight:500;color:#14532d;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+  '.ct-code span{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#a07a16;margin-left:5px}' +
+  '.ct-sub{font-size:11px;color:#6b6556;margin-top:2px}' +
+  '.ct-dv{flex:none;align-self:stretch;margin:7px 0;border-left:1px dashed rgba(160,122,22,.5)}' +
+  '.ct-rt{flex:none;text-align:center;min-width:58px}' +
+  '.ct-amt{font-family:Georgia,"Times New Roman",serif;font-size:25px;line-height:1;color:#166534;font-variant-numeric:tabular-nums}' +
+  '.ct-sv{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#a07a16;margin-top:3px}' +
+  '.ct-ft{position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:28px;padding:0 12px;border-top:1px dashed rgba(160,122,22,.5);font-size:11px}' +
+  '.ct-ft button{padding:6px 0;background:none;border:0;font-size:11px;cursor:pointer}' +
+  '.ct-view{color:hsl(var(--primary));font-weight:500}' +
+  '.ct-rm{color:#8a8372}.ct-rm:hover{color:hsl(var(--destructive))}' +
+  '.ct-nt{position:absolute;top:-6px;width:12px;height:12px;border-radius:50%;background:hsl(var(--background));border:1px solid #c9971f;box-sizing:border-box;z-index:3}' +
+  '.ct-shine{position:absolute;top:0;bottom:0;left:0;width:28%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.9),transparent);transform:translateX(-130%) skewX(-18deg);pointer-events:none;z-index:2;opacity:0}' +
+  '.ct-go .ct-shine{opacity:1;animation:ctShine .9s .25s ease-out forwards}' +
+  '.ct-spark{position:absolute;pointer-events:none;opacity:0;z-index:1;animation:ctSpark var(--du) var(--dl) ease-in-out forwards}' +
+  '@media (prefers-reduced-motion:reduce){.ct-go *{animation:none!important}}';
 
-const CONFETTI_COLORS = ['#721D32', '#DAAA2F', '#16a34a', '#e11d48', '#f59e0b', '#2563eb', '#db2777'];
-const seeded = (n: number) => {
-  const x = Math.sin(n * 9301 + 49297) * 233280;
-  return x - Math.floor(x);
-};
-const CONFETTI = Array.from({ length: 56 }, (_, i) => ({
-  x: Math.round(seeded(i + 1) * 100),
-  delay: Math.round(seeded(i + 7) * 700),
-  dur: 1900 + Math.round(seeded(i + 13) * 1100),
-  dx: Math.round((seeded(i + 19) - 0.5) * 160),
-  rot: 360 + Math.round(seeded(i + 23) * 720),
-  w: 5 + Math.round(seeded(i + 29) * 5),
-  h: 8 + Math.round(seeded(i + 31) * 8),
-  c: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-  round: i % 3 === 0,
+// Gold sparkles that twinkle INSIDE the coupon ticket only (fixed positions → no hydration mismatch).
+const SPARKS: Array<{ l: number; t: number; s: number; dl: number; du: number }> = Array.from({ length: 12 }, (_, i) => ({
+  l: 6 + Math.round(seeded(i + 41) * 88),
+  t: 4 + Math.round(seeded(i + 47) * 84),
+  s: 5 + Math.round(seeded(i + 53) * 6),
+  dl: 250 + Math.round(seeded(i + 59) * 800),
+  du: 800 + Math.round(seeded(i + 61) * 500),
 }));
 
-/** Full-screen confetti, falls from the top like a celebration; never blocks taps. */
-function CouponConfetti() {
+function CouponStar({ size, className, style }: { size: number; className?: string; style?: CSSProperties }) {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
-      {CONFETTI.map((p, i) => (
-        <span
-          key={i}
-          style={
-            {
-              position: 'absolute',
-              left: `${p.x}%`,
-              top: 0,
-              width: p.w,
-              height: p.round ? p.w : p.h,
-              background: p.c,
-              borderRadius: p.round ? '50%' : 1,
-              opacity: 0,
-              '--dx': `${p.dx}px`,
-              '--rot': `${p.rot}deg`,
-              animation: `ssFall ${p.dur}ms ${p.delay}ms cubic-bezier(.25,.6,.4,1) forwards`,
-            } as CSSProperties
-          }
-        />
-      ))}
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={className} style={style}>
+      <path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z" fill="#DAAA2F" />
+    </svg>
   );
 }
 
@@ -2603,7 +2615,6 @@ export default function CheckoutPage() {
       </div>
 
       <style>{COUPON_CSS}</style>
-      {celebrate && <CouponConfetti />}
 
       {/* Savings bar — edge to edge on mobile, always visible (also after a
           coupon is applied). The amount counts up smoothly when it changes. */}
@@ -2627,43 +2638,64 @@ export default function CheckoutPage() {
       {appliedCoupon ? (
         <div
           style={celebrate ? { animation: 'ssPop .6s ease-out' } : undefined}
-          className={`mb-4 overflow-hidden rounded-xl border-2 transition-colors duration-500 ${
-            celebrate ? 'border-green-500 bg-green-50' : 'border-green-600/30 bg-card'
-          }`}
+          className={`ct-wrap mb-4${celebrate ? ' ct-go' : ''}`}
         >
-          {couponDiscount > 0 && (
-            <div
-              style={celebrate ? { animation: 'ssRise .5s ease-out' } : undefined}
-              className="bg-green-100 px-3 py-1.5 text-center text-xs font-bold text-green-800"
-            >
-              You saved <span className="tabular-nums">{formatINR(animatedCouponSaving)}</span>
+          <div className="ct-in">
+            {celebrate && (
+              <div aria-hidden="true">
+                {SPARKS.map((p, i) => (
+                  <CouponStar
+                    key={i}
+                    size={p.s}
+                    className="ct-spark"
+                    style={{ left: `${p.l}%`, top: `${p.t}%`, '--dl': `${p.dl}ms`, '--du': `${p.du}ms` } as CSSProperties}
+                  />
+                ))}
+              </div>
+            )}
+            <span className="ct-shine" aria-hidden="true" />
+            {couponDiscount > 0 && (
+              <div className="ct-badge">
+                <CouponStar size={10} />
+                You saved <b>{formatINR(animatedCouponSaving)}</b>
+                <CouponStar size={10} />
+              </div>
+            )}
+            <div className="ct-row">
+              <svg className="ct-seal" viewBox="0 0 30 30" aria-hidden="true">
+                <circle className="rg" cx="15" cy="15" r="13" />
+                <circle className="ol" cx="15" cy="15" r="14" />
+                <circle className="bgc" cx="15" cy="15" r="11.5" />
+                <path d="M10 15.5l3.5 3.5 6.5-7" />
+              </svg>
+              <div className="ct-mid">
+                <div className="ct-code">
+                  {appliedCoupon.code}
+                  <span>Applied</span>
+                </div>
+                <div className="ct-sub">You saved using coupon</div>
+              </div>
+              {couponDiscount > 0 && (
+                <>
+                  <div className="ct-dv" />
+                  <div className="ct-rt">
+                    <div className="ct-amt">{formatINR(animatedCouponSaving)}</div>
+                    <div className="ct-sv">Saved</div>
+                  </div>
+                </>
+              )}
             </div>
-          )}
-          <div className="flex items-center justify-between gap-3 px-3 py-3">
-            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <span
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white"
-                style={celebrate ? { animation: 'ssBadge .55s ease-out' } : undefined}
-              >
-                <Check className="h-3 w-3" strokeWidth={3} />
-              </span>
-              &quot;{appliedCoupon.code}&quot; applied
-            </span>
-            <button
-              type="button"
-              onClick={handleRemoveCoupon}
-              className="shrink-0 text-xs font-semibold text-muted-foreground hover:text-destructive"
-            >
-              Remove
-            </button>
+            <div className="ct-ft">
+              <i className="ct-nt" style={{ left: -7 }} aria-hidden="true" />
+              <i className="ct-nt" style={{ right: -7 }} aria-hidden="true" />
+              <button type="button" className="ct-view" onClick={() => setOffersOpen(true)}>
+                View all coupons &amp; Offers ›
+              </button>
+              <button type="button" className="ct-rm" onClick={handleRemoveCoupon}>
+                Remove
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setOffersOpen(true)}
-            className="flex w-full items-center gap-0.5 border-t border-border/60 px-3 py-2 text-xs font-semibold text-secondary hover:underline"
-          >
-            View all coupons <ChevronRight className="h-3 w-3" />
-          </button>
         </div>
       ) : (
         <div className="mb-4 overflow-hidden rounded-xl border-2 border-dashed border-secondary/60 bg-gradient-to-br from-secondary/15 via-background to-background shadow-sm">

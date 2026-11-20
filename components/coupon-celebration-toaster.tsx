@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { toast, Toaster as SonnerToaster } from 'sonner';
 import './coupon-celebration.css';
 
@@ -56,6 +57,7 @@ const CONFETTI: Array<[number, number, number, string, number]> = [
 
 function CouponCelebration() {
   const [state, setState] = useState<{ key: number; code: string } | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     let n = 0;
@@ -74,7 +76,8 @@ function CouponCelebration() {
     };
   }, []);
 
-  if (!state) return null;
+  // Checkout shows its own celebration inside the coupon card, so no page-level overlay there.
+  if (!state || pathname?.startsWith('/checkout')) return null;
 
   return (
     <div
