@@ -36,14 +36,24 @@ export default function MobileStickyCartBar({
   // WhatsApp / chat button can sit just above it with only a small gap.
   const barRef = useRef<HTMLDivElement>(null);
 
-  // Show this bar only while the in-page Add to Bag / Buy Now buttons
-  // (#product-inline-cta) are OFF screen, so shoppers never see two sets of
-  // the same buttons at once. If that block does not exist, the bar stays.
-  const [show, setShow] = useState(true);
+  // Hidden when the page loads. The bar slides in only AFTER the shopper has
+  // scrolled down past the in-page Add to Bag / Buy Now buttons
+  // (#product-inline-cta), i.e. once those buttons are off the TOP of the
+  // screen. While the in-page buttons are visible (or still below the fold)
+  // the bar stays hidden, so two sets of the same buttons never show at once.
+  // Scrolling back up so the in-page buttons reappear hides it again. If that
+  // block does not exist, the bar is shown so there is still a way to buy.
+  const [show, setShow] = useState(false);
   useEffect(() => {
     const target = document.getElementById('product-inline-cta');
-    if (!target || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver(([entry]) => setShow(!entry.isIntersecting), { threshold: 0.1 });
+    if (!target || typeof IntersectionObserver === 'undefined') {
+      setShow(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => setShow(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0),
+      { threshold: 0 }
+    );
     io.observe(target);
     return () => io.disconnect();
   }, []);
