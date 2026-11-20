@@ -13,6 +13,11 @@ import {
   Gift,
   Lock,
   ChevronRight,
+  Sparkles,
+  ClipboardList,
+  RotateCcw,
+  Globe,
+  Droplets,
   Zap,
 } from 'lucide-react';
 import { useProducts, usePaymentDiscount, useCart, getVisibleBogoPromotion, formatBogoLabel } from '@/lib/cart-context';
@@ -861,6 +866,16 @@ export default function ProductDetail({
         </div>
         <ProductInfo
           reviewsSlot={isDesktop === true ? null : reviewsBlock}
+          detailsSlot={
+            <ProductAccordion
+              product={product}
+              variant={variant}
+              selectedSizeStock={selectedSizeStock}
+              fulfillment={fulfillment}
+              freeShippingThreshold={freeShippingThreshold}
+              showInternational={shopCountryCode !== 'IN'}
+            />
+          }
           product={product}
           displayName={displayName}
           displayRating={displayRating}
@@ -938,89 +953,6 @@ export default function ProductDetail({
         <PromoSlider />
       </LazyOnView>
 
-      <div className="mt-6">
-        <Accordion type="single" collapsible>
-          <AccordionItem value="core-features">
-            <AccordionTrigger className="text-sm font-semibold">Core Features</AccordionTrigger>
-            <AccordionContent className="max-w-3xl text-sm leading-relaxed text-foreground/80">
-              {descriptionToBlocks(product.description).map((b, i) =>
-                b.kind === 'heading' ? (
-                  <p key={i} className="mt-3 font-semibold text-foreground">{b.text}</p>
-                ) : b.kind === 'bullet' ? (
-                  <p key={i} className="mt-1.5 flex gap-2">
-                    <span aria-hidden>•</span>
-                    <span>{b.text}</span>
-                  </p>
-                ) : (
-                  <p key={i} className={i === 0 ? '' : 'mt-2'}>{b.text}</p>
-                )
-              )}
-              {/* Colour-specific paragraph (see lib/variant-seo-content.ts) —
-                 without this, every colour of a product rendered the exact
-                 same description text, which is duplicate on-page content
-                 even when the <title>/meta tags differ. Keeping this visible
-                 (not just in metadata) is what actually makes each colour's
-                 page read as distinct to Google. */}
-              {variant?.style_note && <p className="mt-3">{variant.style_note}</p>}
-              <p className="mt-3">
-                Each piece is handcrafted by skilled artisans, carrying forward
-                centuries of weaving tradition. Subtle variations in motif and
-                colour are a hallmark of genuine handloom and make every piece
-                uniquely yours.
-              </p>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="details">
-            <AccordionTrigger className="text-sm font-semibold">Details</AccordionTrigger>
-            <AccordionContent className="max-w-3xl text-sm">
-              <ul className="grid gap-2 sm:grid-cols-2">
-                <li><strong className="text-foreground">Fabric:</strong> {product.fabric}</li>
-                <li><strong className="text-foreground">Origin:</strong> {product.origin}</li>
-                <li><strong className="text-foreground">Country of origin:</strong> {product.highlights?.country_of_origin || 'India'}</li>
-                <li><strong className="text-foreground">Category:</strong> {product.category}</li>
-                <li><strong className="text-foreground">Colors:</strong> {product.colors.join(', ')}</li>
-                <li><strong className="text-foreground">Sizes:</strong> {product.sizes.join(', ')}</li>
-                <li><strong className="text-foreground">In stock:</strong> {selectedSizeStock} units</li>
-                {(variant?.sku || product.sku) && (
-                  <li><strong className="text-foreground">SKU:</strong> {variant?.sku || product.sku}</li>
-                )}
-              </ul>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="delivery-returns">
-            <AccordionTrigger className="text-sm font-semibold">Delivery & Returns</AccordionTrigger>
-            <AccordionContent className="max-w-3xl text-sm leading-relaxed text-foreground/80">
-              <p>{shippingReturnsSummary(fulfillment, freeShippingThreshold)}</p>
-            </AccordionContent>
-          </AccordionItem>
-
-          {shopCountryCode !== 'IN' && (
-            <AccordionItem value="international-shipping">
-              <AccordionTrigger className="text-sm font-semibold">International shipping &amp; duties</AccordionTrigger>
-              <AccordionContent className="max-w-3xl text-sm leading-relaxed text-foreground/80">
-                <p>
-                  Shipped from India, prepaid by card. Import duties, VAT/GST and customs fees of your country are
-                  set by your customs authority and are not included in the price unless checkout says so.
-                  International returns have their own window and rules.{' '}
-                  <a href="/shipping-delivery-information/" className="underline hover:text-primary">Read the Shipping Policy</a>
-                  {' · '}
-                  <a href="/returns-exchange/" className="underline hover:text-primary">Returns</a>
-                </p>
-              </AccordionContent>
-            </AccordionItem>
-          )}
-
-          <AccordionItem value="care-guide" className="border-b-0">
-            <AccordionTrigger className="text-sm font-semibold">Care Guide</AccordionTrigger>
-            <AccordionContent className="max-w-3xl text-sm leading-relaxed text-foreground/80">
-              <p>Dry clean only. Store folded in a breathable cloth bag, away from direct sunlight, to keep the weave and colour looking their best.</p>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
-
       <LazyOnView minHeight={200}>
         <FrequentlyBoughtTogether productId={baseProduct.id} />
         <VendorCollection productId={baseProduct.id} />
@@ -1045,6 +977,132 @@ export default function ProductDetail({
 // Module-level so it survives navigating between product pages.
 let cachedShowRatings: boolean | null = null;
 
+/** Core Features / Details / Delivery & Returns / Care Guide -- each section is
+ *  a card styled exactly like the "Delivery details" card (DeliveryInfo). */
+function ProductAccordion({
+  product,
+  variant,
+  selectedSizeStock,
+  fulfillment,
+  freeShippingThreshold,
+  showInternational,
+}: {
+  product: Product;
+  variant: ProductVariant | null | undefined;
+  selectedSizeStock: number;
+  fulfillment: FulfillmentSettings;
+  freeShippingThreshold: number | undefined;
+  showInternational: boolean;
+}) {
+  const itemClass = 'rounded-lg border border-border/60 bg-card p-4';
+  const triggerClass =
+    'py-0 text-sm font-semibold hover:no-underline [&>svg]:text-muted-foreground';
+  const bodyClass = 'mt-2.5 rounded-md bg-secondary/10 p-3 text-xs leading-relaxed text-muted-foreground';
+  const Title = ({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) => (
+    <span className="flex items-center gap-2">
+      <Icon className="h-4 w-4 text-secondary" />
+      {children}
+    </span>
+  );
+
+  return (
+    <Accordion type="single" collapsible className="flex flex-col gap-3">
+      <AccordionItem value="core-features" className={itemClass}>
+        <AccordionTrigger className={triggerClass}>
+          <Title icon={Sparkles}>Core Features</Title>
+        </AccordionTrigger>
+        <AccordionContent className="pb-0 pt-0">
+          <div className={bodyClass}>
+            {descriptionToBlocks(product.description).map((b, i) =>
+              b.kind === 'heading' ? (
+                <p key={i} className="mt-3 font-semibold text-foreground">{b.text}</p>
+              ) : b.kind === 'bullet' ? (
+                <p key={i} className="mt-1.5 flex gap-2">
+                  <span aria-hidden>•</span>
+                  <span>{b.text}</span>
+                </p>
+              ) : (
+                <p key={i} className={i === 0 ? '' : 'mt-2'}>{b.text}</p>
+              )
+            )}
+            {/* Colour-specific paragraph (see lib/variant-seo-content.ts) --
+               keeps each colour's page distinct on-page content for Google. */}
+            {variant?.style_note && <p className="mt-3">{variant.style_note}</p>}
+            <p className="mt-3">
+              Each piece is handcrafted by skilled artisans, carrying forward
+              centuries of weaving tradition. Subtle variations in motif and
+              colour are a hallmark of genuine handloom and make every piece
+              uniquely yours.
+            </p>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="details" className={itemClass}>
+        <AccordionTrigger className={triggerClass}>
+          <Title icon={ClipboardList}>Details</Title>
+        </AccordionTrigger>
+        <AccordionContent className="pb-0 pt-0">
+          <ul className={`grid gap-2 sm:grid-cols-2 ${bodyClass}`}>
+            <li><strong className="text-foreground">Fabric:</strong> {product.fabric}</li>
+            <li><strong className="text-foreground">Origin:</strong> {product.origin}</li>
+            <li><strong className="text-foreground">Country of origin:</strong> {product.highlights?.country_of_origin || 'India'}</li>
+            <li><strong className="text-foreground">Category:</strong> {product.category}</li>
+            <li><strong className="text-foreground">Colors:</strong> {product.colors.join(', ')}</li>
+            <li><strong className="text-foreground">Sizes:</strong> {product.sizes.join(', ')}</li>
+            <li><strong className="text-foreground">In stock:</strong> {selectedSizeStock} units</li>
+            {(variant?.sku || product.sku) && (
+              <li><strong className="text-foreground">SKU:</strong> {variant?.sku || product.sku}</li>
+            )}
+          </ul>
+        </AccordionContent>
+      </AccordionItem>
+
+      <AccordionItem value="delivery-returns" className={itemClass}>
+        <AccordionTrigger className={triggerClass}>
+          <Title icon={RotateCcw}>Delivery &amp; Returns</Title>
+        </AccordionTrigger>
+        <AccordionContent className="pb-0 pt-0">
+          <div className={bodyClass}>
+            <p>{shippingReturnsSummary(fulfillment, freeShippingThreshold)}</p>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {showInternational && (
+        <AccordionItem value="international-shipping" className={itemClass}>
+          <AccordionTrigger className={triggerClass}>
+            <Title icon={Globe}>International shipping &amp; duties</Title>
+          </AccordionTrigger>
+          <AccordionContent className="pb-0 pt-0">
+            <div className={bodyClass}>
+              <p>
+                Shipped from India, prepaid by card. Import duties, VAT/GST and customs fees of your country are
+                set by your customs authority and are not included in the price unless checkout says so.
+                International returns have their own window and rules.{' '}
+                <a href="/shipping-delivery-information/" className="underline hover:text-primary">Read the Shipping Policy</a>
+                {' · '}
+                <a href="/returns-exchange/" className="underline hover:text-primary">Returns</a>
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      )}
+
+      <AccordionItem value="care-guide" className={itemClass}>
+        <AccordionTrigger className={triggerClass}>
+          <Title icon={Droplets}>Care Guide</Title>
+        </AccordionTrigger>
+        <AccordionContent className="pb-0 pt-0">
+          <div className={bodyClass}>
+            <p>Dry clean only. Store folded in a breathable cloth bag, away from direct sunlight, to keep the weave and colour looking their best.</p>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
 /** Thin pink band that separates the sections of the product info column
  *  (full width on mobile, column width on desktop). */
 function SectionSplitter() {
@@ -1060,6 +1118,7 @@ function SectionSplitter() {
 
 function ProductInfo({
   reviewsSlot,
+  detailsSlot,
   product,
   displayName,
   displayRating,
@@ -1089,6 +1148,7 @@ function ProductInfo({
 }: {
   /** Reviews section, rendered between Product Highlights and Delivery details. */
   reviewsSlot?: React.ReactNode;
+  detailsSlot?: React.ReactNode;
   product: Product;
   displayName: string;
   displayRating: number;
@@ -1513,6 +1573,8 @@ function ProductInfo({
       {reviewsSlot && <SectionSplitter />}
 
       {reviewsSlot}
+
+      {detailsSlot}
 
       <DeliveryInfo />
     </div>
