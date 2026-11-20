@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, CreditCard, Info, Lock, Truck, Wallet, Zap, BadgeCheck, Split } from 'lucide-react';
+import { Check, Info, Lock, Truck, Zap, BadgeCheck } from 'lucide-react';
 import { formatINR } from '@/lib/format';
 
 /**
@@ -73,6 +73,8 @@ interface PaymentMethodSelectorProps {
    *  the card of whichever method is currently selected, so the customer
    *  sees at a glance whether it is the online or the COD button. */
   action?: React.ReactNode;
+  /** Active online gateway id; 'cashfree' shows the "Secured by cashfree" badge under the Pay Online button. */
+  gateway?: string | null;
 }
 
 function RadioDot({ selected }: { selected: boolean }) {
@@ -111,7 +113,7 @@ function PaymentLogos() {
   const chip =
     'inline-flex h-[22px] items-center justify-center rounded border border-border/70 bg-white px-1.5';
   return (
-    <span className="mt-1 flex flex-wrap items-center gap-1" aria-label="UPI, cards and netbanking accepted">
+    <span className="mt-1.5 flex flex-wrap items-center gap-1" aria-label="UPI, cards and netbanking accepted">
       <span className={chip}>
         <span className="text-[10px] font-extrabold italic tracking-tight">
           <span className="text-[#5f259f]">U</span>
@@ -141,10 +143,26 @@ function PaymentLogos() {
   );
 }
 
+/** "Secured by cashfree" trust badge shown under the Pay Online button. */
+function SecuredByCashfree() {
+  return (
+    <span className="mt-2.5 flex justify-center">
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-white px-2 py-1 text-[9px] text-muted-foreground">
+        <Lock className="h-2.5 w-2.5" />
+        Secured by
+        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#1d1740]">
+          <span className="flex h-4 w-4 items-center justify-center rounded bg-[#5a3df0] text-[11px] leading-none text-white">c</span>
+          cashfree
+        </span>
+      </span>
+    </span>
+  );
+}
+
 const cardBase =
   'relative block w-full rounded-xl border bg-card px-3.5 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 const cardOn =
-  'border-primary bg-primary/[0.035] shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]';
+  'border-primary bg-gradient-to-b from-white to-primary/[0.06] shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]';
 const cardOff = 'border-border/70 hover:border-primary/40';
 
 export default function PaymentMethodSelector({
@@ -156,6 +174,7 @@ export default function PaymentMethodSelector({
   onlineTotal,
   codTotal,
   action,
+  gateway,
 }: PaymentMethodSelectorProps) {
   const online = value === 'online';
   const cod = value === 'cod';
@@ -165,10 +184,11 @@ export default function PaymentMethodSelector({
   // The selected card and its button read as ONE box: the card loses its
   // bottom border/radius and the action strip continues the same outline.
   const joined = (selected: boolean) => (selected && action ? 'rounded-b-none border-b-0' : '');
-  const actionSlot = (selected: boolean) =>
+  const actionSlot = (selected: boolean, selectedIsOnline = false) =>
     selected && action ? (
-      <div className="rounded-b-xl border border-t-0 border-primary bg-primary/[0.035] px-3.5 pb-3 pt-1 shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]">
+      <div className="rounded-b-xl border border-t-0 border-primary bg-gradient-to-b from-primary/[0.06] to-primary/[0.08] px-3.5 pb-3 pt-1 shadow-[0_8px_24px_-14px_hsl(var(--primary)/0.55)]">
         {action}
+        {selected && selectedIsOnline && gateway === 'cashfree' && <SecuredByCashfree />}
       </div>
     ) : null;
 
@@ -186,15 +206,12 @@ export default function PaymentMethodSelector({
       >
         <span className="flex items-center gap-3">
           <RadioDot selected={online} />
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <CreditCard className="h-[18px] w-[18px]" />
-          </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <span className="font-serif text-[15px] font-bold leading-tight text-primary">
                 {PAYMENT_COPY.onlineTitle}
               </span>
-              <span className="rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold leading-4 text-secondary-foreground">
+              <span className="rounded-full bg-[#f1e2b0] px-1.5 py-px text-[9px] font-semibold leading-4 text-[#4a3a10]">
                 Recommended
               </span>
             </span>
@@ -205,7 +222,7 @@ export default function PaymentMethodSelector({
               {formatINR(onlineTotal)}
             </span>
             {hasSavings && (
-              <span className="mt-0.5 inline-block rounded-full bg-green-100 px-1.5 py-px text-[9px] font-semibold text-green-800">
+              <span className="mt-0.5 block text-[10px] font-semibold text-green-700">
                 Save {formatINR(savings)}
               </span>
             )}
@@ -213,15 +230,13 @@ export default function PaymentMethodSelector({
         </span>
 
         {/* Benefits: always visible, one compact line */}
-        <span className="mt-2.5 flex flex-wrap gap-1.5">
+        <span className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1">
           {PAYMENT_COPY.benefits.map((b) => {
             const Icon = BENEFIT_ICONS[b.icon];
             return (
               <span
                 key={b.title}
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium leading-4 text-foreground transition-colors ${
-                  online ? 'border-secondary/50 bg-secondary/10' : 'border-border/60 bg-muted/40'
-                }`}
+                className="inline-flex items-center gap-1 text-[10px] font-medium leading-4 text-foreground"
               >
                 <Icon className="h-3 w-3 text-secondary" />
                 {b.title}
@@ -231,7 +246,7 @@ export default function PaymentMethodSelector({
         </span>
 
       </button>
-      {actionSlot(online)}
+      {actionSlot(online, true)}
       </div>
       )}
 
@@ -247,7 +262,6 @@ export default function PaymentMethodSelector({
         >
           <span className="flex items-center gap-3">
             <RadioDot selected={part} />
-            <Split className="hidden h-4 w-4 shrink-0 text-secondary sm:block" />
             <span className="min-w-0 flex-1">
               <span className="block font-serif text-[15px] font-bold leading-tight text-foreground">
                 {partial.title}
@@ -287,15 +301,13 @@ export default function PaymentMethodSelector({
             </span>
           </span>
 
-          <span className="mt-2 flex flex-wrap gap-1.5 pl-[30px]">
+          <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 pl-[30px]">
             {PAYMENT_COPY.partialBenefits.map((b) => {
               const Icon = BENEFIT_ICONS[b.icon];
               return (
                 <span
                   key={b.title}
-                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium leading-4 text-foreground transition-colors ${
-                    part ? 'border-secondary/50 bg-secondary/10' : 'border-border/60 bg-muted/40'
-                  }`}
+                  className="inline-flex items-center gap-1 text-[10px] font-medium leading-4 text-foreground"
                 >
                   <Icon className="h-3 w-3 text-secondary" />
                   {b.title}
@@ -326,9 +338,6 @@ export default function PaymentMethodSelector({
         >
           <span className="flex items-center gap-3">
             <RadioDot selected={cod} />
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-              <Wallet className="h-[18px] w-[18px]" />
-            </span>
             <span className="min-w-0 flex-1">
               <span className="block font-serif text-[15px] font-bold leading-tight text-foreground">
                 {PAYMENT_COPY.codTitle}

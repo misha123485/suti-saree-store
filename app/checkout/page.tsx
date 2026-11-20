@@ -3432,7 +3432,7 @@ export default function CheckoutPage() {
             id="checkout-step-payment"
             ref={paymentSectionRef}
             style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
-            className="rounded-lg border border-border/60 bg-card p-3.5 sm:p-5 lg:mt-4"
+            className="rounded-2xl border border-border/60 bg-gradient-to-b from-white to-primary/[0.03] p-3.5 sm:p-5 lg:mt-4"
           >
             <h2 className="mb-0.5 font-serif text-lg font-bold text-primary">Payment</h2>
             <p className="mb-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -3492,6 +3492,7 @@ export default function CheckoutPage() {
               onlineTotal={onlineTotalDisplay}
               codTotal={codTotalDisplay}
               action={payButtonNode}
+              gateway={gateway.active}
             />
             )}
 
