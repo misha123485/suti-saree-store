@@ -201,9 +201,16 @@ export default function PaymentMethodSelector({
               </span>
               <span className="shrink-0 text-right">
                 {hasSavings && (
-                  <span className="block text-[10px] leading-none text-muted-foreground line-through">{formatINR(codTotal)}</span>
+                  <span className="flex items-center justify-end gap-1.5 leading-none">
+                    <span className="text-[10px] text-muted-foreground line-through">{formatINR(codTotal)}</span>
+                    {showSavings && (
+                      <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold leading-none text-green-700 dark:bg-green-950/60 dark:text-green-300">
+                        Save {formatINR(savings)}
+                      </span>
+                    )}
+                  </span>
                 )}
-                <span className="block font-serif text-lg font-bold leading-tight text-primary">{formatINR(onlineTotal)}</span>
+                <span className="mt-0.5 block font-serif text-lg font-bold leading-tight text-primary">{formatINR(onlineTotal)}</span>
               </span>
             </button>
             <Expand open={online}>
