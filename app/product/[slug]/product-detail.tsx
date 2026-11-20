@@ -75,6 +75,7 @@ import { toast } from 'sonner';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
 import LazyOnView from '@/components/lazy-on-view';
+import { descriptionToBlocks } from '@/lib/description-text';
 
 // Below-the-fold / on-demand sections are code-split (and wrapped in
 // <LazyOnView> where they sit under the fold) so they don't add to the
@@ -944,7 +945,18 @@ export default function ProductDetail({
           <AccordionItem value="core-features">
             <AccordionTrigger className="text-sm font-semibold">Core Features</AccordionTrigger>
             <AccordionContent className="max-w-3xl text-sm leading-relaxed text-foreground/80">
-              <p>{product.description}</p>
+              {descriptionToBlocks(product.description).map((b, i) =>
+                b.kind === 'heading' ? (
+                  <p key={i} className="mt-3 font-semibold text-foreground">{b.text}</p>
+                ) : b.kind === 'bullet' ? (
+                  <p key={i} className="mt-1.5 flex gap-2">
+                    <span aria-hidden>•</span>
+                    <span>{b.text}</span>
+                  </p>
+                ) : (
+                  <p key={i} className={i === 0 ? '' : 'mt-2'}>{b.text}</p>
+                )
+              )}
               {/* Colour-specific paragraph (see lib/variant-seo-content.ts) —
                  without this, every colour of a product rendered the exact
                  same description text, which is duplicate on-page content

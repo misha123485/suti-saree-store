@@ -11,6 +11,7 @@
 // Keeping `searchParams` out of the main page is what lets Next.js cache it;
 // reading searchParams makes a page dynamic (one function invocation per view).
 
+import { descriptionToPlainText } from '@/lib/description-text';
 import { Metadata } from 'next';
 import { ProductsProvider } from '@/lib/cart-context';
 import { fetchProductBySlugServer } from '@/lib/products-api-server';
@@ -86,7 +87,7 @@ export async function buildProductMetadata(slug: string): Promise<Metadata> {
   const description =
     variant?.meta_description ||
     variantSeoFallback?.metaDescription ||
-    product.description ||
+    descriptionToPlainText(product.description) ||
     `Buy ${displayName} - ${product.fabric} from ${product.origin}. Handwoven ethnic wear from Sutisaree.`;
   const url = `${SITE_URL}/product/${slug}/`;
   // Rewrites Supabase Storage URLs to sutisaree.com (see
@@ -162,9 +163,9 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
   // product's shared text either.
   const jsonLdDescription = variant
     ? variant.meta_description ||
-      [product?.description, variant.style_note].filter(Boolean).join(' ') ||
-      product?.description
-    : product?.description;
+      [descriptionToPlainText(product?.description), variant.style_note].filter(Boolean).join(' ') ||
+      descriptionToPlainText(product?.description)
+    : descriptionToPlainText(product?.description);
 
   // Same colour-correct name as generateMetadata() above (this is a
   // separate function so it needs its own copy) -- avoids the base
