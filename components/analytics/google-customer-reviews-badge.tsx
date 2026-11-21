@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { GCR_MERCHANT_ID } from '@/lib/google-customer-reviews';
 
 // Pages that should never show the badge (back-office + payment flow).
-const HIDDEN_PREFIXES = ['/admin', '/vendor', '/checkout'];
+const HIDDEN_PREFIXES = ['/admin', '/vendor', '/checkout', '/cart'];
 
 // Element Google's widget creates once start() has run. It lives in <body>
 // and is NOT removed by React, so on client-side navigation it stays on
@@ -50,6 +50,9 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
       // off screen.
       style.textContent =
         `.${HIDE_CLASS}{display:none !important;}` +
+        // Hide the badge while the Shopping Bag drawer is open (cart-drawer.tsx
+        // toggles the `cart-drawer-open` class on <body>).
+        `body.cart-drawer-open #${WRAPPER_ID},body.cart-drawer-open [id^="google-merchantwidget"]{display:none !important;}` +
         `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 8px) !important;}}`;
       document.head.appendChild(style);
     }

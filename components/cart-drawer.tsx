@@ -168,6 +168,13 @@ export default function CartDrawer() {
     if (appliedCoupon) setPriceDetailsOpen(true);
   }, [appliedCoupon]);
 
+  // Hide the Google Customer Reviews badge while the Shopping Bag is open
+  // (CSS rule lives in components/analytics/google-customer-reviews-badge.tsx).
+  useEffect(() => {
+    document.body.classList.toggle('cart-drawer-open', isCartOpen);
+    return () => document.body.classList.remove('cart-drawer-open');
+  }, [isCartOpen]);
+
   // Fire GA4 / Google Ads view_cart once each time the side cart opens —
   // not on every re-render while it stays open (e.g. quantity changes).
   // Unlike begin_checkout on the checkout page, there's no localStorage
