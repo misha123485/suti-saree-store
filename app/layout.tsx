@@ -9,6 +9,7 @@ import AnalyticsScripts from '@/components/analytics-scripts';
 import CookieConsent from '@/components/cookie-consent';
 import BlurPlaceholderSync from '@/components/blur-placeholder-sync';
 import GoogleCustomerReviewsBadge from '@/components/analytics/google-customer-reviews-badge';
+import ReviewsBadge from '@/components/reviews-badge';
 import { getServerSupabase } from '@/lib/supabase-server';
 import { getStorefrontChromeSettings } from '@/lib/storefront-settings-server';
 import { SeoSettings, AnalyticsSettings } from '@/lib/marketing-api';
@@ -287,6 +288,8 @@ export default async function RootLayout({
         {/* Google Customer Reviews badge (store rating). See
            components/analytics/google-customer-reviews-badge.tsx. */}
         <GoogleCustomerReviewsBadge enabled={analytics.gcr_badge_enabled} />
+        {/* Floating "Reviews" tab. Admin > Reviews > Display settings. */}
+        <ReviewsBadge />
         <BrandProvider logoUrl={brand.logo_url}>
         <Providers
           initialPaymentDiscount={initialPaymentDiscount}

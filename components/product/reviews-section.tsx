@@ -1251,6 +1251,15 @@ export default function ReviewsSection({
     setFocusReviewId(null);
   };
 
+  // The floating "Reviews" badge (components/reviews-badge.tsx) asks this
+  // section to open its popup via a window event.
+  useEffect(() => {
+    const onOpen = () => openSheet();
+    window.addEventListener('open-reviews-sheet', onOpen);
+    return () => window.removeEventListener('open-reviews-sheet', onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviews.length, settings.initialCount]);
+
   const openPhotoOfReview = (reviewId: string, src: string) => {
     const idx = allPhotos.findIndex((p) => p.reviewId === reviewId && p.src === src);
     setLightboxIndex(idx >= 0 ? idx : 0);

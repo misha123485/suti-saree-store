@@ -57,6 +57,9 @@ export interface ReviewDisplaySettings {
   showHelpful: boolean;
   /** Show the star-breakdown bars (5★ 4★ ...) next to the average. */
   showRatingBreakdown: boolean;
+  /** Floating maroon "Reviews" tab on the right edge of the storefront
+   *  (hidden on cart, checkout and the shopping-bag drawer). */
+  showFloatingBadge: boolean;
   /** Small "5.0 ★ | 137" badge on the product image. */
   showImageRatingBadge: boolean;
   /** Small "★★★★★ (22)" line right under the product title. */
@@ -90,6 +93,7 @@ export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
   showHelpful: true,
   showRatingBreakdown: true,
   showRateButton: true,
+  showFloatingBadge: true,
   showImageRatingBadge: true,
   showTitleRating: true,
   showStoreReply: true,
@@ -109,6 +113,7 @@ const BOOL_KEYS = [
   'showHelpful',
   'showRatingBreakdown',
   'showRateButton',
+  'showFloatingBadge',
   'showImageRatingBadge',
   'showTitleRating',
   'showStoreReply',

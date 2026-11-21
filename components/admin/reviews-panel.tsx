@@ -573,6 +573,7 @@ export default function ReviewsPanel() {
               [
                 'Summary & page sections',
                 [
+                  ['showFloatingBadge', 'Show floating "Reviews" badge on the right edge (never on cart / checkout / bag)'],
                   ['showImageRatingBadge', 'Show rating badge on product image (5.0 ★ 137)'],
                   ['showTitleRating', 'Show ★★★★★ (count) under product title'],
                   ['showRatingBreakdown', 'Show star breakdown bars (5★ 4★ …)'],
