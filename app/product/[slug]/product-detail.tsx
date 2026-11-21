@@ -8,10 +8,7 @@ import {
   Star,
   ShoppingBag,
   Truck,
-  ShieldCheck,
-  RefreshCw,
   Gift,
-  Lock,
   Sparkles,
   ClipboardList,
   RotateCcw,
@@ -31,7 +28,6 @@ import {
   DEFAULT_FULFILLMENT_SETTINGS,
   fetchFulfillmentSettings,
   shippingReturnsSummary,
-  returnWindowBadgeText,
 } from '@/lib/marketing-api';
 import { fetchShippingSettings } from '@/lib/pincode-api';
 import { Button } from '@/components/ui/button';
@@ -73,6 +69,7 @@ import { FeaturedCarousel } from '@/components/featured-picks';
 import { useAuth } from '@/lib/auth-context';
 import { fetchOfferDisplaySettings, DEFAULT_OFFER_DISPLAY_SETTINGS, OfferDisplaySettings } from '@/lib/offer-display-settings';
 import MegaDealOffers from '@/components/product/mega-deal-offers';
+import TrustBadges from '@/components/product/trust-badges';
 import { toast } from 'sonner';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
@@ -1532,30 +1529,10 @@ function ProductInfo({
 
       <SectionSplitter />
 
-      {/* Trust section right under Buy Now. Return days come from
-          Admin > Marketing > Shipping & Returns Timing. */}
-      <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-2 gap-2.5">
-          {[
-            {
-              icon: RefreshCw,
-              title: `${returnWindowBadgeText(fulfillment)} easy return`,
-              sub: 'Pickup from home',
-            },
-            { icon: Truck, title: 'Cash on Delivery', sub: 'Pay when it arrives' },
-            { icon: ShieldCheck, title: 'Authentic handloom', sub: 'Direct from weavers' },
-            { icon: Lock, title: 'Secure payment', sub: 'UPI · Cards · NetBanking' },
-          ].map((t) => (
-            <div key={t.title} className="flex items-start gap-2 rounded-lg border border-border/60 bg-card px-3 py-2.5">
-              <t.icon className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold leading-tight text-foreground">{t.title}</p>
-                <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{t.sub}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Trust cards right under Buy Now (tap a card for details in a bottom
+          sheet). Return days come from Admin > Marketing > Shipping &
+          Returns Timing. */}
+      <TrustBadges fulfillment={fulfillment} />
 
       {/* Right under the disabled Out of Stock button, above Shop by price. */}
       {!product.inStock && (
