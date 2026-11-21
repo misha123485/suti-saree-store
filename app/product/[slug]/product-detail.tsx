@@ -86,7 +86,6 @@ const SimilarProductsSheet = dynamic(() => import('@/components/product/similar-
 const RelatedProducts = dynamic(() => import('@/components/product/related-products'), { ssr: false });
 const VendorCollection = dynamic(() => import('@/components/product/vendor-collection'), { ssr: false });
 const RecentlyViewedSection = dynamic(() => import('@/components/product/recently-viewed'), { ssr: false });
-const PromoSlider = dynamic(() => import('@/components/home/promo-slider'), { ssr: false });
 const NotifyMeForm = dynamic(() => import('@/components/product/notify-me-form'), { ssr: false });
 const CouponList = dynamic(() => import('@/components/product/coupon-list'), { ssr: false });
 const FrequentlyBoughtTogether = dynamic(() => import('@/components/product/frequently-bought-together'), { ssr: false });
@@ -954,13 +953,6 @@ export default function ProductDetail({
       <div className="mt-6">
         <PriceQuickBrowseBar category={product.category} />
       </div>
-
-      {/* Same Refer & Earn / trust-signal carousel shown on the home page,
-          repeated here right after "You may also like" so the loyalty/
-          referral nudge reaches shoppers deep on a product page too. */}
-      <LazyOnView className="mt-8" minHeight={160}>
-        <PromoSlider />
-      </LazyOnView>
 
       <LazyOnView minHeight={200}>
         <FrequentlyBoughtTogether productId={baseProduct.id} />
