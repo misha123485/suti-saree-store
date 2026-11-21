@@ -26,6 +26,8 @@ interface Props {
   isLoggedIn: boolean;
   loyaltyBalance: number;
   loyaltySettings: LoyaltySettings;
+  /** Slim one-line strip (used inside the mobile sticky cart bar). Same popup sheet. */
+  compact?: boolean;
 }
 
 interface OfferRow {
@@ -50,6 +52,7 @@ export default function MegaDealOffers({
   isLoggedIn,
   loyaltyBalance,
   loyaltySettings,
+  compact = false,
 }: Props) {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [storeCredit, setStoreCredit] = useState(0);
@@ -226,29 +229,49 @@ export default function MegaDealOffers({
     });
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={compact ? undefined : "flex flex-col gap-2"}>
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
       <SheetTrigger asChild>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50/60 px-3.5 py-3 text-left dark:border-violet-900 dark:bg-violet-950/30"
-        >
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-gradient-to-r from-rose-600 to-amber-500 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white">
+        {compact ? (
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-2 border-y border-violet-200 bg-violet-50 px-4 py-1.5 text-left dark:border-violet-900 dark:bg-violet-950/30"
+          >
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="shrink-0 rounded bg-gradient-to-r from-rose-600 to-amber-500 px-1 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-white">
                 {settings.badge_text}
               </span>
-              <span className="font-serif text-lg font-bold text-primary">Get at {formatINR(calc.total)}</span>
-              <span className="rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">
+              <span className="truncate font-serif text-sm font-bold text-primary">Get at {formatINR(calc.total)}</span>
+              <span className="shrink-0 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 Extra {formatINR(saved)} Off
               </span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">With {withParts.join(' + ')}</p>
-          </div>
-          <span className="flex shrink-0 items-center text-xs font-semibold text-rose-600">
-            Details <ChevronRight className="h-4 w-4" />
-          </span>
-        </button>
+            <span className="flex shrink-0 items-center text-[11px] font-semibold text-rose-600">
+              Details <ChevronRight className="h-3.5 w-3.5" />
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50/60 px-3.5 py-3 text-left dark:border-violet-900 dark:bg-violet-950/30"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded bg-gradient-to-r from-rose-600 to-amber-500 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white">
+                  {settings.badge_text}
+                </span>
+                <span className="font-serif text-lg font-bold text-primary">Get at {formatINR(calc.total)}</span>
+                <span className="rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                  Extra {formatINR(saved)} Off
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">With {withParts.join(' + ')}</p>
+            </div>
+            <span className="flex shrink-0 items-center text-xs font-semibold text-rose-600">
+              Details <ChevronRight className="h-4 w-4" />
+            </span>
+          </button>
+        )}
       </SheetTrigger>
 
       <SheetContent side="bottom" className="mx-auto max-h-[85vh] max-w-md overflow-y-auto rounded-t-2xl p-4">

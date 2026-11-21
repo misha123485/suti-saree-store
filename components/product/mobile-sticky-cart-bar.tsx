@@ -14,6 +14,8 @@ interface MobileStickyCartBarProps {
   onBuyNow: () => void;
   couponCode?: string | null;
   couponDiscount?: number;
+  /** Slim "Get at ₹X" offer strip (MegaDealOffers compact) shown above the bar row. */
+  offerSlot?: React.ReactNode;
 }
 
 // Fixed bottom bar shown only on small screens on the product detail page,
@@ -21,11 +23,13 @@ interface MobileStickyCartBarProps {
 export default function MobileStickyCartBar({
   name,
   price,
+  mrp,
   inStock,
   onAdd,
   onBuyNow,
   couponCode,
   couponDiscount = 0,
+  offerSlot,
 }: MobileStickyCartBarProps) {
   const hasCoupon = !!couponCode && couponDiscount > 0;
   const finalPrice = hasCoupon ? Math.max(0, price - couponDiscount) : price;
@@ -96,6 +100,7 @@ export default function MobileStickyCartBar({
       aria-hidden={!show}
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
+      {offerSlot}
       {hasCoupon && (
         <p className="bg-green-50 px-4 py-1 text-center text-xs font-medium text-green-700">
           🎉 Congratulations! You saved {formatINR(couponDiscount)} with code &quot;{couponCode}&quot;
@@ -103,17 +108,27 @@ export default function MobileStickyCartBar({
       )}
       <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex flex-wrap items-baseline gap-x-1.5">
             <span
               className={`font-serif text-lg font-bold leading-tight ${hasCoupon ? 'text-green-600' : 'text-primary'}`}
             >
               {formatINR(finalPrice)}
             </span>
+            {mrp && mrp > finalPrice && (
+              <span className="text-[11px] leading-tight text-muted-foreground line-through">{formatINR(mrp)}</span>
+            )}
           </div>
-          <span className="flex items-center gap-1 text-[10px] font-semibold uppercase leading-tight tracking-wide text-emerald-600">
-            <Truck className="h-3 w-3" />
-            Free Delivery
-          </span>
+          <div className="flex flex-wrap items-center gap-x-1.5 leading-tight">
+            {mrp && mrp > finalPrice && (
+              <span className="rounded bg-emerald-100 px-1 py-px text-[9px] font-bold text-emerald-700">
+                {Math.round(((mrp - finalPrice) / mrp) * 100)}% OFF
+              </span>
+            )}
+            <span className="flex items-center gap-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600">
+              <Truck className="h-2.5 w-2.5" />
+              Free Delivery
+            </span>
+          </div>
         </div>
         {inStock ? (
           <div className="flex shrink-0 items-center gap-2">

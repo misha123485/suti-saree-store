@@ -228,6 +228,13 @@ export default function ProductDetail({
     };
   }, []);
   const [similarOpen, setSimilarOpen] = useState(false);
+  // Offer settings + payment discount for the sticky bar's "Get at ₹X" strip
+  // (same data the buy box's MegaDealOffers card uses).
+  const { paymentDiscount: stickyPaymentDiscount } = usePaymentDiscount();
+  const [stickyOfferDisplay, setStickyOfferDisplay] = useState<OfferDisplaySettings>(DEFAULT_OFFER_DISPLAY_SETTINGS);
+  useEffect(() => {
+    fetchOfferDisplaySettings().then(setStickyOfferDisplay).catch(() => {});
+  }, []);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings>(DEFAULT_LOYALTY_SETTINGS);
   const [loyaltyBalance, setLoyaltyBalance] = useState(0);
   useEffect(() => {
@@ -973,6 +980,29 @@ export default function ProductDetail({
         onBuyNow={handleBuyNow}
         couponCode={appliedCoupon?.code ?? null}
         couponDiscount={couponDiscount}
+        offerSlot={
+          stickyOfferDisplay.enabled ? (
+            <MegaDealOffers
+              compact
+              settings={stickyOfferDisplay}
+              price={selectedSizePrice}
+              appliedCoupon={appliedCoupon}
+              couponDiscount={couponDiscount}
+              onCouponApply={(c, d) => {
+                setAppliedCoupon(c);
+                setCouponDiscount(d);
+              }}
+              onCouponRemove={() => {
+                setAppliedCoupon(null);
+                setCouponDiscount(0);
+              }}
+              paymentDiscount={stickyPaymentDiscount}
+              isLoggedIn={!!user}
+              loyaltyBalance={loyaltyBalance}
+              loyaltySettings={loyaltySettings}
+            />
+          ) : null
+        }
       />
     </div>
   );
