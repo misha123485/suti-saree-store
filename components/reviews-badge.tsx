@@ -55,6 +55,8 @@ function Stars({ value, className = 'h-4 w-4' }: { value: number; className?: st
   );
 }
 
+// Hide the thin scrollbars on swipe rows (photos, filter chips).
+const noScroll = '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 const chipBase = 'shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors';
 const chipOn = 'border-primary bg-primary/10 text-primary';
 const chipOff = 'border-border bg-card text-foreground/80';
@@ -210,7 +212,7 @@ function ReviewFeed({ source, canWrite, onWrite }: { source: Source; canWrite: b
           <p className="mb-2 flex items-center gap-1.5 font-serif text-sm font-semibold">
             <Camera className="h-4 w-4 text-secondary" /> Customer photos ({stats?.photos ?? gallery.length})
           </p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className={`-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 ${noScroll}`}>
             {gallery.map((src, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -225,7 +227,7 @@ function ReviewFeed({ source, canWrite, onWrite }: { source: Source; canWrite: b
         </div>
       )}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className={`-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 ${noScroll}`}>
         {([['all', 'All'], ...(isProduct ? [['photos', `Photos ${stats?.photos ?? ''}`]] : []), ...[5, 4, 3, 2, 1].map((n) => [String(n), `${n} ★ ${stats?.counts[n] ?? ''}`])] as [Filter, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -280,7 +282,7 @@ function ReviewFeed({ source, canWrite, onWrite }: { source: Source; canWrite: b
             {r.title && <p className="text-sm font-semibold">{r.title}</p>}
             {r.comment && <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/85">{r.comment}</p>}
             {(r.photos?.length ?? 0) > 0 && (
-              <div className="flex gap-2 overflow-x-auto">
+              <div className={`flex gap-2 overflow-x-auto ${noScroll}`}>
                 {r.photos!.slice(0, 4).map((src, i) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -356,7 +358,7 @@ function WriteStoreReview({ onBack }: { onBack: () => void }) {
     );
   }
 
-  const field = 'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary';
+  const field = 'w-full rounded-xl border border-border bg-card px-3 py-2.5 text-base outline-none focus:border-primary sm:text-sm';
   return (
     <div className="flex flex-col gap-4">
       <button type="button" onClick={onBack} className="w-fit text-xs font-medium text-primary underline-offset-2 hover:underline">
@@ -419,9 +421,11 @@ function ReviewsHub({
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('reviews-hub-open');
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
+      document.body.classList.remove('reviews-hub-open');
     };
   }, [onClose]);
 
@@ -437,9 +441,9 @@ function ReviewsHub({
         aria-modal="true"
         aria-label="Customer reviews"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-background shadow-2xl sm:rounded-3xl"
+        className="flex h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-background shadow-2xl sm:h-auto sm:max-h-[88vh] sm:rounded-3xl"
       >
-        <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/70 px-5 py-3.5">
           <h2 className="font-serif text-xl font-semibold text-primary">Customer reviews</h2>
           <button type="button" onClick={onClose} aria-label="Close reviews" className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card">
             <X className="h-4 w-4" />
@@ -447,22 +451,39 @@ function ReviewsHub({
         </div>
 
         {!writing && (
-          <div className="flex gap-2 overflow-x-auto px-5 pt-4">
-            <button type="button" aria-pressed={tab === 'reviews'} onClick={() => setTab('reviews')} className={`${chipBase} ${tab === 'reviews' ? chipOn : chipOff}`}>
-              All reviews
-            </button>
-            <button type="button" aria-pressed={tab === 'store_reviews'} onClick={() => setTab('store_reviews')} className={`${chipBase} ${tab === 'store_reviews' ? chipOn : chipOff}`}>
-              Store reviews
-            </button>
-            {onProductPage && (
-              <button type="button" onClick={openProductReviews} className={`${chipBase} ${chipOff}`}>
-                This product’s reviews
-              </button>
-            )}
+          <div className="shrink-0 px-5 pt-4">
+            <div
+              role="tablist"
+              className={`grid gap-1 rounded-full bg-muted p-1 ${onProductPage ? 'grid-cols-3' : 'grid-cols-2'}`}
+            >
+              {([['reviews', 'All reviews'], ['store_reviews', 'Store reviews']] as [Source, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(key)}
+                  className={`min-h-[40px] rounded-full px-2 text-center text-[13px] font-medium leading-tight transition-colors ${
+                    tab === key ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground/70'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              {onProductPage && (
+                <button
+                  type="button"
+                  onClick={openProductReviews}
+                  className="min-h-[40px] rounded-full px-2 text-center text-[13px] font-medium leading-tight text-primary"
+                >
+                  This product
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        <div className="overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-5">
           {writing ? (
             <WriteStoreReview onBack={() => { setWriting(false); setTab('store_reviews'); }} />
           ) : (

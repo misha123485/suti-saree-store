@@ -53,6 +53,8 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
         // Hide the badge while the Shopping Bag drawer is open (cart-drawer.tsx
         // toggles the `cart-drawer-open` class on <body>).
         `body.cart-drawer-open #${WRAPPER_ID},body.cart-drawer-open [id^="google-merchantwidget"]{display:none !important;}` +
+        // Also hide it while the Reviews popup is open (components/reviews-badge.tsx).
+        `body.reviews-hub-open #${WRAPPER_ID},body.reviews-hub-open [id^="google-merchantwidget"]{display:none !important;}` +
         `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 8px) !important;}}`;
       document.head.appendChild(style);
     }
