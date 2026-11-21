@@ -50,7 +50,7 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
       // off screen.
       style.textContent =
         `.${HIDE_CLASS}{display:none !important;}` +
-        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 24px) !important;}}`;
+        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 8px) !important;}}`;
       document.head.appendChild(style);
     }
 
@@ -74,7 +74,7 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
   useEffect(() => {
     if (disabled || hidden) return;
     const mq = window.matchMedia('(max-width: 767px)');
-    const LIFT = 'calc(var(--sticky-bar-h, 80px) + 24px)';
+    const LIFT = 'calc(var(--sticky-bar-h, 80px) + 8px)';
     let busy = false;
     const apply = () => {
       if (busy) return;
