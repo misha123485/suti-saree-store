@@ -82,6 +82,7 @@ export default function MobileStickyCartBar({
     if (!el) return;
     const root = document.documentElement;
     const publish = () => root.style.setProperty('--sticky-bar-h', show ? `${el.offsetHeight}px` : '0px');
+    root.style.setProperty('--gcr-base-bottom', '24px');
     publish();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
     ro?.observe(el);
@@ -90,6 +91,7 @@ export default function MobileStickyCartBar({
       ro?.disconnect();
       window.removeEventListener('resize', publish);
       root.style.removeProperty('--sticky-bar-h');
+      root.style.removeProperty('--gcr-base-bottom');
     };
   }, [show]);
 

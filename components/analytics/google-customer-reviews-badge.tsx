@@ -42,12 +42,18 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;
-      // Mobile: sit just above the sticky "Add to Bag / Buy Now" bar on the
-      // product page (it publishes its height as --sticky-bar-h); elsewhere
-      // keep the usual 80px lift above the bottom nav.
+      // Mobile: lift the badge so it floats just above the sticky "Add to Bag /
+      // Buy Now" bar on the product page (the bar publishes its height as
+      // --sticky-bar-h, 0px while it is hidden). A transform is used for the
+      // lift because it works whatever positioning Google's widget applies
+      // inline. Elsewhere keep the usual 104px lift above the bottom nav
+      // (the bar sets --gcr-base-bottom to 24px while it is mounted).
       style.textContent =
         `.${HIDE_CLASS}{display:none !important;}` +
-        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 24px) !important;}}`;
+        `@media (max-width:767px){#${WRAPPER_ID}{` +
+        `bottom:var(--gcr-base-bottom,104px) !important;` +
+        `transform:translateY(calc(-1 * var(--sticky-bar-h,0px))) !important;` +
+        `transition:transform .2s ease !important;}}`;
       document.head.appendChild(style);
     }
 
