@@ -42,18 +42,15 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;
-      // Mobile: lift the badge so it floats just above the sticky "Add to Bag /
-      // Buy Now" bar on the product page (the bar publishes its height as
-      // --sticky-bar-h, 0px while it is hidden). A transform is used for the
-      // lift because it works whatever positioning Google's widget applies
-      // inline. Elsewhere keep the usual 104px lift above the bottom nav
-      // (the bar sets --gcr-base-bottom to 24px while it is mounted).
+      // Mobile: sit just above the sticky "Add to Bag / Buy Now" bar on the
+      // product page (it publishes its height as --sticky-bar-h, 0px while
+      // hidden); elsewhere keep the usual 80px lift above the bottom nav.
+      // NOTE: no transform here -- a transform on the wrapper would make it
+      // the containing block of the widget's fixed iframe and push the badge
+      // off screen.
       style.textContent =
         `.${HIDE_CLASS}{display:none !important;}` +
-        `@media (max-width:767px){#${WRAPPER_ID}{` +
-        `bottom:var(--gcr-base-bottom,104px) !important;` +
-        `transform:translateY(calc(-1 * var(--sticky-bar-h,0px))) !important;` +
-        `transition:transform .2s ease !important;}}`;
+        `@media (max-width:767px){#${WRAPPER_ID}{bottom:calc(var(--sticky-bar-h,80px) + 24px) !important;}}`;
       document.head.appendChild(style);
     }
 
@@ -69,6 +66,48 @@ export default function GoogleCustomerReviewsBadge({ enabled = true }: { enabled
     observer.observe(document.body, { childList: true });
     return () => observer.disconnect();
   }, [hidden]);
+
+  // The visible badge can be a position:fixed child of Google's wrapper that
+  // ignores a bottom set on the wrapper itself. So on mobile we also set
+  // `bottom` on every fixed element inside the wrapper, using the CSS
+  // variable so it follows the sticky bar (and animates away when it hides).
+  useEffect(() => {
+    if (disabled || hidden) return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const LIFT = 'calc(var(--sticky-bar-h, 80px) + 24px)';
+    let busy = false;
+    const apply = () => {
+      if (busy) return;
+      const wrapper = document.getElementById(WRAPPER_ID);
+      if (!wrapper) return;
+      busy = true;
+      const els = [wrapper, ...Array.from(wrapper.querySelectorAll<HTMLElement>('*'))];
+      for (const el of els) {
+        if (getComputedStyle(el).position !== 'fixed') continue;
+        if (mq.matches) {
+          if (el.style.getPropertyValue('bottom') !== LIFT) {
+            el.style.setProperty('bottom', LIFT, 'important');
+            el.style.setProperty('top', 'auto', 'important');
+          }
+          el.style.setProperty('transition', 'bottom .2s ease');
+        } else {
+          el.style.removeProperty('bottom');
+          el.style.removeProperty('top');
+        }
+      }
+      busy = false;
+    };
+    apply();
+    const mo = new MutationObserver(apply);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+    mq.addEventListener('change', apply);
+    const t = window.setInterval(apply, 1500);
+    return () => {
+      mo.disconnect();
+      mq.removeEventListener('change', apply);
+      window.clearInterval(t);
+    };
+  }, [disabled, hidden]);
 
   // Load Google's store widget exactly like the snippet in Merchant Center >
   // Customer Reviews > Badge integration: add the script, and on its "load"
