@@ -46,7 +46,6 @@ import DeliveryInfo from '@/components/product/delivery-info';
 import DeliveryCheck from '@/components/product/delivery-check';
 import VariantSwatches from '@/components/product/variant-swatches';
 import ProductHighlights from '@/components/product/product-highlights';
-import PriceQuickBrowseBar from '@/components/product/price-quick-browse-bar';
 import ProductGallery from '@/components/product/product-gallery';
 import type { GalleryOverlaySettings } from '@/lib/gallery-overlay-settings';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
@@ -948,11 +947,6 @@ export default function ProductDetail({
           <RelatedProducts current={product} allProducts={products} />
         )}
       </LazyOnView>
-
-      {/* Shop by price -- shown right after "You may also like". */}
-      <div className="mt-6">
-        <PriceQuickBrowseBar category={product.category} />
-      </div>
 
       <LazyOnView minHeight={200}>
         <FrequentlyBoughtTogether productId={baseProduct.id} />
