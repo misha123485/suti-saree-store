@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatINR } from '@/lib/format';
 
@@ -21,7 +21,6 @@ interface MobileStickyCartBarProps {
 export default function MobileStickyCartBar({
   name,
   price,
-  mrp,
   inStock,
   onAdd,
   onBuyNow,
@@ -36,26 +35,42 @@ export default function MobileStickyCartBar({
   // WhatsApp / chat button can sit just above it with only a small gap.
   const barRef = useRef<HTMLDivElement>(null);
 
-  // Hidden when the page loads. The bar slides in only AFTER the shopper has
-  // scrolled down past the in-page Add to Bag / Buy Now buttons
-  // (#product-inline-cta), i.e. once those buttons are off the TOP of the
-  // screen. While the in-page buttons are visible (or still below the fold)
-  // the bar stays hidden, so two sets of the same buttons never show at once.
-  // Scrolling back up so the in-page buttons reappear hides it again. If that
-  // block does not exist, the bar is shown so there is still a way to buy.
+  // Hidden when the page loads. The bar slides in only once the shopper has
+  // scrolled to the Ratings & Reviews section (#product-reviews) -- i.e. when
+  // the top of the reviews block enters the screen -- and stays visible while
+  // they keep scrolling through/below the reviews. Scrolling back up above the
+  // reviews hides it again. If the reviews block does not exist at all, the
+  // bar is shown so there is still a way to buy.
   const [show, setShow] = useState(false);
   useEffect(() => {
-    const target = document.getElementById('product-inline-cta');
-    if (!target || typeof IntersectionObserver === 'undefined') {
-      setShow(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      ([entry]) => setShow(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0),
-      { threshold: 0 }
-    );
-    io.observe(target);
-    return () => io.disconnect();
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const target = document.getElementById('product-reviews');
+      if (!target) {
+        setShow(true);
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      // display:none (e.g. hidden desktop copy) => zero size => keep hidden.
+      if (rect.width === 0 && rect.height === 0) {
+        setShow(false);
+        return;
+      }
+      // Reviews started: its top edge has come up into the visible screen.
+      setShow(rect.top <= window.innerHeight - 80);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   useEffect(() => {
@@ -88,21 +103,17 @@ export default function MobileStickyCartBar({
       )}
       <div className="flex items-center gap-3 px-4 py-1.5">
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-1.5">
             <span
-              className={`font-serif text-2xl font-bold ${hasCoupon ? 'text-green-600' : 'text-primary'}`}
+              className={`font-serif text-lg font-bold leading-tight ${hasCoupon ? 'text-green-600' : 'text-primary'}`}
             >
               {formatINR(finalPrice)}
             </span>
-            {hasCoupon ? (
-              <span className="text-sm text-muted-foreground line-through">{formatINR(price)}</span>
-            ) : (
-              mrp &&
-              mrp > price && (
-                <span className="text-sm text-muted-foreground line-through">{formatINR(mrp)}</span>
-              )
-            )}
           </div>
+          <span className="flex items-center gap-1 text-[10px] font-semibold uppercase leading-tight tracking-wide text-emerald-600">
+            <Truck className="h-3 w-3" />
+            Free Delivery
+          </span>
         </div>
         {inStock ? (
           <div className="flex shrink-0 items-center gap-2">
