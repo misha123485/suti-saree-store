@@ -46,6 +46,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import StoreReviewsAdmin from './store-reviews-admin';
 import { toast } from 'sonner';
 
 type StatusFilter = 'all' | 'pending' | 'approved';
@@ -586,6 +587,8 @@ export default function ReviewsPanel() {
               [
                 'Guest reviews & emails',
                 [
+                  ['allowStoreReviews', 'Allow "Write a store review" in the Reviews popup'],
+                  ['autoPublishStoreReviews', 'Auto-publish store reviews (off = wait for my approval)'],
                   ['allowGuestReviews', 'Allow reviews without login (guest reviews)'],
                   ['autoPublishGuestReviews', 'Auto-publish guest reviews (off = wait for my approval)'],
                   ['emailReplyByDefault', 'Tick "email this reply to customer" by default'],
@@ -722,6 +725,8 @@ export default function ReviewsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <StoreReviewsAdmin />
 
       {lightboxUrl && (
         <div

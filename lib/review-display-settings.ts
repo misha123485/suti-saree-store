@@ -60,6 +60,10 @@ export interface ReviewDisplaySettings {
   /** Floating maroon "Reviews" tab on the right edge of the storefront
    *  (hidden on cart, checkout and the shopping-bag drawer). */
   showFloatingBadge: boolean;
+  /** Let shoppers write a review about the whole store (popup > Store reviews). */
+  allowStoreReviews: boolean;
+  /** Publish store reviews right away. Off = they wait for admin approval. */
+  autoPublishStoreReviews: boolean;
   /** Small "5.0 ★ | 137" badge on the product image. */
   showImageRatingBadge: boolean;
   /** Small "★★★★★ (22)" line right under the product title. */
@@ -94,6 +98,8 @@ export const DEFAULT_REVIEW_DISPLAY_SETTINGS: ReviewDisplaySettings = {
   showRatingBreakdown: true,
   showRateButton: true,
   showFloatingBadge: true,
+  allowStoreReviews: true,
+  autoPublishStoreReviews: false,
   showImageRatingBadge: true,
   showTitleRating: true,
   showStoreReply: true,
@@ -114,6 +120,8 @@ const BOOL_KEYS = [
   'showRatingBreakdown',
   'showRateButton',
   'showFloatingBadge',
+  'allowStoreReviews',
+  'autoPublishStoreReviews',
   'showImageRatingBadge',
   'showTitleRating',
   'showStoreReply',
