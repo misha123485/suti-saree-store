@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { SlidersHorizontal, Video, VideoOff } from 'lucide-react';
 import { Product } from '@/lib/types';
@@ -15,12 +15,14 @@ import {
   fetchCatalogVideoSettings,
   fetchCatalogListingSettings,
   DEFAULT_CATALOG_LISTING_SETTINGS,
+  CatalogListingSettings,
   fetchPriceRangeFilters,
   DEFAULT_PRICE_RANGE_FILTERS,
   PriceRangeBucket,
   getAvailablePriceBuckets,
 } from '@/lib/settings-api';
 import PriceRangeFilterBar from '@/components/shop/price-range-filter-bar';
+import PaginationNav from '@/components/shop/pagination-nav';
 import {
   Select,
   SelectContent,
@@ -49,6 +51,17 @@ interface CategoryToolbarGridProps {
   /** Real per-image blur previews (LQIP) for this category's products —
    *  see the matching prop on ShopContentProps for the full explanation. */
   blurPreviews?: Record<string, string>;
+  /** Public URL of page 1 of this category, with trailing slash
+   *  (e.g. /product-category/sarees/). Page N lives at `${basePath}page/N/`,
+   *  exactly like the old WooCommerce site. Omit it (tag pages) and paging
+   *  works in-page only, without changing the URL. */
+  basePath?: string;
+  /** Page number from the URL, so the server-rendered HTML already holds
+   *  the right page of products (crawlers + shared links). */
+  initialPage?: number;
+  /** Admin > Settings > Catalog Listing Size, read on the server so the page
+   *  size is the same on first paint and after hydration. */
+  initialListingSettings?: CatalogListingSettings;
 }
 
 /**
@@ -67,6 +80,9 @@ export default function CategoryToolbarGrid({
   initialPopularityRank = new Map(),
   initialTopVariants = {},
   blurPreviews = {},
+  basePath,
+  initialPage = 1,
+  initialListingSettings,
 }: CategoryToolbarGridProps) {
   const [sort, setSort] = useState<SortKey>('popularity');
 
@@ -206,7 +222,7 @@ export default function CategoryToolbarGrid({
   // same defaults this page always used if the setting hasn't been
   // saved yet or fails to load, so nothing breaks/blanks while it's
   // still fetching.
-  const [listingSettings, setListingSettings] = useState(DEFAULT_CATALOG_LISTING_SETTINGS);
+  const [listingSettings, setListingSettings] = useState(initialListingSettings ?? DEFAULT_CATALOG_LISTING_SETTINGS);
   useEffect(() => {
     let cancelled = false;
     fetchCatalogListingSettings()
@@ -219,17 +235,39 @@ export default function CategoryToolbarGrid({
     };
   }, []);
 
-  // Same progressive reveal as /shop (see app/shop/shop-content.tsx for
-  // the fuller rationale) -- a category page renders this same product
-  // grid, so it needs the same guard against shipping every product's
-  // images on first paint.
-  const PAGE_SIZE = listingSettings.page_size;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Numbered pages (Previous / 1 2 3 / Next) in the old WooCommerce URL format:
+  // page 1 = /product-category/sarees/, page 2 = /product-category/sarees/page/2/.
+  // The server renders the right page for crawlers and shared links, and the
+  // pagination links are real <a href> links Google can follow. Changing sort
+  // or the price chip goes back to page 1 so a narrowed list never stays on a
+  // stale page number.
+  const PAGE_SIZE = Math.max(1, listingSettings.page_size);
+  const [page, setPage] = useState(Math.max(1, Math.floor(initialPage) || 1));
+  const gridTopRef = useRef<HTMLDivElement>(null);
+  const hrefFor = (n: number) => (!basePath ? '#' : n > 1 ? `${basePath}page/${n}/` : basePath);
+  const syncUrl = (n: number) => {
+    if (basePath && typeof window !== 'undefined') {
+      window.history.replaceState(window.history.state, '', hrefFor(n));
+    }
+  };
+  const filterKey = JSON.stringify([sort, activePriceBucketId, PAGE_SIZE]);
+  const lastFilterKey = useRef(filterKey);
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [sort, PAGE_SIZE, activePriceBucketId]);
-  const visibleProducts = sorted.slice(0, visibleCount);
-  const hasMore = visibleCount < sorted.length;
+    if (lastFilterKey.current === filterKey) return;
+    lastFilterKey.current = filterKey;
+    setPage(1);
+    syncUrl(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const goToPage = (n: number) => {
+    const next = Math.min(Math.max(1, n), totalPages);
+    setPage(next);
+    syncUrl(next);
+    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const visibleProducts = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <>
@@ -300,7 +338,7 @@ export default function CategoryToolbarGrid({
         className="mt-4"
       />
 
-      <div className="mt-4 grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div ref={gridTopRef} className="mt-4 scroll-mt-24 grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {expandProductVariants(visibleProducts, listingSettings.max_variant_cards_per_product).map((p, i) => {
           // Show this product's best-performing colour instead of always
           // its default -- skipped for already-exploded per-colour cards,
@@ -329,18 +367,12 @@ export default function CategoryToolbarGrid({
         })}
       </div>
 
-      {hasMore && (
-        <div className="mt-8 flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-            className="min-w-40"
-          >
-            Load more ({sorted.length - visibleCount} more)
-          </Button>
-        </div>
-      )}
+      <PaginationNav
+        currentPage={currentPage}
+        totalPages={totalPages}
+        hrefFor={hrefFor}
+        onNavigate={goToPage}
+      />
     </>
   );
 }

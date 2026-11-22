@@ -28,6 +28,8 @@ const nextConfig = {
       { source: '/category-sitemap.xml', destination: '/sitemap.xml', permanent: true },
       // WP RSS feed
       { source: '/feed', destination: '/rss.xml', permanent: true },
+      // WooCommerce sent /shop/page/1/ to /shop/ -- keep doing that so page 1 has one URL only.
+      { source: '/shop/page/1', destination: '/shop/', permanent: true },
     ];
   },
   async rewrites() {
@@ -40,6 +42,11 @@ const nextConfig = {
       // generic rewrites below (otherwise "rss.xml" would be treated as the category slug).
       { source: '/product-category/:parent*/:slug/rss.xml', destination: '/category/:slug/rss.xml' },
       { source: '/product-tag/:slug/rss.xml', destination: '/tag/:slug/rss.xml' },
+      // Old WooCommerce pagination URLs (permalinks were /%postname%/ so pages were /page/N/).
+      // MUST come before the generic category rule below, otherwise ":parent*" would swallow
+      // "sarees/page" and treat "2" as the category slug.
+      { source: '/shop/page/:n(\\d+)', destination: '/shop?page=:n' },
+      { source: '/product-category/:parent*/:slug/page/:n(\\d+)', destination: '/category/:slug/page/:n' },
       { source: '/product-category/:parent*/:slug', destination: '/category/:slug' },
       { source: '/product-tag/:slug', destination: '/tag/:slug' },
       { source: '/privacy-policy', destination: '/legal/privacy-policy' },

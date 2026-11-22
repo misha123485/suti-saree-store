@@ -32,6 +32,12 @@ const SHOP_TITLE = 'Shop All Sarees & Ethnic Wear';
 const SHOP_DESCRIPTION =
   'Browse our full collection of handwoven silk sarees, cotton sarees, lehengas, anarkalis, kurtis and bridal wear, sourced directly from master weavers across India.';
 
+// Old WooCommerce pagination format: /shop/ for page 1, /shop/page/2/ for page 2...
+// (served by the rewrite in next.config.js, which maps it onto ?page=N internally).
+function shopPagePath(page: number): string {
+  return page > 1 ? `/shop/page/${page}/` : '/shop/';
+}
+
 function parsePage(raw: string | string[] | undefined): number {
   const v = Array.isArray(raw) ? raw[0] : raw;
   const n = parseInt(v ?? '1', 10);
@@ -47,7 +53,7 @@ export async function generateMetadata({
   searchParams: { [key: string]: string | string[] | undefined };
 }): Promise<Metadata> {
   const page = parsePage(searchParams?.page);
-  const url = page > 1 ? `${SITE_URL}/shop/?page=${page}` : `${SITE_URL}/shop/`;
+  const url = `${SITE_URL}${shopPagePath(page)}`;
   const title = page > 1 ? `${SHOP_TITLE} - Page ${page}` : SHOP_TITLE;
   return {
     title,
@@ -150,7 +156,7 @@ export default async function ShopPage({
   // ?page=999 on a 5-page catalog: send to the last real page instead of
   // serving an empty page that Google would index as a soft 404.
   if (products.length > 0 && page > totalPages) {
-    redirect(totalPages > 1 ? `/shop/?page=${totalPages}` : '/shop/');
+    redirect(shopPagePath(totalPages));
   }
 
   // Same default order as the grid's "Popular" sort (rank, then featured,
@@ -163,7 +169,7 @@ export default async function ShopPage({
     return Number(!!b.featured) - Number(!!a.featured) || b.rating - a.rating;
   });
   const pageProducts = ranked.slice((page - 1) * pageSize, page * pageSize);
-  const pageUrl = page > 1 ? `${SITE_URL}/shop/?page=${page}` : `${SITE_URL}/shop/`;
+  const pageUrl = `${SITE_URL}${shopPagePath(page)}`;
 
   const collectionJsonLd = {
     '@context': 'https://schema.org',

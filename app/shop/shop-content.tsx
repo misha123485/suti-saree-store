@@ -504,8 +504,15 @@ function ShopContentInner({
   const gridTopRef = useRef<HTMLDivElement>(null);
   const buildPageHref = (n: number) => {
     const sp = new URLSearchParams(params.toString());
+    sp.delete('page');
+    // /shop uses the old WooCommerce format (/shop/page/2/); /search keeps ?page=N.
+    // (pathname can be the rewritten or the visible path, so check by prefix.)
+    if (!isSearchPage) {
+      const qs = sp.toString();
+      const base = n > 1 ? `/shop/page/${n}/` : '/shop/';
+      return qs ? `${base}?${qs}` : base;
+    }
     if (n > 1) sp.set('page', String(n));
-    else sp.delete('page');
     const qs = sp.toString();
     const base = pathname.endsWith('/') ? pathname : `${pathname}/`;
     return qs ? `${base}?${qs}` : base;

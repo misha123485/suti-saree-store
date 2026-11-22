@@ -5,6 +5,7 @@ import { LEGAL_PAGE_TITLES } from '@/lib/marketing-api';
 import { fetchPublishedBlogPostsServer } from '@/lib/blog-api-server';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import { categoryPath } from '@/lib/category-url';
+import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
 
 // This route replaces the app/sitemap.ts file-convention sitemap. The
 // installed Next.js version's built-in sitemap XML serializer
@@ -209,9 +210,28 @@ async function buildSitemapEntries(): Promise<SitemapEntry[]> {
     fetchPublishedBlogPostsServer(),
   ]);
 
+  // Numbered listing pages (old WooCommerce URLs: /shop/page/2/ and
+  // /product-category/x/page/2/). The page count must match what the pages
+  // themselves compute: products.length / Admin > Settings > Catalog Listing Size.
+  let pageSize = DEFAULT_CATALOG_LISTING_SETTINGS.page_size;
+  try {
+    pageSize = Math.max(1, (await fetchCatalogListingSettings()).page_size);
+  } catch {
+    // keep the default
+  }
+  const pageCount = (items: number) => Math.max(1, Math.ceil(items / pageSize));
+  const extraPages = (base: string, items: number, priority: number): SitemapEntry[] =>
+    Array.from({ length: pageCount(items) - 1 }, (_, i) => ({
+      url: `${base}page/${i + 2}/`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority,
+    }));
+
   const staticPages: SitemapEntry[] = [
     { url: SITE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/shop/`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    ...extraPages(`${SITE_URL}/shop/`, products.length, 0.6),
     {
       url: `${SITE_URL}/sell-with-us`,
       lastModified: new Date(),
@@ -253,12 +273,22 @@ async function buildSitemapEntries(): Promise<SitemapEntry[]> {
   const namesWithProducts = new Set(products.flatMap((p) => [p.category_name, ...(p.category_names ?? [])]));
   const categoryPages: SitemapEntry[] = categories
     .filter((c) => namesWithProducts.has(c.name))
-    .map((c) => ({
-      url: `${SITE_URL}${categoryPath(c)}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.7,
-    }));
+    .flatMap((c) => {
+      const base = `${SITE_URL}${categoryPath(c)}`;
+      // Same membership rule as lib/category-utils.ts productInCategory().
+      const inCategory = products.filter(
+        (p) => p.category_name === c.name || (p.category_names ?? []).includes(c.name)
+      ).length;
+      return [
+        {
+          url: base,
+          lastModified: new Date(),
+          changeFrequency: 'weekly' as const,
+          priority: 0.7,
+        },
+        ...extraPages(base, inCategory, 0.5),
+      ];
+    });
 
   const blogPages: SitemapEntry[] = [
     { url: `${SITE_URL}/blog`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
