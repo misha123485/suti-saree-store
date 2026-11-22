@@ -864,7 +864,7 @@ function ShopContentInner({
           so it also highlights the active category instead of navigating
           away to a separate page. */}
           <div className="no-scrollbar overflow-x-auto">
-          <div className="flex gap-4 sm:gap-5">
+          <div className="flex gap-3 sm:gap-3">
             {categoriesWithProducts.map((c) => {
               const isActive = selectedCats.includes(c.name);
               return (
@@ -875,10 +875,10 @@ function ShopContentInner({
                       ? '/shop'
                       : `/shop?category=${encodeURIComponent(c.name)}`
                   }
-                  className="flex w-16 shrink-0 flex-col items-center gap-1.5 text-center sm:w-20"
+                  className="flex w-12 shrink-0 flex-col items-center gap-1 text-center sm:w-14"
                 >
                   <span
-                    className={`relative block h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 shadow-sm transition-colors sm:h-20 sm:w-20 ${
+                    className={`relative block h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 shadow-sm transition-colors sm:h-12 sm:w-12 ${
                       isActive
                         ? 'border-primary'
                         : 'border-background ring-1 ring-border'
@@ -889,7 +889,7 @@ function ShopContentInner({
                         src={categoryThumbs[c.name]}
                         alt={c.name}
                         fill
-                        sizes="80px"
+                        sizes="48px"
                         className="object-cover"
                         placeholder={isShimmerEnabled() ? 'blur' : undefined}
                         blurDataURL={isShimmerEnabled() ? THUMB_BLUR_DATA_URL : undefined}
@@ -901,7 +901,7 @@ function ShopContentInner({
                     )}
                   </span>
                   <span
-                    className={`line-clamp-2 text-[11px] font-medium leading-tight ${
+                    className={`line-clamp-2 text-[8px] font-medium leading-tight ${
                       isActive ? 'text-primary' : 'text-foreground/75'
                     }`}
                   >
