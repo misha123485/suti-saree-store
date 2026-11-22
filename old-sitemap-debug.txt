@@ -1,0 +1,46 @@
+
+##### posts - INSERT ki shuruaat (raw):
+"INSERT INTO `wp_posts` (`ID`, `post_author`, `post_date`, `post_date_gmt`, `post_content`, `post_title`, `post_excerpt`, `post_status`, `comment_status`, `ping_status`, `post_password`, `post_name`, `to_ping`, `pinged`, `post_modified`, `post_modified_gmt`, `post_content_filtered`, `post_parent`, `guid`, `menu_order`, `post_type`, `post_mime_type`, `comment_count`) VALUES\n(5, 141, '2021-02-04 11:06:52', '2021-02-04 11:06:52', '', 'woocommerce-pla"
+table=wp_posts rows=11298 columns(pehli row)=23
+  row: 0=5 | 1=141 | 2= 2021-02-04 11:06:52 | 3= 2021-02-04 11:06:52 | 4=  | 5= woocommerce-placeholder | 6=  | 7= inherit | 8= open | 9= closed | 10=  | 11= woocommerce-placeholder | 12=  | 13=  | 14= 2021-02-04 11:06:52 | 15= 2021-02-04 11:06:52 | 16=  | 17=0 | 18= https://sutisaree.com/wp-co | 19=0 | 20= attachment | 21= image/png | 22=0
+  row: 0=6 | 1=141 | 2= 2021-02-04 11:06:53 | 3= 2021-02-04 11:06:53 | 4= nn<div style="position: fix | 5= Shop | 6=  | 7= publish | 8= closed | 9= closed | 10=  | 11= shop | 12=  | 13=  | 14= 2026-09-18 15:23:33 | 15= 2026-09-18 09:53:33 | 16=  | 17=0 | 18= https://sutisaree.com/shop/ | 19=0 | 20= page | 21=  | 22=1
+  type/status ginti (top 8):
+   3816  col20= shop_order col7= wc-delivere
+   3661  col20= attachment col7= inherit
+   1355  col20= shop_order col7= wc-cancelle
+   361  col20= product_variation col7= publish
+   352  col20= product col7= publish
+   304  col20= shop_order col7= wc-on-hold
+   302  col20= shop_order col7= wc-complete
+   207  col20= shop_order col7= wc-failed
+
+##### options - INSERT ki shuruaat (raw):
+"INSERT INTO `wp_options` (`option_id`, `option_name`, `option_value`, `autoload`) VALUES\n(1, 'siteurl', 'https://www.sutisaree.com', 'yes'),\n(2, 'home', 'https://www.sutisaree.com', 'yes'),\n(3, 'blogname', 'Sutisaree', 'yes'),\n(4, 'blogdescription', 'Online Saree Shopping Store', 'yes'),\n(5, 'users_can_register', '0', 'yes'),\n(6, 'admin_email', 'contact@sutisaree.com', 'yes'),\n(7, 'start_of_week', '1', 'yes'),\n(8, 'use_balanceTags', '0', 'yes'),\n"
+table=wp_pys_options rows=6018 columns(pehli row)=4
+  row: 0=1 | 1= siteurl | 2= https://www.sutisaree.com | 3= yes
+  row: 0=2 | 1= home | 2= https://www.sutisaree.com | 3= yes
+  option names jisme "rank" ya "permalink" hai:
+    permalink_structure
+    woocommerce_permalinks
+    rank_math_known_post_types
+    rank_math_modules
+    rank-math-options-titles
+    rank-math-options-sitemap
+    rank_math_version
+    rank_math_db_version
+    rank_math_install_date
+    rank_math_registration_skip
+    rank_math_review_notice_date
+    rank_math_review_posts_converted
+
+##### terms - INSERT ki shuruaat (raw):
+"INSERT INTO `wp_terms` (`term_id`, `name`, `slug`, `term_group`) VALUES\n(2, 'simple', 'simple', 0),\n(4, 'variable', 'variable', 0),\n(13, 'rated-4', 'rated-4', 0),\n(14, 'rated-5', 'rated-5', 0),\n(15, 'Uncategorized', 'uncategorized', 0),\n(16, 'Shop by Fabric', 'shop-by-fabric', 0),\n(22, 'Saree', 'saree', 0),\n(23, 'Shop by Occasions', 'shop-by-occasions', 0),\n(26, 'Cotton Saree', 'cotton-saree', 0),\n(27, 'Handloom Saree', 'handloom-saree', 0),\n(28,"
+table=wp_terms rows=822 columns(pehli row)=4
+  row: 0=2 | 1= simple | 2= simple | 3=0
+  row: 0=4 | 1= variable | 2= variable | 3=0
+
+##### term_taxonomy - INSERT ki shuruaat (raw):
+"INSERT INTO `wp_term_taxonomy` (`term_taxonomy_id`, `term_id`, `taxonomy`, `description`, `parent`, `count`) VALUES\n(2, 2, 'product_type', '', 0, 301),\n(4, 4, 'product_type', '', 0, 51),\n(13, 13, 'product_visibility', '', 0, 1),\n(14, 14, 'product_visibility', '', 0, 64),\n(15, 15, 'product_cat', '', 0, 8),\n(16, 16, 'category', '', 0, 0),\n(22, 22, 'category', '', 0, 62),\n(23, 23, 'category', '', 0, 0),\n(26, 26, 'product_cat', '', 31, 177),\n(27, 27,"
+table=wp_term_taxonomy rows=822 columns(pehli row)=6
+  row: 0=2 | 1=2 | 2= product_type | 3=  | 4=0 | 5=301
+  row: 0=4 | 1=4 | 2= product_type | 3=  | 4=0 | 5=51

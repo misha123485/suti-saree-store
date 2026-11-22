@@ -16,16 +16,10 @@ const nextConfig = {
       { source: '/my-account/edit-address/:type', destination: '/account/addresses/', permanent: true },
       { source: '/my-account/lost-password', destination: '/forgot-password/', permanent: true },
       { source: '/lost-password', destination: '/forgot-password/', permanent: true },
-      // Sitemaps (Rank Math / WP core / Yoast style) -> our single sitemap
-      { source: '/sitemap_index.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/wp-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/product-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/product-sitemap:n.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/page-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/post-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/product_cat-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/product_tag-sitemap.xml', destination: '/sitemap.xml', permanent: true },
-      { source: '/category-sitemap.xml', destination: '/sitemap.xml', permanent: true },
+      // WP core sitemap and the old blog-category sitemap -> Rank Math style index.
+      // (post/page/product/product_cat/product_tag-sitemap*.xml are served for real, see rewrites.)
+      { source: '/wp-sitemap.xml', destination: '/sitemap_index.xml', permanent: true },
+      { source: '/category-sitemap.xml', destination: '/sitemap_index.xml', permanent: true },
       // WP RSS feed
       { source: '/feed', destination: '/rss.xml', permanent: true },
       // WooCommerce sent /shop/page/1/ to /shop/ -- keep doing that so page 1 has one URL only.
@@ -34,6 +28,9 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      // Rank Math split sitemaps (same file names as the old site, 200 URLs per file).
+      { source: '/:kind(post|page|product|product_cat|product_tag)-sitemap.xml', destination: '/sitemaps/:kind/1' },
+      { source: '/:kind(post|page|product|product_cat|product_tag)-sitemap:n(\\d+).xml', destination: '/sitemaps/:kind/:n' },
       // Old WooCommerce feed URL (Merchant Center ke saved File URL ke liye) -> naya feed
       { source: '/wp-content/uploads/woo-feed/google/xml/saree.xml', destination: '/feeds/google-saree.xml' },
       // Old WordPress media at its original URL -> read from Cloudflare R2 (app/api/wp-uploads).

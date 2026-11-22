@@ -35,6 +35,6 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'AdsBot-Google', allow: '/', disallow: PRIVATE_PATHS },
       { userAgent: '*', allow: '/', disallow: PRIVATE_PATHS },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap_index.xml`,
   };
 }
