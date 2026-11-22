@@ -24,6 +24,8 @@ const nextConfig = {
       { source: '/feed', destination: '/rss.xml', permanent: true },
       // WooCommerce sent /shop/page/1/ to /shop/ -- keep doing that so page 1 has one URL only.
       { source: '/shop/page/1', destination: '/shop/', permanent: true },
+      // Old Woo tag pagination: tag pages show every product on one page, so /page/N -> tag URL.
+      { source: '/product-tag/:slug/page/:n(\\d+)', destination: '/product-tag/:slug/', permanent: true },
       // Old WP pages -> closest live page (301). Spam posts/categories stay 404 on purpose.
       { source: '/home', destination: '/', permanent: true },
       { source: '/women-sale', destination: '/shop/', permanent: true },
