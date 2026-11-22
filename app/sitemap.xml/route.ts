@@ -211,7 +211,7 @@ async function buildSitemapEntries(): Promise<SitemapEntry[]> {
 
   const staticPages: SitemapEntry[] = [
     { url: SITE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
-    { url: `${SITE_URL}/shop`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/shop/`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
     {
       url: `${SITE_URL}/sell-with-us`,
       lastModified: new Date(),

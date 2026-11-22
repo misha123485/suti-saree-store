@@ -5,7 +5,7 @@ import { Fragment, useMemo, useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { SlidersHorizontal, TrendingDown, Flame, Gift, Camera, ChevronRight, ImageOff, Video, VideoOff } from 'lucide-react';
+import { SlidersHorizontal, TrendingDown, Flame, Gift, Camera, ChevronLeft, ChevronRight, ImageOff, Video, VideoOff } from 'lucide-react';
 import { Product, CategoryRow } from '@/lib/types';
 import { expandProductVariants, ExpandedProduct } from '@/lib/expand-product-variants';
 import ProductCard from '@/components/product-card';
@@ -45,6 +45,7 @@ import {
   fetchCatalogVideoSettings,
   fetchCatalogListingSettings,
   DEFAULT_CATALOG_LISTING_SETTINGS,
+  type CatalogListingSettings,
   fetchPriceRangeFilters,
   DEFAULT_PRICE_RANGE_FILTERS,
   PriceRangeBucket,
@@ -84,6 +85,28 @@ interface ShopContentProps {
    *  missing here just falls back to the generic shimmer inside
    *  CatalogCardMedia -- never a blank/broken state. */
   blurPreviews?: Record<string, string>;
+  /** Page number from ?page=N, so the server-rendered HTML already holds
+   *  the right page of products (crawlers + shared links). */
+  initialPage?: number;
+  /** Admin > Settings > Catalog Listing Size, read on the server so the
+   *  page size is the same on first paint and after hydration. */
+  initialListingSettings?: CatalogListingSettings;
+}
+
+/** Page numbers to show: always first, last, current and its neighbours,
+ *  with 'gap' where numbers are skipped. */
+function pageWindow(current: number, total: number): (number | 'gap')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const keep = new Set<number>([1, total, current - 1, current, current + 1]);
+  if (current <= 3) [2, 3, 4].forEach((n) => keep.add(n));
+  if (current >= total - 2) [total - 1, total - 2, total - 3].forEach((n) => keep.add(n));
+  const sorted = Array.from(keep).filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const out: (number | 'gap')[] = [];
+  sorted.forEach((n, i) => {
+    if (i > 0 && n - sorted[i - 1] > 1) out.push('gap');
+    out.push(n);
+  });
+  return out;
 }
 
 function ShopContentInner({
@@ -92,6 +115,8 @@ function ShopContentInner({
   initialPopularityRank = new Map(),
   initialTopVariants = {},
   blurPreviews = {},
+  initialPage = 1,
+  initialListingSettings,
 }: ShopContentProps) {
   const params = useSearchParams();
   const router = useRouter();
@@ -455,7 +480,7 @@ function ShopContentInner({
   // page/batch, and how many colour cards one product may contribute to
   // this grid (see lib/expand-product-variants.ts). Falls back to this
   // page's original defaults if the setting hasn't been saved yet.
-  const [listingSettings, setListingSettings] = useState(DEFAULT_CATALOG_LISTING_SETTINGS);
+  const [listingSettings, setListingSettings] = useState(initialListingSettings ?? DEFAULT_CATALOG_LISTING_SETTINGS);
   useEffect(() => {
     let cancelled = false;
     fetchCatalogListingSettings()
@@ -468,20 +493,49 @@ function ShopContentInner({
     };
   }, []);
 
-  // Progressive reveal instead of rendering every matching product (and
-  // therefore every product's images) at once -- a 71-product catalog was
-  // shipping 200+ image requests and 15MB+ on first paint. Starts at
-  // PAGE_SIZE and grows by PAGE_SIZE each "Load more" click. Resets back to
-  // PAGE_SIZE whenever the actual result set changes (new filter/sort/
-  // search) so a narrowed search doesn't stay scrolled deep into a stale
-  // count from the previous broader list.
-  const PAGE_SIZE = listingSettings.page_size;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Numbered pages (Previous / 1 2 3 / Next) instead of one endless grid, so
+  // a 70+ product catalog doesn't ship 200+ image requests on first paint.
+  // The page number lives in ?page=N: the server renders the right page for
+  // crawlers and shared links, and the pagination links below are real
+  // <a href> links Google can follow. Filter/sort/search changes go back to
+  // page 1 so a narrowed list never stays on a stale page number.
+  const PAGE_SIZE = Math.max(1, listingSettings.page_size);
+  const [page, setPage] = useState(Math.max(1, Math.floor(initialPage) || 1));
+  const gridTopRef = useRef<HTMLDivElement>(null);
+  const buildPageHref = (n: number) => {
+    const sp = new URLSearchParams(params.toString());
+    if (n > 1) sp.set('page', String(n));
+    else sp.delete('page');
+    const qs = sp.toString();
+    const base = pathname.endsWith('/') ? pathname : `${pathname}/`;
+    return qs ? `${base}?${qs}` : base;
+  };
+  // replaceState keeps Next's own history state object intact.
+  const syncPageToUrl = (n: number) => {
+    if (typeof window === 'undefined') return;
+    window.history.replaceState(window.history.state, '', buildPageHref(n));
+  };
+  const filterKey = JSON.stringify([
+    selectedCats, selectedSizes, selectedColors, selectedFabrics, selectedOccasions,
+    priceRange, query, sort, imageSearchIds, PAGE_SIZE,
+  ]);
+  const lastFilterKey = useRef(filterKey);
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [selectedCats, selectedSizes, selectedColors, selectedFabrics, selectedOccasions, priceRange, query, sort, imageSearchIds, PAGE_SIZE]);
-  const visibleProducts = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+    if (lastFilterKey.current === filterKey) return;
+    lastFilterKey.current = filterKey;
+    setPage(1);
+    syncPageToUrl(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const goToPage = (n: number) => {
+    const next = Math.min(Math.max(1, n), totalPages);
+    setPage(next);
+    syncPageToUrl(next);
+    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const visibleProducts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // "X pieces found" should match what the grid below actually renders --
   // mirror its render condition exactly (see the .map() further down).
@@ -854,7 +908,16 @@ function ShopContentInner({
         </div>
       )}
 
-      <div className="mb-6 mt-6">
+      <div ref={gridTopRef} className="mb-6 mt-6 scroll-mt-20">
+        {!isSearchPage && !showingSearchHeading && (
+          <nav aria-label="Breadcrumb" className="mb-3 text-xs text-muted-foreground">
+            <Link href="/" className="hover:text-primary">
+              Home
+            </Link>
+            {' / '}
+            <span className="text-foreground">Shop</span>
+          </nav>
+        )}
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
           {showingSearchHeading ? 'Search Results' : 'The Collection'}
         </p>
@@ -865,6 +928,12 @@ function ShopContentInner({
             'Shop All Sarees & Ethnic Wear'
           )}
         </h1>
+        {!isSearchPage && !showingSearchHeading && (
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Handwoven cotton, mulmul and silk sarees sourced directly from weavers across India, with
+            free delivery and easy returns.
+          </p>
+        )}
         <p className="mt-2 text-sm text-muted-foreground">
           {displayCount} {displayCount === 1 ? 'piece' : 'pieces'} found
         </p>
@@ -1146,17 +1215,80 @@ function ShopContentInner({
                 })}
               </div>
 
-              {hasMore && (
-                <div className="mt-8 flex justify-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                    className="min-w-40"
-                  >
-                    Load more ({filtered.length - visibleCount} more)
-                  </Button>
-                </div>
+              {totalPages > 1 && (
+                <nav aria-label="Pagination" className="mt-10 flex flex-wrap items-center justify-center gap-2">
+                  <div className="order-1 flex w-full items-center justify-center gap-1 sm:order-2 sm:w-auto">
+                    {pageWindow(currentPage, totalPages).map((n, i) =>
+                      n === 'gap' ? (
+                        <span key={`gap-${i}`} className="px-1 text-muted-foreground" aria-hidden="true">
+                          …
+                        </span>
+                      ) : (
+                        <a
+                          key={n}
+                          href={buildPageHref(n)}
+                          aria-label={`Page ${n}`}
+                          aria-current={n === currentPage ? 'page' : undefined}
+                          onClick={(e) => {
+                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                            e.preventDefault();
+                            goToPage(n);
+                          }}
+                          className={`flex h-9 min-w-9 items-center justify-center rounded-full border px-2 text-sm font-medium transition-colors ${
+                            n === currentPage
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-card text-foreground hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {n}
+                        </a>
+                      )
+                    )}
+                  </div>
+                  {currentPage > 1 ? (
+                    <a
+                      href={buildPageHref(currentPage - 1)}
+                      rel="prev"
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                        e.preventDefault();
+                        goToPage(currentPage - 1);
+                      }}
+                      className="order-2 flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-border bg-card px-4 text-sm font-medium hover:border-primary hover:text-primary sm:order-1 sm:flex-none"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </a>
+                  ) : (
+                    <span className="order-2 flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-border/60 px-4 text-sm text-muted-foreground/50 sm:order-1 sm:flex-none">
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </span>
+                  )}
+                  {currentPage < totalPages ? (
+                    <a
+                      href={buildPageHref(currentPage + 1)}
+                      rel="next"
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                        e.preventDefault();
+                        goToPage(currentPage + 1);
+                      }}
+                      className="order-3 flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground sm:flex-none"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <span className="order-3 flex h-10 flex-1 items-center justify-center gap-1 rounded-full border border-border/60 px-4 text-sm text-muted-foreground/50 sm:flex-none">
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </span>
+                  )}
+                  <p className="order-4 w-full text-center text-xs text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </p>
+                </nav>
               )}
             </>
           )}

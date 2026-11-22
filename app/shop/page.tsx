@@ -6,7 +6,11 @@ import { fetchPopularityRankServer } from '@/lib/popularity-rank-server';
 import { fetchTopVariantMapServer, toJSON, TopVariantMapJSON } from '@/lib/top-variant-server';
 import { getBlurPreviews } from '@/lib/blur-preview';
 import { toPublicMediaUrl } from '@/lib/media-url';
+import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
+import { fetchFulfillmentSettings, DEFAULT_FULFILLMENT_SETTINGS } from '@/lib/marketing-api';
+import { safeJsonLd } from '@/lib/json-ld';
 import ShopContent from './shop-content';
+import ShopSeoContent, { getShopFaqs } from './shop-seo-content';
 
 // Same reasoning as app/category/[slug]/page.tsx: this page has no
 // generateStaticParams so it's dynamically rendered per-request by default,
@@ -23,11 +27,47 @@ export const revalidate = 86400; // 24h - CPU saver (was 6h); admin edits still 
 // cuts Vercel ISR writes; admin product edits still purge it instantly via
 // revalidatePath('/shop').
 
-export const metadata: Metadata = {
-  title: 'Shop All Sarees & Ethnic Wear | Sutisaree',
-  description:
-    'Browse our full collection of sarees and ethnic wear, sourced directly from master weavers across India.',
-};
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com').replace(/\/$/, '');
+const SHOP_TITLE = 'Shop All Sarees & Ethnic Wear';
+const SHOP_DESCRIPTION =
+  'Browse our full collection of handwoven silk sarees, cotton sarees, lehengas, anarkalis, kurtis and bridal wear, sourced directly from master weavers across India.';
+
+function parsePage(raw: string | string[] | undefined): number {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  const n = parseInt(v ?? '1', 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+// Each numbered page canonicalises to itself (page 1 = /shop/), which is what
+// Google recommends for paginated listings. The root layout adds
+// " | Sutisaree" to every title via its template, so it is NOT repeated here.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}): Promise<Metadata> {
+  const page = parsePage(searchParams?.page);
+  const url = page > 1 ? `${SITE_URL}/shop/?page=${page}` : `${SITE_URL}/shop/`;
+  const title = page > 1 ? `${SHOP_TITLE} - Page ${page}` : SHOP_TITLE;
+  return {
+    title,
+    description: SHOP_DESCRIPTION,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${title} | Sutisaree`,
+      description: SHOP_DESCRIPTION,
+      url,
+      siteName: 'Sutisaree',
+      type: 'website',
+    },
+    twitter: { card: 'summary_large_image', title: `${title} | Sutisaree`, description: SHOP_DESCRIPTION },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
+    },
+  };
+}
 
 export default async function ShopPage({
   searchParams,
@@ -49,6 +89,8 @@ export default async function ShopPage({
     }
     redirect(`/search?${forwarded.toString()}`);
   }
+
+  const page = parsePage(searchParams?.page);
 
   // If Supabase has a transient hiccup, fail soft (empty catalog + "no
   // products found" state) instead of throwing -- an unhandled throw here
@@ -91,13 +133,100 @@ export default async function ShopPage({
     console.error('Failed to load /shop data:', err);
   }
 
+  // Listing size + return window are tiny settings rows. Reading them here
+  // (not only in the browser) means the first paint already uses the same
+  // page size the shopper will see after hydration.
+  const [listingRes, fulfillmentRes] = await Promise.allSettled([
+    fetchCatalogListingSettings(),
+    fetchFulfillmentSettings(),
+  ]);
+  const listingSettings =
+    listingRes.status === 'fulfilled' ? listingRes.value : DEFAULT_CATALOG_LISTING_SETTINGS;
+  const fulfillment =
+    fulfillmentRes.status === 'fulfilled' ? fulfillmentRes.value : DEFAULT_FULFILLMENT_SETTINGS;
+
+  const pageSize = Math.max(1, listingSettings.page_size);
+  const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
+  // ?page=999 on a 5-page catalog: send to the last real page instead of
+  // serving an empty page that Google would index as a soft 404.
+  if (products.length > 0 && page > totalPages) {
+    redirect(totalPages > 1 ? `/shop/?page=${totalPages}` : '/shop/');
+  }
+
+  // Same default order as the grid's "Popular" sort (rank, then featured,
+  // then rating), so the ItemList below describes the products this page
+  // actually shows first.
+  const ranked = [...products].sort((a, b) => {
+    const ra = initialPopularityRank.has(a.id) ? initialPopularityRank.get(a.id)! : Infinity;
+    const rb = initialPopularityRank.has(b.id) ? initialPopularityRank.get(b.id)! : Infinity;
+    if (ra !== rb) return ra - rb;
+    return Number(!!b.featured) - Number(!!a.featured) || b.rating - a.rating;
+  });
+  const pageProducts = ranked.slice((page - 1) * pageSize, page * pageSize);
+  const pageUrl = page > 1 ? `${SITE_URL}/shop/?page=${page}` : `${SITE_URL}/shop/`;
+
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: SHOP_TITLE,
+    description: SHOP_DESCRIPTION,
+    url: pageUrl,
+    ...(pageProducts.length > 0
+      ? {
+          mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: products.length,
+            itemListElement: pageProducts.map((p, i) => ({
+              '@type': 'ListItem',
+              position: (page - 1) * pageSize + i + 1,
+              url: `${SITE_URL}/product/${p.slug}/`,
+              name: p.name,
+            })),
+          },
+        }
+      : {}),
+  };
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: `${SITE_URL}/shop/` },
+    ],
+  };
+  const faqs = getShopFaqs(fulfillment);
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  };
+
+  // The grid never shows a product description and the browser has no use
+  // for it on /shop, so it is dropped from the data sent to the client
+  // (shorter HTML + less JavaScript to parse on a phone).
+  const slimProducts = products.map((p) => ({ ...p, description: '' }));
+
   return (
-    <ShopContent
-      products={products}
-      categories={categories}
-      initialPopularityRank={initialPopularityRank}
-      initialTopVariants={initialTopVariants}
-      blurPreviews={blurPreviews}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(collectionJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
+      {page === 1 && products.length > 0 && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }} />
+      )}
+      <ShopContent
+        products={slimProducts}
+        categories={categories}
+        initialPopularityRank={initialPopularityRank}
+        initialTopVariants={initialTopVariants}
+        blurPreviews={blurPreviews}
+        initialPage={page}
+        initialListingSettings={listingSettings}
+      />
+      {page === 1 && products.length > 0 && <ShopSeoContent categories={categories} faqs={faqs} />}
+    </>
   );
 }
