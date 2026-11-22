@@ -231,7 +231,8 @@ async function pageEntries(): Promise<SitemapEntry[]> {
     'shipping-policy': 'shipping-delivery-information',
     'refund-policy': 'returns-exchange',
   };
-  const now = new Date();
+  // Fixed date: using new Date() made every static page's lastmod change on each request.
+  const now = new Date('2026-10-22T00:00:00.000Z');
   const paths = [
     '/',
     '/shop/',
