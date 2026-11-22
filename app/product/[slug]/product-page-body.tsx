@@ -101,7 +101,8 @@ export async function buildProductMetadata(slug: string): Promise<Metadata> {
   const image = images[0] || 'https://images.pexels.com/photos/1191349/pexels-photo-1191349.jpeg?auto=compress&cs=tinysrgb&w=1200&h=630&fit=crop';
 
   return {
-    title,
+    // absolute: the brand is already in `title`, so skip the layout's " | Sutisaree" template.
+    title: { absolute: title },
     description,
     alternates: {
       canonical: url,

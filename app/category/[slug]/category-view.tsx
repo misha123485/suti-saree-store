@@ -8,6 +8,7 @@ import { fetchTopVariantMapServer, toJSON } from '@/lib/top-variant-server';
 import { getBlurPreviews } from '@/lib/blur-preview';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { categoryPath } from '@/lib/category-url';
+import { categorySeoTitle, categorySeoDescription, getCategorySeoSections } from '@/lib/category-seo';
 import ViewItemListTracker from '@/components/analytics/view-item-list-tracker';
 import CategoryToolbarGrid from '@/components/category/category-toolbar-grid';
 import { safeJsonLd } from '@/lib/json-ld';
@@ -66,11 +67,12 @@ export async function buildCategoryMetadata(slug: string, page: number): Promise
     };
   }
 
-  const description = (category.description || fallbackIntro(category.name)).slice(0, 160);
+  const description = categorySeoDescription(category.name, category.slug, category.description);
   const url = `${SITE_URL}${categoryPagePath(categoryPath(category), page)}`;
   // The root layout title template already appends " | Sutisaree" on pages that
   // set a plain title, but this file always spelled it out, so keep that style.
-  const title = page > 1 ? `${category.name} - Page ${page} | Sutisaree` : `${category.name} | Sutisaree`;
+  const baseTitle = categorySeoTitle(category.name, category.slug);
+  const title = page > 1 ? baseTitle.replace(' | Sutisaree', ` - Page ${page} | Sutisaree`) : baseTitle;
 
   // An empty category ("No products yet") is thin content -- indexing it
   // risks a low-quality signal on the whole domain, and it's not a page
@@ -81,7 +83,8 @@ export async function buildCategoryMetadata(slug: string, page: number): Promise
   const hasProducts = products.some((p) => productInCategory(p, category.name));
 
   return {
-    title,
+    // absolute: the brand is already in `title`, so skip the layout's " | Sutisaree" template.
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: {
@@ -143,6 +146,7 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
   // showed as "1 product" here while the grid rendered 10 cards for it.
   const displayCount = expandProductVariants(categoryProducts).length;
   const intro = category.description || fallbackIntro(category.name);
+  const seoSections = getCategorySeoSections(category.slug);
   const url = `${SITE_URL}${categoryPagePath(basePath, page)}`;
 
   // Same default order as the grid's "Popularity" sort, so the ItemList below
@@ -245,11 +249,22 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
       )}
       <section className="mt-10 border-t border-border/60 pt-8">
         <h2 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{category.name}</h2>
-        {page === 1 && (
-          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {intro}
-          </p>
-        )}
+        {page === 1 &&
+          (seoSections.length > 0 ? (
+            <div className="mt-3 max-w-3xl space-y-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {category.description && <p>{category.description}</p>}
+              {seoSections.map((sec) => (
+                <div key={sec.heading}>
+                  <h3 className="font-serif text-lg font-semibold text-foreground">{sec.heading}</h3>
+                  <p className="mt-1">{sec.body}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {intro}
+            </p>
+          ))}
       </section>
       <ViewItemListTracker
         listName={category.name}

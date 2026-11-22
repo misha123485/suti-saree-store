@@ -30,7 +30,9 @@ export const revalidate = 86400; // 24h - CPU saver (was 6h); admin edits still 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com').replace(/\/$/, '');
 const SHOP_TITLE = 'Shop All Sarees & Ethnic Wear';
 const SHOP_DESCRIPTION =
-  'Browse our full collection of handwoven silk sarees, cotton sarees, lehengas, anarkalis, kurtis and bridal wear, sourced directly from master weavers across India.';
+  'Buy handloom cotton, mulmul and silk sarees online at Sutisaree. Sourced directly from weavers across India, with free delivery and easy returns.';
+// Search-result title (the page heading above stays SHOP_TITLE).
+const SHOP_META_TITLE = 'Buy Handloom Sarees Online – Cotton, Mulmul & Silk';
 
 // Old WooCommerce pagination format: /shop/ for page 1, /shop/page/2/ for page 2...
 // (served by the rewrite in next.config.js, which maps it onto ?page=N internally).
@@ -54,7 +56,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const page = parsePage(searchParams?.page);
   const url = `${SITE_URL}${shopPagePath(page)}`;
-  const title = page > 1 ? `${SHOP_TITLE} - Page ${page}` : SHOP_TITLE;
+  const title = page > 1 ? `${SHOP_META_TITLE} - Page ${page}` : SHOP_META_TITLE;
   return {
     title,
     description: SHOP_DESCRIPTION,

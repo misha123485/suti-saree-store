@@ -22,7 +22,7 @@ export const revalidate = 86400; // 24h (was 30 min)
 type Params = { params: { slug: string } };
 
 function tagDescription(name: string): string {
-  return `Shop ${name} at Sutisaree. Handpicked handloom sarees sourced directly from master weavers across India.`;
+  return `Shop ${name} online at Sutisaree. Handloom sarees sourced directly from weavers across India, with free delivery and easy returns.`;
 }
 
 async function getTagProducts(tagId: string) {
@@ -53,11 +53,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
   const tagProducts = await getTagProducts(tag.id);
   const hasProducts = tagProducts.length > 0;
-  const title = `${tag.name} | Sutisaree`;
+  const title = `${tag.name} – Buy Online | Sutisaree`;
   const description = tagDescription(tag.name);
   const url = `${SITE_URL}/product-tag/${tag.slug}/`;
   return {
-    title,
+    // absolute: the brand is already in `title`, so skip the layout's " | Sutisaree" template.
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: { title, description, url, siteName: 'Sutisaree', type: 'website' },
