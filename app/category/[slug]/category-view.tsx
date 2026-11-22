@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { productInCategory } from '@/lib/category-utils';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { fetchCategoriesServer, fetchProductsServer } from '@/lib/products-api-server';
 import { fetchPopularityRankServer } from '@/lib/popularity-rank-server';
@@ -15,6 +15,11 @@ import { expandProductVariants } from '@/lib/expand-product-variants';
 import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
+
+// Old WooCommerce parent/umbrella categories that no longer exist as categories here
+// (e.g. /product-category/sarees-online/page/6/). They used to rank, so send them to
+// the shop with a 301 instead of a 404.
+export const LEGACY_CATEGORY_SLUGS = new Set(['sarees-online', 'saree', 'women-clothing', 'clothing']);
 
 /** Old WooCommerce format: page 1 = /product-category/x/, page N = /product-category/x/page/N/. */
 export function categoryPagePath(basePath: string, page: number): string {
@@ -110,7 +115,10 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
   const initialTopVariants = toJSON(topVariantMap);
 
   const category = categories.find((c) => c.slug === slug);
-  if (!category) notFound();
+  if (!category) {
+    if (LEGACY_CATEGORY_SLUGS.has(slug)) permanentRedirect('/shop/');
+    notFound();
+  }
 
   const categoryProducts = products.filter((p) => productInCategory(p, category.name));
   const basePath = categoryPath(category);

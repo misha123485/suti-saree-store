@@ -34,6 +34,22 @@ const nextConfig = {
       { source: '/customer-help', destination: '/contact-us/', permanent: true },
       { source: '/sutisaree-help-center-24x7-customer-care-support', destination: '/contact-us/', permanent: true },
       { source: '/return-exchange-submit-successful', destination: '/returns-exchange/', permanent: true },
+      // ---- Old WordPress/WooCommerce leftovers that Search Console reports as 404 ----
+      // Old WP comment pagination on product pages: /product/x/comment-page-1/ -> product page.
+      { source: '/product/:slug/comment-page-:n(\\d+)', destination: '/product/:slug/', permanent: true },
+      // Old WP per-page / per-category RSS feeds: /anything/feed/ -> the page itself.
+      { source: '/product/:slug/feed', destination: '/product/:slug/', permanent: true },
+      { source: '/product-category/:path*/feed', destination: '/product-category/:path*/', permanent: true },
+      { source: '/blog/:slug/feed', destination: '/blog/:slug/', permanent: true },
+      // Old plugin pages (shipment tracking / Parcel Panel) -> our tracking page.
+      { source: '/ts-shipment-tracking', destination: '/track/', permanent: true },
+      { source: '/parcel-panel', destination: '/track/', permanent: true },
+      // Old pages that no longer exist as separate pages.
+      { source: '/reviews', destination: '/', permanent: true },
+      { source: '/feedback', destination: '/contact-us/', permanent: true },
+      // Old Woo "location" archive (/location/india/?filter_color=...) -> shop.
+      { source: '/location/india', destination: '/shop/', permanent: true },
+      { source: '/location/india/:path*', destination: '/shop/', permanent: true },
     ];
   },
   async rewrites() {

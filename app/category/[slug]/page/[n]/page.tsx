@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { fetchCategoriesServer } from '@/lib/products-api-server';
 import { categoryPath } from '@/lib/category-url';
-import { CategoryView, buildCategoryMetadata } from '../../category-view';
+import { CategoryView, buildCategoryMetadata, LEGACY_CATEGORY_SLUGS } from '../../category-view';
 
 // Pages 2, 3, ... of a category. Reached at the old WooCommerce URL
 // /product-category/<slug>/page/N/ through the rewrite in next.config.js.
@@ -29,7 +29,10 @@ export default async function CategoryPageN({ params }: Params) {
     // WooCommerce sent /page/1/ to the category URL itself.
     const categories = await fetchCategoriesServer();
     const category = categories.find((c) => c.slug === params.slug);
-    if (!category) notFound();
+    if (!category) {
+      if (LEGACY_CATEGORY_SLUGS.has(params.slug)) permanentRedirect('/shop/');
+      notFound();
+    }
     redirect(categoryPath(category));
   }
   return <CategoryView slug={params.slug} page={n} />;
