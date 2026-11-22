@@ -206,12 +206,9 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
         <span className="text-foreground">{category.name}</span>
       </nav>
 
-      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{category.name}</h1>
-      {page === 1 && (
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {intro}
-        </p>
-      )}
+      {/* Visible title + description are rendered at the bottom of the page;
+          this h1 stays as screen-reader/SEO-only text. */}
+      <h1 className="sr-only">{category.name}</h1>
       <p className="mt-1 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>
@@ -238,6 +235,14 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
           initialListingSettings={listingSettings}
         />
       )}
+      <section className="mt-10 border-t border-border/60 pt-8">
+        <h2 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{category.name}</h2>
+        {page === 1 && (
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {intro}
+          </p>
+        )}
+      </section>
       <ViewItemListTracker
         listName={category.name}
         items={categoryProducts.map((p) => ({ id: p.id, name: p.name, category: p.category, price: p.price }))}

@@ -1,0 +1,126 @@
+=== 1. RANK MATH SITEMAP SETTINGS ===
+Rank Math options mile: sitemap=haan, titles=haan
+Sitemap module: ON
+  items_per_page = 200
+  include_images = on
+  include_featured_image = on
+  ping_search_engines = on
+  pt_post_sitemap = on
+  pt_page_sitemap = on
+  pt_attachment_sitemap = off
+  pt_product_sitemap = on
+  tax_category_sitemap = on
+  tax_post_tag_sitemap = on
+  tax_product_cat_sitemap = on
+  tax_product_tag_sitemap = on
+  tax_pa_location_sitemap = on
+  tax_pa_sku_sitemap = on
+  tax_post_format_sitemap = off
+  tax_fb_product_set_sitemap = on
+  pt_post_html_sitemap = on
+  pt_page_html_sitemap = on
+  pt_attachment_html_sitemap = off
+  pt_product_html_sitemap = on
+  pt_custom_order_status_html_sitemap = off
+  tax_category_html_sitemap = on
+  tax_post_tag_html_sitemap = on
+  tax_product_cat_html_sitemap = on
+  tax_product_tag_html_sitemap = on
+  tax_pa_location_html_sitemap = on
+  tax_pa_sku_html_sitemap = on
+  tax_fb_product_set_html_sitemap = on
+  -- titles (global noindex settings) --
+  pt_post_robots = (index)
+  pt_page_robots = (index)
+  pt_attachment_robots = NOINDEX
+  pt_product_robots = (index)
+  tax_category_robots = (index)
+  tax_post_tag_robots = (index)
+  tax_product_cat_robots = (index)
+  tax_product_tag_robots = (index)
+  tax_pa_location_robots = (index)
+  tax_pa_sku_robots = (index)
+  tax_post_format_robots = (index)
+  tax_post_format_advanced_robots = (index)
+  pt_post_advanced_robots = (index)
+  pt_page_advanced_robots = (index)
+  pt_product_advanced_robots = (index)
+  tax_category_advanced_robots = (index)
+  tax_post_tag_advanced_robots = (index)
+  tax_product_cat_advanced_robots = (index)
+  tax_product_tag_advanced_robots = (index)
+  tax_pa_location_advanced_robots = (index)
+  tax_pa_sku_advanced_robots = (index)
+  tax_fb_product_set_robots = (index)
+  tax_fb_product_set_advanced_robots = (index)
+  pt_custom_order_status_robots = (index)
+  pt_custom_order_status_advanced_robots = (index)
+  tax_product_brand_robots = (index)
+  tax_product_brand_advanced_robots = (index)
+  (items per sitemap file: 200)
+
+=== 2. POSTS / PAGES / PRODUCTS (published) ===
+post: published=62, noindex/password=0, sitemap me hone chahiye=62  -> 1 file(s)
+page: published=26, noindex/password=0, sitemap me hone chahiye=26  -> 1 file(s)
+product: published=352, noindex/password=0, sitemap me hone chahiye=352  -> 2 file(s)
+
+PAGES jo sitemap me the (page-sitemap.xml):
+  /shop/
+  /cart/
+  /checkout/
+  /my-account/
+  /privacy-policy/
+  /about-us/
+  /shipping-delivery-information/
+  /wishlist/
+  /blog/
+  /contact/
+  /faqs/
+  /returns-exchange/
+  /terms-and-conditions/
+  /home/
+  /contact-us/
+  /customer-help/
+  /women-sale/
+  /sutisaree-help-center-24x7-customer-care-support/
+  /mobile-category/
+  /clients/
+  /ts-shipment-tracking/
+  /return-exchange-submit-successful/
+  /reviews/
+  /parcel-panel/
+  /feedback/
+  /wholesale-indian-saree/
+
+PAGES jo noindex the (sitemap me NAHI the):
+
+BLOG POSTS (pehle 10) - purana URL /slug/ tha, sample:
+  /bdm-casino-comment-la-protection-des-joueurs-est-assuree/
+  /les-options-dassistance-sur-goldenbet-pour-les-joueurs/
+  /la-culture-du-jeu-responsable-a-ra-casino/
+  /tenobet-casino-la-pratique-des-jeux-de-table-en-ligne/
+  /lannee-2024-pour-fgfox-casino-quelles-nouveautes-a-venir/
+  /million-casino-un-apercu-de-sa-reputation-et-de-sa-fiabilite/
+  /ivybet-casino-une-immersion-totale-dans-le-jeu/
+  /casino-peaches-et-la-securite-des-donnees-ce-quil-faut-savoir/
+  /le-chemin-du-joueur-a-travers-bdmbet-casino/
+  /festival-play-casino-un-univers-rempli-doptions-pour-les-joueurs/
+
+=== 3. CATEGORIES / TAGS ===
+product_cat: total=58, products/posts wale=46, noindex=0, sitemap me hone chahiye=46
+   sample: uncategorized, cotton-saree, handloom-saree, silk-sarees, jamdani-saree, saree, occasion-sarees, shop-by-saree, bridal-sarees, casual-sarees, festive-sarees, luxury-sarees
+product_tag: total=73, products/posts wale=51, noindex=0, sitemap me hone chahiye=51
+   sample: saree-3, handloom-saree, single-colour-saree, jamdani-saree, jamdani, handloom, yellow, saree-under-600, saree-under-550, jamdani-under-1500, jharna-saree, magenta
+category: total=11, products/posts wale=1, noindex=0, sitemap me hone chahiye=1
+   sample: saree
+
+=== 4. PURANA sitemap_index.xml AISA BANTA THA (andaaza) ===
+  /post-sitemap.xml
+  /page-sitemap.xml
+  /product-sitemap.xml
+  /product-sitemap2.xml
+  /category-sitemap.xml
+  /product_cat-sitemap.xml
+  /product_tag-sitemap.xml
+
+(Ye andaaza hai. Rank Math settings me jo type OFF ya NOINDEX tha wo list me nahi aata.)

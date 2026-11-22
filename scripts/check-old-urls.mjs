@@ -38,7 +38,7 @@ function parseValues(text, start) {
         else if (c === "'") {
           if (text[i + 1] === "'") { cur += "'"; i++; } else inStr = false;
         } else cur += c;
-      } else if (c === "'") { inStr = true; wasStr = true; }
+      } else if (c === "'") { inStr = true; wasStr = true; cur = ''; }
       else if (c === ',') { row.push(wasStr ? cur : cur.trim()); cur = ''; wasStr = false; }
       else if (c === ')') { row.push(wasStr ? cur : cur.trim()); i++; break; }
       else cur += c;
@@ -49,7 +49,7 @@ function parseValues(text, start) {
 }
 
 function readTable(suffix) {
-  const re = new RegExp('INSERT INTO `([A-Za-z0-9_]*' + suffix + ')`[^V]*VALUES', 'g');
+  const re = new RegExp('INSERT INTO `(wp_' + suffix + ')`[^V]*VALUES', 'g');
   let m, all = [], name = null;
   while ((m = re.exec(sql))) {
     name = m[1];

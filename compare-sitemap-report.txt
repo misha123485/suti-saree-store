@@ -1,0 +1,63 @@
+
+=========== PURANA vs NAYA ===========
+
+[product] purana=352  naya=352  | naye me NAHI=0  | naya EXTRA=0
+
+[product_cat] purana=46  naya=46  | naye me NAHI=0  | naya EXTRA=0
+
+[product_tag] purana=51  naya=51  | naye me NAHI=0  | naya EXTRA=0
+
+[post] purana=62  naya=3  | naye me NAHI=62  | naya EXTRA=3
+  NAYE ME NAHI (pehle 25):
+    bdm-casino-comment-la-protection-des-joueurs-est-assuree
+    les-options-dassistance-sur-goldenbet-pour-les-joueurs
+    la-culture-du-jeu-responsable-a-ra-casino
+    tenobet-casino-la-pratique-des-jeux-de-table-en-ligne
+    lannee-2024-pour-fgfox-casino-quelles-nouveautes-a-venir
+    million-casino-un-apercu-de-sa-reputation-et-de-sa-fiabilite
+    ivybet-casino-une-immersion-totale-dans-le-jeu
+    casino-peaches-et-la-securite-des-donnees-ce-quil-faut-savoir
+    le-chemin-du-joueur-a-travers-bdmbet-casino
+    festival-play-casino-un-univers-rempli-doptions-pour-les-joueurs
+    les-temoignages-dutilisateurs-de-gransino-casino
+    frissons-et-plaisir-lexperience-fgfox-casino
+    cazimbo-casino-une-experience-de-jeu-immersive-a-decouvrir
+    comment-naviguer-facilement-sur-princess-casino
+    les-dernieres-nouveautes-a-corgibet-casino
+    vulkan-vegas-casino-une-plateforme-de-jeux-complete
+    wazamba-casino-securite-et-fiabilite-des-jeux
+    le-role-des-fournisseurs-de-jeux-chez-bdm-casino
+    detecter-les-jackpots-a-billionairespin-casino
+    trickz-casino-avis-des-joueurs-et-reaction-du-marche
+    les-jeux-les-plus-populaires-dally-spin-casino-en-2023
+    les-jeux-de-table-chez-aerobet-casino-quels-choix
+    vive-mon-casino-guide-des-meilleurs-slots-et-gains
+    comment-verifier-la-licence-de-zet-casino-facilement
+    limpact-des-bonus-sur-lexperience-de-jeu-a-seven-casino
+  NAYA EXTRA (pehle 25):
+    silk-saree-care-tips
+    lehenga-vs-saree-for-wedding
+    how-to-wear-a-banarasi-saree
+
+[page] purana=26  naya=9  | naye me NAHI=18  | naya EXTRA=1
+  NAYE ME NAHI (pehle 25):
+    cart
+    checkout
+    my-account
+    wishlist
+    contact
+    faqs
+    home
+    customer-help
+    women-sale
+    sutisaree-help-center-24x7-customer-care-support
+    mobile-category
+    clients
+    ts-shipment-tracking
+    return-exchange-submit-successful
+    reviews
+    parcel-panel
+    feedback
+    wholesale-indian-saree
+  NAYA EXTRA (pehle 25):
+    

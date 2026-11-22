@@ -21,6 +21,10 @@ export const revalidate = 86400; // 24h (was 30 min)
 
 type Params = { params: { slug: string } };
 
+function tagDescription(name: string): string {
+  return `Shop ${name} at Sutisaree. Handpicked handloom sarees sourced directly from master weavers across India.`;
+}
+
 async function getTagProducts(tagId: string) {
   const [products, ids] = await Promise.all([
     fetchProductsServer(),
@@ -50,7 +54,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const tagProducts = await getTagProducts(tag.id);
   const hasProducts = tagProducts.length > 0;
   const title = `${tag.name} | Sutisaree`;
-  const description = `Shop ${tag.name} at Sutisaree. Handpicked handloom sarees sourced directly from master weavers across India.`;
+  const description = tagDescription(tag.name);
   const url = `${SITE_URL}/product-tag/${tag.slug}/`;
   return {
     title,
@@ -126,7 +130,9 @@ export default async function TagPage({ params }: Params) {
         <span className="text-foreground">{tag.name}</span>
       </nav>
 
-      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{tag.name}</h1>
+      {/* Visible title + description are rendered at the bottom of the page;
+          this h1 stays as screen-reader/SEO-only text. */}
+      <h1 className="sr-only">{tag.name}</h1>
       <p className="mt-1 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>
@@ -147,6 +153,12 @@ export default async function TagPage({ params }: Params) {
           blurPreviews={blurPreviews}
         />
       )}
+      <section className="mt-10 border-t border-border/60 pt-8">
+        <h2 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{tag.name}</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          {tagDescription(tag.name)}
+        </p>
+      </section>
       <ViewItemListTracker
         listName={tag.name}
         items={tagProducts.map((p) => ({ id: p.id, name: p.name, category: p.category, price: p.price }))}

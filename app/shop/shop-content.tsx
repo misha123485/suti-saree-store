@@ -64,6 +64,10 @@ const QUICK_FILTERS: { key: SortKey; label: string; icon: typeof TrendingDown }[
   { key: 'most-gifted', label: 'Most Gifted', icon: Gift },
 ];
 
+const SHOP_HEADING_TITLE = 'Shop All Sarees & Ethnic Wear';
+const SHOP_HEADING_DESCRIPTION =
+  'Handwoven cotton, mulmul and silk sarees sourced directly from weavers across India, with free delivery and easy returns.';
+
 // `products` and `categories` now arrive as props, already fetched on the
 // server (see page.tsx). This component never re-fetches them -- it only
 // filters/sorts the list the server handed it, so the first paint has real
@@ -795,6 +799,8 @@ function ShopContentInner({
   // the top of the page which search actually ran.
   const trimmedQuery = query.trim();
   const showingSearchHeading = isSearchPage && trimmedQuery.length > 0;
+  // Plain /shop: title + description are rendered at the bottom of the page.
+  const hideTopHeading = !isSearchPage && !showingSearchHeading;
 
   // "More options" suggestion for a narrow search: if the query names (or
   // roughly names) an actual category -- e.g. "Yellow Cotton Sarees"
@@ -925,22 +931,23 @@ function ShopContentInner({
             <span className="text-foreground">Shop</span>
           </nav>
         )}
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
-          {showingSearchHeading ? 'Search Results' : 'The Collection'}
-        </p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-primary sm:text-4xl">
-          {showingSearchHeading ? (
-            <>&quot;{trimmedQuery}&quot;</>
-          ) : (
-            'Shop All Sarees & Ethnic Wear'
-          )}
-        </h1>
-        {!isSearchPage && !showingSearchHeading && (
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Handwoven cotton, mulmul and silk sarees sourced directly from weavers across India, with
-            free delivery and easy returns.
+        {/* On the plain /shop page the visible title + description live at the
+            bottom of the page (below the grid); the h1 stays here as
+            screen-reader/SEO-only text so the page still has a top heading. */}
+        {!hideTopHeading && (
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+            {showingSearchHeading ? 'Search Results' : 'The Collection'}
           </p>
         )}
+        <h1
+          className={
+            hideTopHeading
+              ? 'sr-only'
+              : 'mt-1 font-serif text-3xl font-bold text-primary sm:text-4xl'
+          }
+        >
+          {showingSearchHeading ? <>&quot;{trimmedQuery}&quot;</> : SHOP_HEADING_TITLE}
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {displayCount} {displayCount === 1 ? 'piece' : 'pieces'} found
         </p>
@@ -1301,6 +1308,14 @@ function ShopContentInner({
           )}
         </div>
       </div>
+
+      {hideTopHeading && (
+        <section className="mt-10 border-t border-border/60 pt-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">The Collection</p>
+          <h2 className="mt-1 font-serif text-3xl font-bold text-primary sm:text-4xl">{SHOP_HEADING_TITLE}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{SHOP_HEADING_DESCRIPTION}</p>
+        </section>
+      )}
     </div>
   );
 }
