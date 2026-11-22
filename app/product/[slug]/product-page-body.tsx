@@ -89,7 +89,11 @@ export async function buildProductMetadata(slug: string): Promise<Metadata> {
     variantSeoFallback?.metaDescription ||
     descriptionToPlainText(product.description) ||
     `Buy ${displayName} - ${product.fabric} from ${product.origin}. Handwoven ethnic wear from Sutisaree.`;
-  const url = `${SITE_URL}/product/${slug}/`;
+  // Colour variants (/product/<variant-slug>/) stay reachable for shoppers, but the OLD
+  // WooCommerce site had ONE indexed URL per product (variations never had their own page,
+  // and were never in the sitemap). So a variant's canonical points to its PARENT product.
+  // (Verified against the old DB backup: none of the 361 variant slugs was an old product.)
+  const url = `${SITE_URL}/product/${variant ? product.slug : slug}/`;
   // Rewrites Supabase Storage URLs to sutisaree.com (see
   // lib/media-url.ts) so the OG/Twitter image -- what Google/social
   // crawlers actually fetch and cite -- shows our own domain.
