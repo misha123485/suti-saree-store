@@ -24,6 +24,14 @@ const nextConfig = {
       { source: '/feed', destination: '/rss.xml', permanent: true },
       // WooCommerce sent /shop/page/1/ to /shop/ -- keep doing that so page 1 has one URL only.
       { source: '/shop/page/1', destination: '/shop/', permanent: true },
+      // Old WP pages -> closest live page (301). Spam posts/categories stay 404 on purpose.
+      { source: '/home', destination: '/', permanent: true },
+      { source: '/women-sale', destination: '/shop/', permanent: true },
+      { source: '/wholesale-indian-saree', destination: '/shop/', permanent: true },
+      { source: '/faqs', destination: '/contact-us/', permanent: true },
+      { source: '/customer-help', destination: '/contact-us/', permanent: true },
+      { source: '/sutisaree-help-center-24x7-customer-care-support', destination: '/contact-us/', permanent: true },
+      { source: '/return-exchange-submit-successful', destination: '/returns-exchange/', permanent: true },
     ];
   },
   async rewrites() {
