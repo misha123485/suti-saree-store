@@ -377,6 +377,9 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
     title: 'Malmal Cotton Sarees Online – Soft Handloom Malmal',
     description:
       'Shop malmal cotton sarees online: soft, light and breathable handloom sarees from weavers across India. Free delivery and easy returns.',
+    h1: 'Malmal Cotton Sarees for Women',
+    intro:
+      'Malmal cotton is one of the softest, most breathable fabrics you can drape. These malmal cotton sarees are light on the skin, easy to carry through a warm day and gentle enough for all-day wear. Choose a plain piece for daily use or one with a woven border for pujas and family gatherings.',
     sections: [
       {
         heading: 'Malmal cotton sarees',
@@ -389,12 +392,49 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'Pick a plain malmal saree for everyday use or one with a woven border for occasions. Wash it separately in cold water with a mild detergent and dry it in the shade to keep the colours bright.',
       },
     ],
+    faqs: [
+      {
+        question: 'What is malmal cotton?',
+        answer:
+          'Malmal, also spelled mulmul, is a very fine, airy cotton with a soft, slightly silky feel. It is woven loosely, so it lets air through and stays comfortable in hot weather.',
+      },
+      {
+        question: 'Is malmal cotton good for summer?',
+        answer:
+          'Yes. It is light, absorbs sweat and dries quickly, which makes it one of the most comfortable sarees for hot and humid days.',
+      },
+      {
+        question: 'How do I wash a malmal saree?',
+        answer:
+          'Wash it separately in cold water with a mild detergent, do not wring it hard, and dry it in the shade. Iron on a low cotton setting while slightly damp.',
+      },
+      {
+        question: 'Will the saree look exactly like the photo?',
+        answer:
+          'We show each saree as accurately as we can, but screen settings and lighting can change how a colour looks. Small variations in weave are normal in handloom pieces.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Mulmul sarees', kind: 'category', slug: 'mulmul-saree' },
+      { label: 'Summer sarees', kind: 'category', slug: 'summer-sarees' },
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Plain sarees', kind: 'category', slug: 'plain-saree' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'handloom-saree': {
     title: 'Handloom Sarees for Women Online – Direct from Weavers',
     description:
       'Shop authentic handloom sarees for women: handwoven cotton, begampuri, jamdani and tant sarees from weavers across India. Free delivery.',
+    h1: 'Handloom Sarees for Women',
+    intro:
+      'Every saree in this collection is woven by hand on a loom, not made on a power machine. You will find handloom cotton, begampuri, tant, jamdani and cotton silk sarees, sourced directly from weavers across India. Small variations in weave and shade are a sign of real handwork.',
     sections: [
       {
         heading: 'What makes a saree handloom',
@@ -407,12 +447,49 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'This collection brings together handwoven cotton sarees, begampuri, tant, jamdani and cotton silk sarees. Every product page lists the fabric, length and care so you can choose with confidence.',
       },
     ],
+    faqs: [
+      {
+        question: 'How can I tell a handloom saree from a machine-made one?',
+        answer:
+          'Handloom sarees have a slightly irregular, natural texture and tiny variations in the weave and border. Machine-made sarees look perfectly uniform. Each product page lists the fabric so you know what you are buying.',
+      },
+      {
+        question: 'Are handloom sarees comfortable for daily wear?',
+        answer:
+          'Yes, handloom cotton sarees are breathable and soften with every wash, which makes them a good choice for daily wear and office.',
+      },
+      {
+        question: 'How should I care for a handloom saree?',
+        answer:
+          'Wash gently in cold water with a mild detergent, dry in the shade and iron on the cotton setting. Wash dark colours separately the first few times.',
+      },
+      {
+        question: 'Why does a handloom saree cost more than a printed one?',
+        answer:
+          'A handloom saree takes hours of skilled work on the loom. You are paying for the craft and the fabric, and your purchase supports weaver families directly.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Begampuri sarees', kind: 'category', slug: 'begampuri-saree' },
+      { label: 'Tant sarees', kind: 'category', slug: 'tant-saree' },
+      { label: 'Jamdani sarees', kind: 'category', slug: 'jamdani-saree' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'begampuri-saree': {
     title: 'Begampuri Sarees Online – Handloom Begumpuri Cotton Sarees',
     description:
       'Shop handloom begampuri (begumpuri) sarees online. Soft Bengal cotton sarees with woven designs, direct from weavers. Free delivery and easy returns.',
+    h1: 'Begampuri Sarees (Begumpuri Cotton)',
+    intro:
+      'Begampuri, also written begumpuri, is a traditional Bengal handloom cotton saree known for its soft feel and comfortable weight. These begampuri sarees are easy to drape and stay comfortable through a long day, which is why they suit daily wear as well as small gatherings.',
     sections: [
       {
         heading: 'About begampuri sarees',
@@ -425,12 +502,49 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'These sarees are easy to drape and stay comfortable through the day. Wash in cold water with a mild detergent, dry in the shade and iron on the cotton setting.',
       },
     ],
+    faqs: [
+      {
+        question: 'What is a begampuri saree?',
+        answer:
+          'Begampuri is a Bengal handloom cotton saree, soft and light, often with woven designs and a clean border. It is also spelled begumpuri.',
+      },
+      {
+        question: 'Is a begampuri saree good for daily wear?',
+        answer:
+          'Yes. It is soft, breathable and easy to wash, so it works well for daily wear and office.',
+      },
+      {
+        question: 'How do I care for a begampuri saree?',
+        answer:
+          'Wash in cold water with a mild detergent, dry in the shade and iron on the cotton setting. Wash bright colours separately.',
+      },
+      {
+        question: 'Will the saree look exactly like the photo?',
+        answer:
+          'We show each saree as accurately as we can, but screen settings and lighting can change how a colour looks. Small variations in weave are normal in handloom pieces.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Handloom sarees', kind: 'category', slug: 'handloom-saree' },
+      { label: 'Tant sarees', kind: 'category', slug: 'tant-saree' },
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Plain sarees', kind: 'category', slug: 'plain-saree' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'jamdani-saree': {
     title: 'Jamdani Sarees Online – Handloom Dhakai Jamdani',
     description:
       'Shop handloom jamdani sarees online: fine woven motifs and light, graceful drape. Direct from weavers across India. Free delivery and easy returns.',
+    h1: 'Jamdani Sarees',
+    intro:
+      'In a jamdani saree the motifs are woven into the fabric itself, giving it a fine, textured look and a light, graceful fall. These handloom jamdani sarees come directly from weavers and suit weddings, pujas and festive evenings.',
     sections: [
       {
         heading: 'The art of the jamdani saree',
@@ -443,12 +557,49 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'Handle jamdani gently. Hand wash in cold water or dry clean, dry in the shade and store folded in a soft cotton cloth.',
       },
     ],
+    faqs: [
+      {
+        question: 'What makes a jamdani saree special?',
+        answer:
+          'The motifs are woven into the cloth while it is on the loom, not printed or embroidered on top. This gives jamdani its fine, lightly raised pattern.',
+      },
+      {
+        question: 'Is jamdani suitable for weddings and festivals?',
+        answer:
+          'Yes. Jamdani has a graceful, festive look and is a popular choice for pujas, weddings and family functions.',
+      },
+      {
+        question: 'How should I wash and store a jamdani saree?',
+        answer:
+          'Hand wash gently in cold water or dry clean, dry in the shade and store folded in a soft cotton cloth. Avoid hanging it for long periods.',
+      },
+      {
+        question: 'Will the saree look exactly like the photo?',
+        answer:
+          'We show each saree as accurately as we can, but screen settings and lighting can change how a colour looks. Small variations in weave are normal in handloom pieces.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Handloom sarees', kind: 'category', slug: 'handloom-saree' },
+      { label: 'Wedding sarees', kind: 'category', slug: 'wedding-sarees' },
+      { label: 'Silk sarees', kind: 'category', slug: 'silk-sarees-saree' },
+      { label: 'Pooja sarees', kind: 'category', slug: 'pooja-sarees' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'tant-saree': {
     title: 'Tant Sarees Online – Bengal Handloom Cotton Tant',
     description:
       'Buy tant sarees online: crisp, light Bengal handloom cotton sarees with woven borders. Direct from weavers across India. Free delivery.',
+    h1: 'Tant Sarees (Bengal Handloom Cotton)',
+    intro:
+      'Tant is the classic Bengal cotton saree: light, crisp and made for humid weather and long days. These tant sarees come with clean woven borders and are sourced directly from weavers. They are easy to drape and a staple for daily wear, office and festive days.',
     sections: [
       {
         heading: 'Tant, the saree of Bengal',
@@ -461,12 +612,49 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'Wash in cold water with mild detergent and dry in the shade. A light starch before ironing keeps the traditional crisp finish.',
       },
     ],
+    faqs: [
+      {
+        question: 'What is a tant saree?',
+        answer:
+          'Tant is a traditional Bengal handloom cotton saree, light and crisp with a woven border. It is designed for hot, humid weather.',
+      },
+      {
+        question: 'How do I keep the crisp finish of a tant saree?',
+        answer:
+          'Wash in cold water with a mild detergent, dry in the shade and use a light starch before ironing.',
+      },
+      {
+        question: 'Is tant good for daily wear?',
+        answer:
+          'Yes. It is light, breathable and easy to maintain, which makes it a long-time favourite for everyday wear.',
+      },
+      {
+        question: 'Will the saree look exactly like the photo?',
+        answer:
+          'We show each saree as accurately as we can, but screen settings and lighting can change how a colour looks. Small variations in weave are normal in handloom pieces.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Handloom sarees', kind: 'category', slug: 'handloom-saree' },
+      { label: 'Begampuri sarees', kind: 'category', slug: 'begampuri-saree' },
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Summer sarees', kind: 'category', slug: 'summer-sarees' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'pooja-sarees': {
     title: 'Pooja Sarees Online – Sarees for Puja & Festivals',
     description:
       'Shop pooja sarees online: soft cotton and cotton silk sarees in auspicious colours for puja, festivals and family functions. Free delivery.',
+    h1: 'Pooja Sarees for Puja & Festivals',
+    intro:
+      'For puja you want a saree that is comfortable through long rituals and still looks graceful. This collection has soft cotton and cotton silk sarees in festive colours such as red, maroon, yellow, green and wine, with visible borders or woven designs that feel special without being heavy.',
     sections: [
       {
         heading: 'Sarees for puja and festivals',
@@ -479,12 +667,44 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'A saree with a visible border or woven design feels festive without being heavy. Check the product page for fabric and whether a blouse piece is included.',
       },
     ],
+    faqs: [
+      {
+        question: 'Which colours are usually chosen for puja?',
+        answer:
+          'Red, maroon, yellow, green and wine are popular festive colours. Choose whichever suits the occasion and your family custom.',
+      },
+      {
+        question: 'Which fabric is best for a puja saree?',
+        answer:
+          'Soft cotton or cotton silk is a good choice. Both are comfortable for sitting through long rituals and look festive with a border.',
+      },
+      {
+        question: 'Is a blouse piece included?',
+        answer:
+          'This varies by product. Each product page states whether a blouse piece is included, so please check before ordering.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Wedding sarees', kind: 'category', slug: 'wedding-sarees' },
+      { label: 'Silk sarees', kind: 'category', slug: 'silk-sarees-saree' },
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Jamdani sarees', kind: 'category', slug: 'jamdani-saree' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'wedding-sarees': {
     title: 'Wedding Sarees Online – Handloom Silk & Cotton Silk',
     description:
       'Shop wedding sarees online: handloom cotton silk and silk sarees for brides, guests and family functions. Direct from weavers. Free delivery.',
+    h1: 'Wedding Sarees',
+    intro:
+      'Weddings call for sarees with richness and grace. This collection brings handloom silk and cotton silk sarees with woven borders and festive colours, for the bride, the family and guests. Every saree is sourced directly from weavers across India.',
     sections: [
       {
         heading: 'Sarees for weddings and receptions',
@@ -497,12 +717,49 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
           'Order well before the event so you have time to match a blouse and fall. Each product page lists the fabric, length and whether a blouse piece is included.',
       },
     ],
+    faqs: [
+      {
+        question: 'Which sarees are suitable for a wedding guest?',
+        answer:
+          'Cotton silk and silk sarees with a woven border are a popular choice. They look festive and are comfortable to wear for long hours.',
+      },
+      {
+        question: 'How early should I order for an event?',
+        answer:
+          'Order well before the date so you have time to match a blouse and fall, and to use our easy returns if the colour is not what you expected.',
+      },
+      {
+        question: 'What is the difference between silk and cotton silk?',
+        answer:
+          'Silk is made entirely of silk threads. Cotton silk blends cotton with silk, so it keeps a soft sheen but is lighter and easier to wear all day.',
+      },
+      {
+        question: 'Will the saree look exactly like the photo?',
+        answer:
+          'We show each saree as accurately as we can, but screen settings and lighting can change how a colour looks. Small variations in weave are normal in handloom pieces.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Silk sarees', kind: 'category', slug: 'silk-sarees-saree' },
+      { label: 'Jamdani sarees', kind: 'category', slug: 'jamdani-saree' },
+      { label: 'Pooja sarees', kind: 'category', slug: 'pooja-sarees' },
+      { label: 'Handloom sarees', kind: 'category', slug: 'handloom-saree' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
   },
 
   'summer-sarees': {
     title: 'Summer Sarees Online – Light Cotton & Mulmul Sarees',
     description:
       'Shop summer sarees online: light, breathable cotton and mulmul sarees that stay cool in hot weather. Direct from weavers. Free delivery.',
+    h1: 'Summer Sarees – Light Cotton & Mulmul',
+    intro:
+      'In hot, humid weather the fabric makes all the difference. These summer sarees are light cotton and mulmul pieces that let air through, absorb sweat and feel soft against the skin, so you stay comfortable from morning to evening.',
     sections: [
       {
         heading: 'Sarees that stay cool',
@@ -514,6 +771,74 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
         body:
           'Pastels, whites and soft prints reflect heat and look fresh. For a bolder look, pick a rich solid colour with a light border.',
       },
+    ],
+    faqs: [
+      {
+        question: 'Which saree fabric is best for summer?',
+        answer:
+          'Cotton and mulmul are the best choices. They are light and breathable and dry quickly.',
+      },
+      {
+        question: 'Which colours keep you cool?',
+        answer:
+          'Pastels, whites and soft prints reflect heat and look fresh. A rich solid colour with a light border also works well.',
+      },
+      {
+        question: 'Can I wear these sarees to the office?',
+        answer:
+          'Yes. Plain or small-border cotton and mulmul sarees look neat and professional, and stay comfortable through a long workday.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Mulmul sarees', kind: 'category', slug: 'mulmul-saree' },
+      { label: 'Malmal cotton sarees', kind: 'category', slug: 'malmal-cotton' },
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Tant sarees', kind: 'category', slug: 'tant-saree' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
+    ],
+  },
+
+  'under-499-saree': {
+    title: 'Sarees Under 500 – Budget Cotton Sarees Online',
+    description:
+      'Shop sarees under ₹500: soft, everyday cotton sarees direct from weavers across India. Free delivery and easy returns.',
+    h1: 'Sarees Under ₹500',
+    intro:
+      'Looking for a comfortable saree on a small budget? This collection brings together sarees under ₹500, including simple cotton pieces that are easy to wear for daily use, college or a regular workday. Every saree is sourced directly from weavers across India.',
+    sections: [
+      {
+        heading: 'Getting the best value under ₹500',
+        body:
+          'Plain and small-border cotton sarees give the best value for regular wear, since they wash easily and last long. Check each product page for fabric, length and whether a blouse piece is included before you order.',
+      },
+    ],
+    faqs: [
+      {
+        question: 'Which fabric is best for a saree under 500?',
+        answer:
+          'Cotton is the best choice at this price. It is breathable, easy to wash and comfortable for daily wear.',
+      },
+      {
+        question: 'Can I wear a budget saree to the office?',
+        answer:
+          'Yes. A plain or small-border cotton saree looks neat and professional, and stays comfortable through the day.',
+      },
+      {
+        question: 'Is delivery free and can I return a saree?',
+        answer:
+          'Yes, we offer free delivery across India and easy returns. Please read the Returns & Exchange page for the full terms.',
+      },
+    ],
+    links: [
+      { label: 'Cotton sarees for women', kind: 'category', slug: 'cotton-saree' },
+      { label: 'Plain sarees', kind: 'category', slug: 'plain-saree' },
+      { label: 'Sarees under 1000', kind: 'tag', slug: 'saree-under-1000' },
+      { label: 'All sarees', kind: 'category', slug: 'sarees' },
     ],
   },
 };
