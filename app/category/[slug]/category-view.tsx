@@ -8,14 +8,22 @@ import { fetchTopVariantMapServer, toJSON } from '@/lib/top-variant-server';
 import { getBlurPreviews } from '@/lib/blur-preview';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { categoryPath } from '@/lib/category-url';
-import { categorySeoTitle, categorySeoDescription, getCategorySeoSections } from '@/lib/category-seo';
+import {
+  categorySeoTitle,
+  categorySeoDescription,
+  getCategorySeo,
+  getCategorySeoSections,
+  hasRichCategoryContent,
+} from '@/lib/category-seo';
+import { resolveExploreLinks } from '@/lib/category-links';
+import { CategoryFaq, CategoryGuide, ExploreLinks } from '@/components/category/category-seo-blocks';
+import { BRAND_NAME, SITE_URL } from '@/lib/seo-site';
+import { buildBreadcrumbJsonLd, buildFaqJsonLd } from '@/lib/seo-jsonld';
 import ViewItemListTracker from '@/components/analytics/view-item-list-tracker';
 import CategoryToolbarGrid from '@/components/category/category-toolbar-grid';
 import { safeJsonLd } from '@/lib/json-ld';
 import { expandProductVariants } from '@/lib/expand-product-variants';
 import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
 
 // Old WooCommerce parent/umbrella categories that no longer exist as categories here
 // (e.g. /product-category/sarees-online/page/6/). They used to rank, so send them to
@@ -44,7 +52,7 @@ async function loadListingSettings() {
  */
 function fallbackIntro(name: string): string {
   return (
-    `Explore our handpicked ${name} collection at Sutisaree. Every piece is sourced ` +
+    `Explore our handpicked ${name} collection at ${BRAND_NAME}. Every piece is sourced ` +
     `directly from master weavers across India, blending traditional craftsmanship with ` +
     `designs made for everyday elegance and special occasions alike. Whether you're shopping ` +
     `for a wedding, festival, or gifting, our ${name} collection is curated for quality, ` +
@@ -62,17 +70,25 @@ export async function buildCategoryMetadata(slug: string, page: number): Promise
 
   if (!category) {
     return {
-      title: 'Category not found | Sutisaree',
+      title: `Category not found | ${BRAND_NAME}`,
       robots: { index: false, follow: true },
     };
   }
 
-  const description = categorySeoDescription(category.name, category.slug, category.description);
+  const baseDescription = categorySeoDescription(category.name, category.slug, category.description);
+  // Page 2+ must not repeat page 1's meta description (duplicate-description signal).
+  const description = page > 1 ? `${baseDescription} (Page ${page})` : baseDescription;
   const url = `${SITE_URL}${categoryPagePath(categoryPath(category), page)}`;
-  // The root layout title template already appends " | Sutisaree" on pages that
-  // set a plain title, but this file always spelled it out, so keep that style.
+  // categorySeoTitle() already ends with " | Suti Saree"; page 2+ gets "- Page N"
+  // so every paginated URL has its own title and a self-referencing canonical.
   const baseTitle = categorySeoTitle(category.name, category.slug);
-  const title = page > 1 ? baseTitle.replace(' | Sutisaree', ` - Page ${page} | Sutisaree`) : baseTitle;
+  const brandSuffix = ` | ${BRAND_NAME}`;
+  const title =
+    page > 1 && baseTitle.endsWith(brandSuffix)
+      ? `${baseTitle.slice(0, -brandSuffix.length)} - Page ${page}${brandSuffix}`
+      : page > 1
+        ? `${baseTitle} - Page ${page}`
+        : baseTitle;
 
   // An empty category ("No products yet") is thin content -- indexing it
   // risks a low-quality signal on the whole domain, and it's not a page
@@ -91,7 +107,7 @@ export async function buildCategoryMetadata(slug: string, page: number): Promise
       title,
       description,
       url,
-      siteName: 'Sutisaree',
+      siteName: BRAND_NAME,
       type: 'website',
     },
     twitter: {
@@ -145,8 +161,17 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
   // underlying product rows -- otherwise a single product with 10 colours
   // showed as "1 product" here while the grid rendered 10 cards for it.
   const displayCount = expandProductVariants(categoryProducts).length;
-  const intro = category.description || fallbackIntro(category.name);
+  const seoContent = getCategorySeo(category.slug);
+  const rich = hasRichCategoryContent(category.slug);
+  // Visible intro above the grid: the editable copy in lib/category-seo.ts, else the
+  // admin description, else a generic fallback. Only page 1 shows it (no duplicate
+  // text on /page/2/, /page/3/ ...).
+  const intro = seoContent?.intro || category.description || fallbackIntro(category.name);
+  const heading = seoContent?.h1 || category.name;
+  const pageHeading = page > 1 ? `${heading} – Page ${page}` : heading;
   const seoSections = getCategorySeoSections(category.slug);
+  const exploreLinks =
+    page === 1 && rich ? await resolveExploreLinks(seoContent?.links, categories, products, basePath) : [];
   const url = `${SITE_URL}${categoryPagePath(basePath, page)}`;
 
   // Same default order as the grid's "Popularity" sort, so the ItemList below
@@ -163,7 +188,7 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
     name: category.name,
-    description: intro,
+    description: page === 1 ? intro : `${category.name} - page ${page}`,
     url,
     ...(categoryProducts.length > 0
       ? {
@@ -179,21 +204,16 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
       : {}),
   };
 
-  // Breadcrumb rich snippet: Home > {Category Name}.
-  // Simplified to 2 levels (was Home > Categories > Category Name) so that
-  // Google's SERP breadcrumb display shows the actual category name instead
-  // of the generic "Categories" middle node when space is limited.
-  // Purely a search-results enhancement (bigger, more clickable listing) --
-  // doesn't change indexing eligibility, which is controlled by the
-  // canonical + robots meta in generateMetadata() above.
-  const breadcrumbJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: category.name, item: `${SITE_URL}${basePath}` },
-    ],
-  };
+  // ONE breadcrumb array drives both the visible trail and the BreadcrumbList
+  // schema, so they can never disagree (they used to: the page said
+  // Home / Categories / Name, the schema said Home / Name).
+  const crumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Categories', url: '/categories/' },
+    { name: category.name, url: basePath },
+  ];
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
+  const faqJsonLd = page === 1 && rich && seoContent?.faqs?.length ? buildFaqJsonLd(seoContent.faqs) : null;
 
   return (
     <div className="container-boutique py-8 pb-24 md:pb-12">
@@ -206,22 +226,35 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
       />
 
-      <nav className="mb-4 text-xs text-muted-foreground">
-        <Link href="/" className="hover:text-primary">
-          Home
-        </Link>
-        {' / '}
-        <Link href="/categories" className="hover:text-primary">
-          Categories
-        </Link>
-        {' / '}
-        <span className="text-foreground">{category.name}</span>
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
+        />
+      )}
+
+      <nav aria-label="Breadcrumb" className="mb-4 text-xs text-muted-foreground">
+        {crumbs.map((c, i) => (
+          <span key={c.url}>
+            {i > 0 && ' / '}
+            {i < crumbs.length - 1 ? (
+              <Link href={c.url} className="hover:text-primary">
+                {c.name}
+              </Link>
+            ) : (
+              <span className="text-foreground" aria-current="page">
+                {c.name}
+              </span>
+            )}
+          </span>
+        ))}
       </nav>
 
-      {/* Visible title + description are rendered at the bottom of the page;
-          this h1 stays as screen-reader/SEO-only text. */}
-      <h1 className="sr-only">{category.name}</h1>
-      <p className="mt-1 text-xs text-muted-foreground">
+      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{pageHeading}</h1>
+      {page === 1 && (
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{intro}</p>
+      )}
+      <p className="mt-3 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>
 
@@ -247,25 +280,26 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
           initialListingSettings={listingSettings}
         />
       )}
-      <section className="mt-10 border-t border-border/60 pt-8">
-        <h2 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{category.name}</h2>
-        {page === 1 &&
-          (seoSections.length > 0 ? (
-            <div className="mt-3 max-w-3xl space-y-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {category.description && <p>{category.description}</p>}
-              {seoSections.map((sec) => (
-                <div key={sec.heading}>
-                  <h3 className="font-serif text-lg font-semibold text-foreground">{sec.heading}</h3>
-                  <p className="mt-1">{sec.body}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {intro}
-            </p>
-          ))}
-      </section>
+      {page === 1 && rich && (
+        <>
+          <CategoryGuide title={`${heading}: buying guide`} sections={seoSections} />
+          <CategoryFaq title={`${heading}: frequently asked questions`} faqs={seoContent?.faqs ?? []} />
+          <ExploreLinks title="Explore more sarees" links={exploreLinks} />
+        </>
+      )}
+      {/* Categories without the full copy keep their older text block below the grid. */}
+      {page === 1 && !rich && seoSections.length > 0 && (
+        <section className="mt-10 border-t border-border/60 pt-8">
+          <div className="max-w-3xl space-y-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {seoSections.map((sec) => (
+              <div key={sec.heading}>
+                <h2 className="font-serif text-lg font-semibold text-foreground">{sec.heading}</h2>
+                <p className="mt-1">{sec.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <ViewItemListTracker
         listName={category.name}
         items={categoryProducts.map((p) => ({ id: p.id, name: p.name, category: p.category, price: p.price }))}

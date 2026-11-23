@@ -1435,6 +1435,15 @@ export default function SettingsPanel() {
             />
           </div>
           <div className="grid gap-1.5">
+            <Label htmlFor="social-pinterest">Pinterest</Label>
+            <Input
+              id="social-pinterest"
+              value={socialForm.pinterest ?? ''}
+              onChange={(e) => setSocialForm((f) => f && { ...f, pinterest: e.target.value })}
+              placeholder="https://pinterest.com/yourhandle"
+            />
+          </div>
+          <div className="grid gap-1.5">
             <Label htmlFor="social-twitter">Twitter / X</Label>
             <Input
               id="social-twitter"

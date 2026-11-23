@@ -2,6 +2,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
+  fetchCategoriesServer,
   fetchProductsServer,
   fetchTagBySlugServer,
   fetchTagProductIdsServer,
@@ -13,17 +14,16 @@ import { toPublicMediaUrl } from '@/lib/media-url';
 import ViewItemListTracker from '@/components/analytics/view-item-list-tracker';
 import CategoryToolbarGrid from '@/components/category/category-toolbar-grid';
 import { safeJsonLd } from '@/lib/json-ld';
+import { BRAND_NAME, SITE_URL } from '@/lib/seo-site';
+import { buildBreadcrumbJsonLd } from '@/lib/seo-jsonld';
+import { buildTagSeo, TAG_EXPLORE_LINKS } from '@/lib/tag-seo';
+import { resolveExploreLinks } from '@/lib/category-links';
+import { ExploreLinks } from '@/components/category/category-seo-blocks';
 import { expandProductVariants } from '@/lib/expand-product-variants';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
 
 export const revalidate = 86400; // 24h (was 30 min)
 
 type Params = { params: { slug: string } };
-
-function tagDescription(name: string): string {
-  return `Shop ${name} online at Sutisaree. Handloom sarees sourced directly from weavers across India, with free delivery and easy returns.`;
-}
 
 async function getTagProducts(tagId: string) {
   const [products, ids] = await Promise.all([
@@ -47,21 +47,22 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const tag = await fetchTagBySlugServer(params.slug);
   if (!tag) {
     return {
-      title: 'Tag not found | Sutisaree',
+      title: `Tag not found | ${BRAND_NAME}`,
       robots: { index: false, follow: true },
     };
   }
   const tagProducts = await getTagProducts(tag.id);
   const hasProducts = tagProducts.length > 0;
-  const title = `${tag.name} – Buy Online | Sutisaree`;
-  const description = tagDescription(tag.name);
+  const seo = buildTagSeo(tag.name, tag.slug, tagProducts.length);
+  const title = `${seo.title} | ${BRAND_NAME}`;
+  const description = seo.description;
   const url = `${SITE_URL}/product-tag/${tag.slug}/`;
   return {
-    // absolute: the brand is already in `title`, so skip the layout's " | Sutisaree" template.
+    // absolute: the brand is already in `title`, so skip the layout's brand template.
     title: { absolute: title },
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, siteName: 'Sutisaree', type: 'website' },
+    openGraph: { title, description, url, siteName: BRAND_NAME, type: 'website' },
     twitter: { card: 'summary_large_image', title, description },
     robots: {
       index: hasProducts,
@@ -92,11 +93,15 @@ export default async function TagPage({ params }: Params) {
   const blurPreviews = Object.fromEntries(await getBlurPreviews(Array.from(cardImageUrls)));
   const displayCount = expandProductVariants(tagProducts).length;
   const url = `${SITE_URL}/product-tag/${tag.slug}/`;
+  const seo = buildTagSeo(tag.name, tag.slug, tagProducts.length);
+  const [allProducts, categories] = await Promise.all([fetchProductsServer(), fetchCategoriesServer()]);
+  const exploreLinks = await resolveExploreLinks(TAG_EXPLORE_LINKS, categories, allProducts, `/product-tag/${tag.slug}/`);
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: tag.name,
+    name: seo.h1,
+    description: seo.intro,
     url,
     ...(tagProducts.length > 0
       ? {
@@ -111,30 +116,26 @@ export default async function TagPage({ params }: Params) {
         }
       : {}),
   };
-  const breadcrumbJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: tag.name, item: url },
-    ],
-  };
+  const crumbs = [
+    { name: 'Home', url: '/' },
+    { name: tag.name, url: `/product-tag/${tag.slug}/` },
+  ];
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
 
   return (
     <div className="container-boutique py-8 pb-24 md:pb-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
 
-      <nav className="mb-4 text-xs text-muted-foreground">
+      <nav aria-label="Breadcrumb" className="mb-4 text-xs text-muted-foreground">
         <Link href="/" className="hover:text-primary">Home</Link>
         {' / '}
-        <span className="text-foreground">{tag.name}</span>
+        <span className="text-foreground" aria-current="page">{tag.name}</span>
       </nav>
 
-      {/* Visible title + description are rendered at the bottom of the page;
-          this h1 stays as screen-reader/SEO-only text. */}
-      <h1 className="sr-only">{tag.name}</h1>
-      <p className="mt-1 text-xs text-muted-foreground">
+      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{seo.h1}</h1>
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{seo.intro}</p>
+      <p className="mt-3 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>
 
@@ -154,12 +155,13 @@ export default async function TagPage({ params }: Params) {
           blurPreviews={blurPreviews}
         />
       )}
-      <section className="mt-10 border-t border-border/60 pt-8">
-        <h2 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{tag.name}</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {tagDescription(tag.name)}
-        </p>
-      </section>
+      {seo.tips && (
+        <section className="mt-10 border-t border-border/60 pt-8">
+          <h2 className="font-serif text-xl font-semibold text-foreground">Buying tips</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{seo.tips}</p>
+        </section>
+      )}
+      <ExploreLinks title="Explore more sarees" links={exploreLinks} />
       <ViewItemListTracker
         listName={tag.name}
         items={tagProducts.map((p) => ({ id: p.id, name: p.name, category: p.category, price: p.price }))}

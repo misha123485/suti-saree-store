@@ -8,6 +8,7 @@ import CountrySwitcher from '@/components/country-switcher';
 import { useCart } from '@/lib/cart-context';
 import { BrandLogo } from '@/lib/brand-context';
 import { markCheckoutEntry } from '@/lib/checkout-return';
+import { BRAND_NAME } from '@/lib/seo-site';
 import { fetchSocialLinks, fetchStoreInfo, SocialLinks, StoreInfo } from '@/lib/settings-api';
 
 export default function Footer() {
@@ -40,7 +41,7 @@ export default function Footer() {
           <BrandLogo
             onDark
             className="h-10 max-w-[200px]"
-            fallback={<h3 className="font-serif text-2xl font-bold text-secondary">Sutisaree</h3>}
+            fallback={<h3 className="font-serif text-2xl font-bold text-secondary">{BRAND_NAME}</h3>}
           />
           <p className="mt-3 text-sm text-primary-foreground/80">
             Handwoven ethnic wear from master artisans across India. Crafted with
@@ -154,7 +155,7 @@ export default function Footer() {
       </div>
       <div className="border-t border-primary-foreground/10 py-4">
         <div className="container-boutique flex flex-col items-center justify-between gap-2 text-xs text-primary-foreground/60 sm:flex-row">
-          <p>© {new Date().getFullYear()} Sutisaree. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.</p>
           <CountrySwitcher />
           <p>Crafted in India · Handloom certified</p>
         </div>

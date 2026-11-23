@@ -279,6 +279,7 @@ export interface SocialLinks {
   instagram: string;
   facebook: string;
   youtube: string;
+  pinterest: string; // used by Organization schema sameAs (home page)
   twitter: string;
   linkedin: string;
   whatsapp: string; // full wa.me link or number, e.g. https://wa.me/918001234567
@@ -288,6 +289,7 @@ const DEFAULT_SOCIAL_LINKS: SocialLinks = {
   instagram: '',
   facebook: '',
   youtube: '',
+  pinterest: '',
   twitter: '',
   linkedin: '',
   whatsapp: '',

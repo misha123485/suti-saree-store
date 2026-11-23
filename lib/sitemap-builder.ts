@@ -4,6 +4,7 @@ import { LEGAL_PAGE_TITLES } from '@/lib/marketing-api';
 import { fetchPublishedBlogPostsServer } from '@/lib/blog-api-server';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
 import { categoryPath } from '@/lib/category-url';
+import { REDIRECTED_TAG_SLUGS } from '@/lib/seo-redirects';
 import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
 
 // Rank Math style split sitemaps. The OLD WordPress site served:
@@ -310,7 +311,9 @@ async function productTagEntries(): Promise<SitemapEntry[]> {
     perTag.set(l.tag_id, cur);
   }
   // A tag page with no live products is noindex, so it is skipped here too.
+  // Tags that next.config.js 301s elsewhere are skipped too (final URL only).
   return tags.flatMap((t) => {
+    if (REDIRECTED_TAG_SLUGS.has(t.slug)) return [];
     const info = perTag.get(t.id);
     if (!info) return [];
     const base = `${SITE_URL}/product-tag/${t.slug}/`;

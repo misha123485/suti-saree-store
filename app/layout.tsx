@@ -10,6 +10,7 @@ import CookieConsent from '@/components/cookie-consent';
 import BlurPlaceholderSync from '@/components/blur-placeholder-sync';
 import GoogleCustomerReviewsBadge from '@/components/analytics/google-customer-reviews-badge';
 import ReviewsBadge from '@/components/reviews-badge';
+import { BRAND_NAME } from '@/lib/seo-site';
 import { getServerSupabase } from '@/lib/supabase-server';
 import { getStorefrontChromeSettings } from '@/lib/storefront-settings-server';
 import { SeoSettings, AnalyticsSettings } from '@/lib/marketing-api';
@@ -52,7 +53,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com'
 export const revalidate = 86400; // 24h - CPU saver (was 6h); admin edits still purge via revalidatePath
 
 const DEFAULT_SEO: SeoSettings = {
-  site_title: 'Sutisaree — Handwoven Indian Ethnic Wear & Sarees',
+  site_title: `${BRAND_NAME} — Handwoven Indian Ethnic Wear & Sarees`,
   meta_description:
     'Discover handpicked sarees, lehengas and ethnic wear from master weavers across India. Timeless craftsmanship, modern convenience.',
   keywords:
@@ -124,7 +125,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     title: {
       default: seo.site_title,
-      template: '%s | Sutisaree',
+      template: `%s | ${BRAND_NAME}`,
     },
     description: seo.meta_description,
     keywords,
@@ -147,7 +148,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: seo.site_title,
       description: seo.meta_description,
-      siteName: 'Sutisaree',
+      siteName: BRAND_NAME,
       type: 'website',
       url: SITE_URL,
       images: seo.og_image ? [{ url: seo.og_image }] : undefined,
