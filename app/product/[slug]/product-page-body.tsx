@@ -14,10 +14,10 @@
 import { descriptionToPlainText } from '@/lib/description-text';
 import { Metadata } from 'next';
 import { ProductsProvider } from '@/lib/cart-context';
-import { fetchProductBySlugServer } from '@/lib/products-api-server';
+import { fetchProductBySlugServer, fetchCategoriesServer } from '@/lib/products-api-server';
 import { fetchVariantBySlug, fetchVariantsForProductServer, VariantWithSizes, ProductVariant } from '@/lib/variants-api';
 import { safeJsonLd } from '@/lib/json-ld';
-import { slugify } from '@/lib/slug-utils';
+import { categoryPath } from '@/lib/category-url';
 import { fetchFulfillmentSettings } from '@/lib/marketing-api';
 import { fetchShippingSettings } from '@/lib/pincode-api';
 import { generateVariantSeoContent } from '@/lib/variant-seo-content';
@@ -317,25 +317,38 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
       }
     : null;
 
+  // Breadcrumb's middle step must be the category's REAL URL (slug / old Woo
+  // path from the categories table) -- a slug made from the name 404s.
+  let breadcrumbCategoryUrl: string | null = null;
+  if (product?.category) {
+    try {
+      const cats = await fetchCategoriesServer();
+      const match = cats.find((c) => c.name === product.category);
+      if (match) breadcrumbCategoryUrl = `${SITE_URL}${categoryPath(match)}`;
+    } catch {
+      breadcrumbCategoryUrl = null;
+    }
+  }
+
   const breadcrumbJsonLd = product
     ? {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-          ...(product.category
+          ...(breadcrumbCategoryUrl
             ? [
                 {
                   '@type': 'ListItem',
                   position: 2,
                   name: product.category,
-                  item: `${SITE_URL}/category/${slugify(product.category)}/`,
+                  item: breadcrumbCategoryUrl,
                 },
               ]
             : []),
           {
             '@type': 'ListItem',
-            position: product.category ? 3 : 2,
+            position: breadcrumbCategoryUrl ? 3 : 2,
             name: displayName,
             item: `${SITE_URL}/product/${product.slug}/`,
           },
