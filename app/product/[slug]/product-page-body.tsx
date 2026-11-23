@@ -17,6 +17,7 @@ import { ProductsProvider } from '@/lib/cart-context';
 import { fetchProductBySlugServer } from '@/lib/products-api-server';
 import { fetchVariantBySlug, fetchVariantsForProductServer, VariantWithSizes, ProductVariant } from '@/lib/variants-api';
 import { safeJsonLd } from '@/lib/json-ld';
+import { slugify } from '@/lib/slug-utils';
 import { fetchFulfillmentSettings } from '@/lib/marketing-api';
 import { fetchShippingSettings } from '@/lib/pincode-api';
 import { generateVariantSeoContent } from '@/lib/variant-seo-content';
@@ -316,12 +317,44 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
       }
     : null;
 
+  const breadcrumbJsonLd = product
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+          ...(product.category
+            ? [
+                {
+                  '@type': 'ListItem',
+                  position: 2,
+                  name: product.category,
+                  item: `${SITE_URL}/category/${slugify(product.category)}/`,
+                },
+              ]
+            : []),
+          {
+            '@type': 'ListItem',
+            position: product.category ? 3 : 2,
+            name: displayName,
+            item: `${SITE_URL}/product/${product.slug}/`,
+          },
+        ],
+      }
+    : null;
+
   return (
     <>
       {jsonLd && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+        />
+      )}
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
         />
       )}
       <ProductsProvider>
