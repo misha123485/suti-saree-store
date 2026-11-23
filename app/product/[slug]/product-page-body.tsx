@@ -23,6 +23,8 @@ import { fetchShippingSettings } from '@/lib/pincode-api';
 import { generateVariantSeoContent } from '@/lib/variant-seo-content';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
 import { toPublicMediaUrl, toPublicMediaUrls } from '@/lib/media-url';
+import { buildProductJsonLd } from '@/lib/product-jsonld';
+import { fetchApprovedReviewsForSchema, fetchFeedBrand } from '@/lib/product-schema-server';
 import { getBlurPreviews } from '@/lib/blur-preview';
 import { getGalleryOverlaySettingsServer } from '@/lib/gallery-overlay-settings';
 import ProductDetail from './product-detail';
@@ -146,15 +148,10 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
   const product = resolved?.product ?? null;
   const variant = resolved?.variant ?? null;
 
-  // If this request came from a Merchant Center feed link (which appends
-  // ?size=XL for products with per-size pricing -- see
-  // app/api/merchant-feed/route.ts), resolve that exact size's price so
-  // the structured-data <Offer> below matches what was advertised for it,
-  // not just the colour's default price. Falls back to the colour/product
-  // price when there's no ?size=, no matching size, or no override for it.
+  // ?size=XL comes from Merchant Center feed links (see app/api/merchant-feed/route.ts). The JSON-LD
+  // builder (lib/product-jsonld.ts) resolves that exact size's price / stock / sku, so the structured data
+  // always matches what was advertised for it. Falls back to the first size, exactly like the storefront does.
   const sizeParam = size?.trim();
-  const matchedSize = sizeParam ? variant?.sizes.find((s) => s.size === sizeParam) : undefined;
-  const offerPrice = matchedSize?.price_override ?? variant?.price_override ?? product?.price ?? 0;
 
   // Same source of truth as app/api/merchant-feed/route.ts (Admin >
   // Marketing > Shipping & Returns Timing) -- keeping this schema in sync
@@ -219,102 +216,28 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
     }
   }
 
+  // REAL approved reviews only (reviews table, rating 1-5) -> aggregateRating + review[]. Zero rows -> neither
+  // property is published. products.rating / products.reviews are deliberately NOT used (may be stale / fake).
+  const [schemaReviews, schemaBrand] = product
+    ? await Promise.all([fetchApprovedReviewsForSchema(product.id), fetchFeedBrand()])
+    : [[], 'Sutisaree'];
+
   const jsonLd = product
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'Product',
-        name: displayName,
+    ? buildProductJsonLd({
+        siteUrl: SITE_URL,
+        slug,
+        sizeParam,
+        brand: schemaBrand,
+        displayName,
         description: jsonLdDescription,
-        slug: slug,
-        category: product.category,
-        color: variant?.color || product.colors[0] || undefined,
-        image:
-          (variant?.images.length ? variant.images : product.images).length > 0
-            ? toPublicMediaUrls(variant?.images.length ? variant.images : product.images)
-            : undefined,
-        sku: variant?.sku || product.sku || variant?.id || product.id,
-        brand: {
-          '@type': 'Brand',
-          name: 'Sutisaree',
-        },
-        offers: {
-          '@type': 'Offer',
-          url: `${SITE_URL}/product/${slug}${sizeParam ? `?size=${encodeURIComponent(sizeParam)}` : ''}`,
-          priceCurrency: 'INR',
-          price: offerPrice,
-          availability:
-            (matchedSize ? matchedSize.stock_quantity > 0 : product.inStock)
-              ? 'https://schema.org/InStock'
-              : 'https://schema.org/OutOfStock',
-          itemCondition: 'https://schema.org/NewCondition',
-          seller: {
-            '@type': 'Organization',
-            name: 'Sutisaree',
-          },
-          shippingDetails: fulfillment && shipping
-            ? {
-                '@type': 'OfferShippingDetails',
-                shippingRate: {
-                  '@type': 'MonetaryAmount',
-                  value: shipping.flat_rate,
-                  currency: 'INR',
-                },
-                shippingDestination: {
-                  '@type': 'DefinedRegion',
-                  addressCountry: 'IN',
-                },
-                deliveryTime: {
-                  '@type': 'ShippingDeliveryTime',
-                  handlingTime: {
-                    '@type': 'QuantitativeValue',
-                    minValue: fulfillment.dispatch_days_min,
-                    maxValue: fulfillment.dispatch_days_max,
-                    unitCode: 'DAY',
-                  },
-                  transitTime: {
-                    '@type': 'QuantitativeValue',
-                    minValue: fulfillment.delivery_metro_min,
-                    maxValue: fulfillment.delivery_remote_max,
-                    unitCode: 'DAY',
-                  },
-                },
-              }
-            : undefined,
-          hasMerchantReturnPolicy: fulfillment
-            ? {
-                '@type': 'MerchantReturnPolicy',
-                applicableCountry: 'IN',
-                returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-                merchantReturnDays: fulfillment.return_window_days,
-                returnMethod: 'https://schema.org/ReturnByMail',
-                returnFees: 'https://schema.org/FreeReturn',
-              }
-            : undefined,
-        },
-        aggregateRating:
-          (variant?.reviews ?? product.reviews) > 0
-            ? {
-                '@type': 'AggregateRating',
-                ratingValue: variant?.rating ?? product.rating,
-                reviewCount: variant?.reviews ?? product.reviews,
-                bestRating: 5,
-                worstRating: 1,
-              }
-            : undefined,
-        material: product.material || product.fabric || undefined,
-        pattern: product.pattern || undefined,
-        productionDate: product.created_at,
-        video: videoUrl
-          ? {
-              '@type': 'VideoObject',
-              name: `${displayName} - Video`,
-              description: jsonLdDescription || `Video showcase of ${displayName}`,
-              thumbnailUrl: videoThumbnails.length > 0 ? videoThumbnails.slice(0, 1) : undefined,
-              uploadDate: product.created_at,
-              contentUrl: videoUrl,
-            }
-          : undefined,
-      }
+        product,
+        variant,
+        reviews: schemaReviews,
+        fulfillment,
+        shipping,
+        videoUrl,
+        videoThumbnails: videoThumbnails,
+      })
     : null;
 
   // Breadcrumb's middle step must be the category's REAL URL (slug / old Woo

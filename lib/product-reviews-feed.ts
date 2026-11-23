@@ -13,6 +13,8 @@
 //  * Only REAL, approved customer reviews. A review without a valid 1-5 rating is skipped (never
 //    "rounded up" to 1 star) -- see README-FAKE-RATING-FIX.txt, nothing here ever invents a rating.
 
+import { feedOfferId } from './feed-ids';
+
 export interface FeedReview {
   id: string;
   product_id: string;
@@ -173,7 +175,7 @@ export function escapeXml(input: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Identifiers -- MUST mirror /api/merchant-feed (<g:id>)
+// Identifiers -- MUST mirror /api/merchant-feed (<g:id>) and the product-page JSON-LD sku (lib/feed-ids.ts)
 // ---------------------------------------------------------------------------
 
 /**
@@ -189,16 +191,18 @@ export function buildProductSkus(productId: string, variants: FeedVariantForSkus
   const out: string[] = [];
   const seen = new Set<string>();
   const add = (raw: string) => {
-    const sku = String(raw ?? '').replace(/[\u0000-\u001F\u007F]/g, '').trim();
+    // feedOfferId() already sanitises ([A-Za-z0-9._-], max 50) -- the SAME function the product feed
+    // (<g:id>) and the product-page JSON-LD (sku) use, so the three can never drift apart.
+    const sku = String(raw ?? '').trim();
     if (!sku || sku.length > MAX_SKU_LENGTH || seen.has(sku)) return;
     seen.add(sku);
     out.push(sku);
   };
-  add(productId);
+  add(feedOfferId({ productId }));
   for (const v of variants ?? []) {
     const sizes = v.product_variant_sizes ?? [];
-    if (sizes.length === 0) add(v.id);
-    else for (const s of sizes) add(`${v.id}-${String(s.size ?? '').replace(/\s+/g, '').slice(0, 10)}`);
+    if (sizes.length === 0) add(feedOfferId({ productId, variantId: v.id }));
+    else for (const s of sizes) add(feedOfferId({ productId, variantId: v.id, size: String(s.size ?? '') }));
   }
   return out.slice(0, MAX_SKUS_PER_PRODUCT);
 }

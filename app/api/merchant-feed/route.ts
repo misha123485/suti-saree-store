@@ -4,7 +4,9 @@ import { fetchProductsServer } from '@/lib/products-api-server';
 import { fetchFulfillmentSettings } from '@/lib/marketing-api';
 import { fetchShippingSettings } from '@/lib/pincode-api';
 import { resolveGoogleProductCategory } from '@/lib/google-category';
-import { toPublicMediaUrls } from '@/lib/media-url';
+import { toFeedImageUrls } from '@/lib/feed-images';
+import { feedOfferId } from '@/lib/feed-ids';
+import { buildFeedDescription, resolveFeedColor } from '@/lib/feed-description';
 import type { Product } from '@/lib/types';
 import { getPublicInternationalConfig } from '@/lib/intl-server';
 import { convertInrToMinor, minorToMajor } from '@/lib/intl-pricing';
@@ -36,21 +38,6 @@ interface FeedVariant {
   images: string[] | null;
   price_override: number | null;
   product_variant_sizes: FeedVariantSize[] | null;
-}
-
-// Google's "Update product descriptions" recommendation flags items whose
-// <description> text never mentions an attribute (color, in this case)
-// that IS present elsewhere on the item -- even though we already send
-// <g:color>, Google specifically checks the free-text description too.
-// Since the feed is one item per colour/size, we know the exact colour
-// here, so we append it to the description whenever it isn't already
-// mentioned in the text (case-insensitive match to avoid "Red, Red").
-function ensureColorMentioned(description: string, color: string): string {
-  if (!color) return description;
-  const trimmed = description.trim();
-  if (!trimmed) return `Available in ${color}.`;
-  if (trimmed.toLowerCase().includes(color.toLowerCase())) return trimmed;
-  return `${trimmed} Available in ${color}.`;
 }
 
 function escapeXml(input: string): string {
@@ -210,10 +197,14 @@ export async function GET(request: Request) {
     product: Product;
   }) {
     const { id, itemGroupId, title, link, images: rawImages, inStock, price, mrp, color, size, product } = opts;
-    // Rewrites Supabase Storage URLs to our own domain (see lib/media-url.ts)
-    // so Merchant Center and Pinterest's feed-derived catalog show
-    // sutisaree.com image links instead of the storage provider's host.
-    const images = toPublicMediaUrls(rawImages);
+    // A missing / 0 / NaN price can never be a valid Shopping item (Merchant Center rejects it) and used to make
+    // `price.toFixed` throw, which turned the WHOLE feed into a 500. Skip just that item; the audit script
+    // (scripts/audit-product-schema.ts) lists such products so the price can be fixed in Admin.
+    if (typeof price !== 'number' || !isFinite(price) || price <= 0 || !id) return '';
+    // Rewrites Supabase Storage URLs to our own domain (see lib/media-url.ts) AND guarantees an
+    // absolute, ORIGINAL full-size url (never a -sm / -md thumbnail) -- see lib/feed-images.ts.
+    // Google wants image_link >= 500x500 from 31 Jan 2027 (check with scripts/check-image-sizes.ts).
+    const images = toFeedImageUrls(rawImages, SITE_URL);
     const image = images[0] || '';
     const extraImages = images
       .slice(1, 11)
@@ -239,7 +230,7 @@ export async function GET(request: Request) {
       <g:id>${escapeXml(id)}</g:id>
       <g:item_group_id>${escapeXml(itemGroupId)}</g:item_group_id>
       <title>${escapeXml(title)}</title>
-      <description>${escapeXml(ensureColorMentioned(product.description || product.name, color).slice(0, 5000))}</description>
+      <description>${escapeXml(buildFeedDescription(product, color))}</description>
       <link>${escapeXml(withCountry(link))}</link>
       <g:image_link>${escapeXml(image)}</g:image_link>
       ${extraImages}
@@ -269,7 +260,7 @@ export async function GET(request: Request) {
       // the single-item behaviour so nothing disappears from the feed.
       if (variants.length === 0) {
         return renderItem({
-          id: p.id,
+          id: feedOfferId({ productId: p.id }),
           itemGroupId: p.id,
           title: p.name,
           link: `${SITE_URL}/product/${p.slug}`,
@@ -277,7 +268,7 @@ export async function GET(request: Request) {
           inStock: p.inStock && p.stock_quantity > 0,
           price: p.price,
           mrp: p.mrp,
-          color: (p.colors || []).slice(0, 3).join('/') || 'Multicolor',
+          color: resolveFeedColor(null, p),
           size: (p.sizes || [])[0] || 'Free Size',
           product: p,
         });
@@ -302,7 +293,7 @@ export async function GET(request: Request) {
             const price = v.price_override ?? p.price;
             return [
               renderItem({
-                id: v.id,
+                id: feedOfferId({ productId: p.id, variantId: v.id }),
                 itemGroupId: p.id,
                 title: `${p.name} - ${v.color}`,
                 link: `${SITE_URL}/product/${v.slug}`,
@@ -310,7 +301,7 @@ export async function GET(request: Request) {
                 inStock: p.inStock && p.stock_quantity > 0,
                 price,
                 mrp: p.mrp,
-                color: v.color,
+                color: resolveFeedColor(v.color, p),
                 size: (p.sizes || [])[0] || 'Free Size',
                 product: p,
               }),
@@ -319,11 +310,9 @@ export async function GET(request: Request) {
 
           return sizes.map((s) => {
             const price = s.price_override ?? v.price_override ?? p.price;
-            // Google Merchant Center caps the `id` attribute at 50
-            // characters. v.id alone is a 36-char Supabase UUID, so we
-            // only have ~13 chars of headroom to keep the size suffix
-            // unique per colour without ever crossing that limit.
-            const sizeSlug = s.size.replace(/\s+/g, '').slice(0, 10);
+            // <g:id> = feedOfferId() (lib/feed-ids.ts): `${variant id}-${size}`, sanitised to [A-Za-z0-9._-],
+            // max 50 chars (Merchant Center's limit). The product-page JSON-LD `sku` and the reviews feed
+            // <sku> use the SAME function, so the three can never drift apart.
             // ?size= makes this item's landing page pre-select this exact
             // size on load (see product-detail.tsx), so the visible price
             // and structured-data price both match what's advertised here
@@ -332,7 +321,7 @@ export async function GET(request: Request) {
             // size's price as a landing-page mismatch.
             const sizeLink = `${SITE_URL}/product/${v.slug}?size=${encodeURIComponent(s.size)}`;
             return renderItem({
-              id: `${v.id}-${sizeSlug}`,
+              id: feedOfferId({ productId: p.id, variantId: v.id, size: s.size }),
               itemGroupId: p.id,
               title: `${p.name} - ${v.color} - ${s.size}`,
               link: sizeLink,
@@ -340,7 +329,7 @@ export async function GET(request: Request) {
               inStock: (s.stock_quantity || 0) > 0,
               price,
               mrp: p.mrp,
-              color: v.color,
+              color: resolveFeedColor(v.color, p),
               size: s.size,
               product: p,
             });

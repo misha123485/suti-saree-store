@@ -14,6 +14,8 @@
  * the `purchase` event, so `add_to_cart` / `begin_checkout` (and any
  * other event fired via this helper) get the same reliability.
  */
+import { feedOfferId } from './feed-ids';
+
 export function fireGtagEvent(eventName: string, params: Record<string, unknown>): void {
   if (typeof window === 'undefined') return;
 
@@ -149,11 +151,11 @@ export function feedMatchedItemId(
   variant: { id: string; sizes?: unknown[] } | null | undefined,
   selectedSize: string | null | undefined
 ): string {
-  if (!variant) return productId;
-  if (!variant.sizes || variant.sizes.length === 0) return variant.id;
-  if (!selectedSize) return variant.id;
-  const sizeSlug = selectedSize.replace(/\s+/g, '').slice(0, 10);
-  return `${variant.id}-${sizeSlug}`;
+  // Delegates to the shared helper so this id can never drift from the product feed <g:id>,
+  // the product-page JSON-LD sku and the reviews feed <sku> (lib/feed-ids.ts).
+  if (!variant) return feedOfferId({ productId });
+  if (!variant.sizes || variant.sizes.length === 0 || !selectedSize) return feedOfferId({ productId, variantId: variant.id });
+  return feedOfferId({ productId, variantId: variant.id, size: selectedSize });
 }
 
 /**
