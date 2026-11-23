@@ -9,6 +9,15 @@ const nextConfig = {
   // Redirects run before rewrites below.
   async redirects() {
     return [
+      // Google Shopping "Checkout" button (Merchant Center -> Checkout settings):
+      //   /checkout/?add-to-cart={id}&quantity=1  ->  /checkout-link/{id}/  (adds that exact item, then opens checkout)
+      // `quantity` rides along automatically (redirects keep the query string).
+      {
+        source: '/checkout',
+        has: [{ type: 'query', key: 'add-to-cart', value: '(?<id>[^/&?#]+)' }],
+        destination: '/checkout-link/:id/',
+        permanent: false,
+      },
       { source: '/my-account/orders', destination: '/account/orders/', permanent: true },
       { source: '/my-account/view-order/:id', destination: '/account/orders/', permanent: true },
       { source: '/my-account/edit-account', destination: '/account/profile/', permanent: true },
