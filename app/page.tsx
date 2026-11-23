@@ -64,6 +64,8 @@ export default async function Home() {
       {
         '@type': 'Organization',
         name: data.name,
+        // People search "suti saree" (two words); the brand is written "Sutisaree".
+        alternateName: ['Suti Saree'],
         url: SITE_URL,
         // Logo from Admin > Media > Brand identity (falls back to the favicon route).
         logo: brand.logo_url || `${SITE_URL}/icon`,
@@ -81,6 +83,7 @@ export default async function Home() {
       {
         '@type': 'WebSite',
         name: data.name,
+        alternateName: ['Suti Saree'],
         url: SITE_URL,
         description: data.description,
         potentialAction: {

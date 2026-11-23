@@ -26,6 +26,16 @@ const nextConfig = {
       { source: '/shop/page/1', destination: '/shop/', permanent: true },
       // Old Woo tag pagination: tag pages show every product on one page, so /page/N -> tag URL.
       { source: '/product-tag/:slug/page/:n(\\d+)', destination: '/product-tag/:slug/', permanent: true },
+      // Old Woo tags that no longer exist -> closest live page (301).
+      { source: '/product-tag/saree-under-500', destination: '/product-category/clothing/women-clothing/saree/under-499-saree/', permanent: true },
+      { source: '/product-tag/saree-under-1500', destination: '/product-tag/saree-under-1000/', permanent: true },
+      { source: '/product-tag/under-1500', destination: '/product-tag/saree-under-1000/', permanent: true },
+      { source: '/product-tag/summer', destination: '/product-category/clothing/women-clothing/saree/summer-sarees/', permanent: true },
+      { source: '/product-tag/printed', destination: '/product-category/clothing/women-clothing/saree/printed-saree/', permanent: true },
+      { source: '/product-tag/printed-saree', destination: '/product-category/clothing/women-clothing/saree/printed-saree/', permanent: true },
+      { source: '/product-tag/silk-saree', destination: '/product-category/clothing/women-clothing/saree/silk-sarees-saree/', permanent: true },
+      { source: '/product-tag/lichi-silk-saree', destination: '/product-category/clothing/women-clothing/saree/silk-sarees-saree/', permanent: true },
+      { source: '/product-tag/ghicha-saree', destination: '/product-tag/ghicha-work/', permanent: true },
       // Old WP pages -> closest live page (301). Spam posts/categories stay 404 on purpose.
       { source: '/home', destination: '/', permanent: true },
       { source: '/women-sale', destination: '/shop/', permanent: true },
