@@ -31,13 +31,20 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   const supabase = getServerSupabase();
 
-  // 1) Colour variant (with or without a size suffix)
-  const { data: variantRow } = await supabase
-    .from('product_variants')
-    .select('*, product_variant_sizes(*), products(*)')
-    .eq('id', baseId)
-    .maybeSingle();
+  // Both lookups run at the same time (one round-trip instead of two when the
+  // id is a plain product); the product query is skipped for size-suffixed ids.
+  const [{ data: variantRow }, { data: plainProductRow }] = await Promise.all([
+    supabase
+      .from('product_variants')
+      .select('*, product_variant_sizes(*), products(*)')
+      .eq('id', baseId)
+      .maybeSingle(),
+    sizeSlug
+      ? Promise.resolve({ data: null as any })
+      : supabase.from('products').select('*').eq('id', baseId).maybeSingle(),
+  ]);
 
+  // 1) Colour variant (with or without a size suffix)
   if (variantRow) {
     const { products: productRow, product_variant_sizes, ...v } = variantRow as any;
     if (!productRow) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -72,7 +79,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   // 2) Plain product (no colour variants in the feed)
   if (!sizeSlug) {
-    const { data: productRow } = await supabase.from('products').select('*').eq('id', baseId).maybeSingle();
+    const productRow = plainProductRow;
     if (productRow) {
       const base = mapRowToProduct(productRow as any);
       return NextResponse.json({
