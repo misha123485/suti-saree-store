@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title: 'About Us',
   description:
     'Sutisaree sources and sells handwoven ethnic wear directly from weaving clusters across India — who we are, how we work, and how to reach us.',
-  alternates: { canonical: '/about' },
+  alternates: { canonical: '/about-us/' },
 };
 
 async function getStoreInfo() {

@@ -1,5 +1,6 @@
 import { getServerSupabase } from './supabase-server';
 import { BlogPostRow } from './types';
+import { isSpamSlug } from './spam-410';
 
 export async function fetchPublishedBlogPostsServer(): Promise<BlogPostRow[]> {
   const supabase = getServerSupabase();
@@ -12,7 +13,8 @@ export async function fetchPublishedBlogPostsServer(): Promise<BlogPostRow[]> {
     console.error('fetchPublishedBlogPostsServer failed', error);
     return [];
   }
-  return (data ?? []) as BlogPostRow[];
+  // Defense in depth: a spam slug must never reach the index, sitemap or a link, even if re-inserted.
+  return ((data ?? []) as BlogPostRow[]).filter((p) => !isSpamSlug(p.slug));
 }
 
 export async function fetchPublishedBlogPostBySlugServer(
@@ -29,5 +31,6 @@ export async function fetchPublishedBlogPostBySlugServer(
     console.error('fetchPublishedBlogPostBySlugServer failed', error);
     return null;
   }
-  return (data as BlogPostRow) ?? null;
+  if (!data || isSpamSlug((data as BlogPostRow).slug)) return null;
+  return data as BlogPostRow;
 }

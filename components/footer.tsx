@@ -80,6 +80,7 @@ export default function Footer() {
             <li><Link href="/cart" className="hover:text-secondary">Cart</Link></li>
             <li><Link href="/checkout" onClick={() => { clearBuyNow(); markCheckoutEntry(); }} className="hover:text-secondary">Checkout</Link></li>
             <li><Link href="/about" className="hover:text-secondary">About Us</Link></li>
+            <li><Link href="/blog/" className="hover:text-secondary">Blog</Link></li>
             <li><Link href="/contact" className="hover:text-secondary">Contact Us</Link></li>
             {/* Admin link intentionally omitted for security */}
             <li><Link href="/shipping-delivery-information/" className="hover:text-secondary">Shipping & Returns</Link></li>

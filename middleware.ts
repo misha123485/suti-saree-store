@@ -2,12 +2,30 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { verifyAdminToken, ADMIN_SESSION_COOKIE } from './lib/admin-auth';
+import { isSpamPath, goneResponseHtml } from './lib/spam-410';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  // ---------- Hacked-WordPress spam URLs: 410 Gone (not 404), never served ----------
+  // Runs first and only for the spam matcher entries below; non-spam paths that
+  // reach this point (e.g. real /blog/ posts) fall straight through.
+  if (isSpamPath(pathname)) {
+    return new NextResponse(goneResponseHtml(), {
+      status: 410,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'x-robots-tag': 'noindex, nofollow',
+        'cache-control': 'public, max-age=0, s-maxage=86400',
+      },
+    });
+  }
+  if (!pathname.startsWith('/admin') && !pathname.startsWith('/account') && !pathname.startsWith('/vendor') && pathname !== '/login' && pathname !== '/login/' && pathname !== '/signup' && pathname !== '/signup/') {
+    return NextResponse.next();
+  }
 
   // ---------- Admin routes: unchanged existing token-based guard ----------
   if (pathname.startsWith('/admin')) {
@@ -69,5 +87,16 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/account/:path*', '/vendor/:path*', '/login', '/signup'],
+  matcher: [
+    '/admin/:path*',
+    '/account/:path*',
+    '/vendor/:path*',
+    '/login',
+    '/signup',
+    // Spam 410 (see lib/spam-410.ts, the real decision is made there).
+    // 1) anything under /blog/<slug>  2) root-level /<slug> that looks like the old casino spam.
+    // The root pattern is a coarse pre-filter so normal pages never run middleware.
+    '/blog/:slug/:rest*',
+    '/:slug([^/]*(?:casino|slot|bet|bdm|wazamba|vulkan|jackpot|poker|roulette|blackjack|gambling|gransino|gratorama|turbowins|test-post)[^/]*)/:rest*',
+  ],
 };

@@ -3,6 +3,7 @@ import { getBrandSettings } from '@/lib/brand-server';
 import { safeJsonLd } from '@/lib/json-ld';
 import { fetchHomeData } from '@/lib/home-data-server';
 import HomeClient from './home-client';
+import HomeCategoryLinks from '@/components/home/home-category-links';
 import type { Metadata } from 'next';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import {
@@ -132,6 +133,7 @@ export default async function Home() {
         discoverCategoryCounts={homeData.discoverCategoryCounts}
         appLayout={homeData.appLayout}
       />
+      <HomeCategoryLinks />
     </>
   );
 }

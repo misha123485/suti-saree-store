@@ -13,6 +13,7 @@ import {
   fetchFeaturedProductsServer,
 } from '@/lib/products-api-server';
 import { blurDataURL } from '@/lib/utils';
+import { categoryPath } from '@/lib/category-url';
 import { safeJsonLd } from '@/lib/json-ld';
 import BlogProductCard from '@/components/blog/blog-product-card';
 import BlogCtaButton from '@/components/blog/blog-cta-button';
@@ -36,7 +37,11 @@ export const revalidate = 1800;
 // category's page. Any category name that doesn't resolve to a real,
 // live category is rendered as plain text instead — so a stale/renamed
 // category can never produce a dead link on the live site.
-const CATEGORY_LINK_RE = /\[([^\]]+)\]\(category:([^)]+)\)/g;
+const CATEGORY_LINK_RE = /\[([^\]]+)\]\((category|categoryslug|tag|blog):([^)]+)\)/g;
+// Extra safe link kinds (all resolve to real URLs or degrade to plain text):
+//   [text](categoryslug:cotton-saree)         category by SLUG (honours the old Woo path); "a|b" = fallback slugs
+//   [text](tag:saree-under-1000)              /product-tag/<slug>/
+//   [text](blog:how-to-wear-a-cotton-saree)   /blog/<slug>/ (only for posts that are published)
 
 // Inline product cards: a whole paragraph consisting of `{{product:slug}}`
 // (inserted via the "Insert product card" button in the admin blog editor)
@@ -54,6 +59,7 @@ const PRODUCT_CARD_RE = /^\{\{product:([a-z0-9-]+)\}\}$/i;
 // malformed or hallucinated heading can never break the page — worst case
 // it just falls through to the generic paragraph renderer as plain text.
 const H2_MARKER_RE = /^\{\{h2:(.+)\}\}$/;
+const H3_MARKER_RE = /^\{\{h3:(.+)\}\}$/;
 
 // Inline customer-review blockquotes: a whole paragraph consisting of
 // `{{review:<base64 json>}}` (written by the AI generator once, from a
@@ -101,21 +107,45 @@ const slugifyHeading = (s: string) =>
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
-function renderParagraphWithLinks(paragraph: string, categoryNameToSlug: Map<string, string>) {
+interface LinkLookups {
+  categoryNameToSlug: Map<string, string>;
+  categoryHrefBySlug: Map<string, string>;
+  publishedBlogSlugs: Set<string>;
+}
+
+function resolveLinkHref(kind: string, target: string, lk: LinkLookups): string | null {
+  const t = target.trim();
+  if (kind === 'category') {
+    const slug = lk.categoryNameToSlug.get(t.toLowerCase());
+    return slug ? `/category/${slug}` : null;
+  }
+  if (kind === 'categoryslug') {
+    for (const s of t.split('|')) {
+      const href = lk.categoryHrefBySlug.get(s.trim());
+      if (href) return href;
+    }
+    return null;
+  }
+  if (kind === 'tag') return /^[a-z0-9-]+$/.test(t) ? `/product-tag/${t}/` : null;
+  if (kind === 'blog') return lk.publishedBlogSlugs.has(t) ? `/blog/${t}/` : null;
+  return null;
+}
+
+function renderParagraphWithLinks(paragraph: string, lk: LinkLookups) {
   const parts: (string | JSX.Element)[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
   CATEGORY_LINK_RE.lastIndex = 0;
   while ((match = CATEGORY_LINK_RE.exec(paragraph)) !== null) {
-    const [full, anchorText, categoryName] = match;
+    const [full, anchorText, kind, target] = match;
     if (match.index > lastIndex) parts.push(paragraph.slice(lastIndex, match.index));
-    const slug = categoryNameToSlug.get(categoryName.trim().toLowerCase());
-    if (slug) {
+    const href = resolveLinkHref(kind, target, lk);
+    if (href) {
       parts.push(
         <Link
           key={`link-${key++}`}
-          href={`/category/${slug}`}
+          href={href}
           className="font-medium text-primary underline underline-offset-2 hover:opacity-80"
         >
           {anchorText}
@@ -143,7 +173,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     return { title: 'Post not found | Sutisaree', robots: { index: false, follow: true } };
   }
 
-  const url = `${SITE_URL}/blog/${post.slug}`;
+  const url = `${SITE_URL}/blog/${post.slug}/`;
   const title = `${post.title} | Sutisaree`;
   const coverImage =
     toPublicMediaUrl(post.cover_image) ||
@@ -190,13 +220,20 @@ export default async function BlogPostPage({ params }: Params) {
   // links inside body_paragraphs (see app/api/admin/generate-blog-post).
   let relatedCategorySlug: string | null = null;
   const categoryNameToSlug = new Map<string, string>();
+  const categoryHrefBySlug = new Map<string, string>();
   {
     const categories = await fetchCategoriesServer();
-    for (const c of categories) categoryNameToSlug.set(c.name.toLowerCase(), c.slug);
+    for (const c of categories) {
+      categoryNameToSlug.set(c.name.toLowerCase(), c.slug);
+      categoryHrefBySlug.set(c.slug, categoryPath(c));
+    }
     if (post.related_category_name) {
       relatedCategorySlug = categoryNameToSlug.get(post.related_category_name.toLowerCase()) ?? null;
     }
   }
+
+  const publishedBlogSlugs = new Set((await fetchPublishedBlogPostsServer()).map((p) => p.slug));
+  const linkLookups: LinkLookups = { categoryNameToSlug, categoryHrefBySlug, publishedBlogSlugs };
 
   // Resolve any `{{product:slug}}` markers in the body to real, live
   // products up front, in parallel, so rendering below is a pure lookup.
@@ -236,7 +273,7 @@ export default async function BlogPostPage({ params }: Params) {
     }).catch(() => []);
   }
 
-  const url = `${SITE_URL}/blog/${post.slug}`;
+  const url = `${SITE_URL}/blog/${post.slug}/`;
   const coverImage =
     toPublicMediaUrl(post.cover_image) ||
     post.cover_image ||
@@ -256,9 +293,11 @@ export default async function BlogPostPage({ params }: Params) {
     image: coverImage,
     datePublished: post.published_at,
     dateModified: post.updated_at || post.published_at,
-    author: { '@type': 'Organization', name: 'Sutisaree' },
-    publisher: { '@type': 'Organization', name: 'Sutisaree' },
-    mainEntityOfPage: url,
+    author: { '@type': 'Organization', name: 'Suti Saree', url: SITE_URL },
+    publisher: { '@type': 'Organization', name: 'Suti Saree', url: SITE_URL },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    url,
+    inLanguage: 'en-IN',
   };
 
   // FAQPage structured data — makes the post eligible for Google's FAQ
@@ -350,6 +389,19 @@ export default async function BlogPostPage({ params }: Params) {
             );
           }
 
+          const heading3 = trimmed.match(H3_MARKER_RE)?.[1];
+          if (heading3) {
+            return (
+              <h3
+                key={i}
+                id={slugifyHeading(heading3)}
+                className="mb-2 mt-6 font-serif text-lg font-semibold text-foreground sm:text-xl"
+              >
+                {heading3}
+              </h3>
+            );
+          }
+
           const reviewMatch = trimmed.match(REVIEW_CARD_RE)?.[1];
           if (reviewMatch) {
             const review = parseReviewMarker(reviewMatch);
@@ -358,7 +410,7 @@ export default async function BlogPostPage({ params }: Params) {
 
           return (
             <p key={i} className="mb-4 leading-relaxed text-foreground/90">
-              {renderParagraphWithLinks(para, categoryNameToSlug)}
+              {renderParagraphWithLinks(para, linkLookups)}
             </p>
           );
         })}

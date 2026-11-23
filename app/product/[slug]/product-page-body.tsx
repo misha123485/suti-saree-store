@@ -28,6 +28,7 @@ import { fetchApprovedReviewsForSchema, fetchFeedBrand } from '@/lib/product-sch
 import { getBlurPreviews } from '@/lib/blur-preview';
 import { getGalleryOverlaySettingsServer } from '@/lib/gallery-overlay-settings';
 import ProductDetail from './product-detail';
+import ProductInternalLinks from '@/components/product/product-internal-links';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com';
 
@@ -313,6 +314,7 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
           initialVariants={initialVariants}
         />
       </ProductsProvider>
+      {product && <ProductInternalLinks product={product} />}
     </>
   );
 }

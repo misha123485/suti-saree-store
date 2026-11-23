@@ -22,12 +22,12 @@ export const metadata: Metadata = {
   title: 'Blog | Sutisaree',
   description:
     'Saree draping guides, wedding outfit advice, and fabric care tips from Sutisaree — everything you need to know about Indian ethnic wear.',
-  alternates: { canonical: `${SITE_URL}/blog` },
+  alternates: { canonical: `${SITE_URL}/blog/` },
   openGraph: {
     title: 'Blog | Sutisaree',
     description:
       'Saree draping guides, wedding outfit advice, and fabric care tips from Sutisaree.',
-    url: `${SITE_URL}/blog`,
+    url: `${SITE_URL}/blog/`,
     siteName: 'Sutisaree',
     type: 'website',
   },

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Contact Us',
   description: 'Get in touch with Sutisaree — questions about orders, products, or anything else.',
-  alternates: { canonical: '/contact' },
+  alternates: { canonical: '/contact-us/' },
 };
 
 async function getStoreInfo() {

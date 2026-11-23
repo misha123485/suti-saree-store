@@ -20,7 +20,11 @@
     "audit:product-schema": "npx tsx scripts/audit-product-schema.ts",
     "check:image-sizes": "npx tsx scripts/check-image-sizes.ts",
     "test:category-seo": "npx tsx scripts/test-category-seo.ts",
-    "audit:redirects": "npx tsx scripts/audit-redirects.ts"
+    "audit:redirects": "npx tsx scripts/audit-redirects.ts",
+    "test:spam-410": "npx tsx scripts/test-spam-410.ts",
+    "check:blog-articles": "npx tsx scripts/check-blog-articles.ts",
+    "generate:blog-seed": "npx tsx scripts/generate-blog-seed-sql.ts",
+    "crawl:check": "npx tsx scripts/crawl-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
