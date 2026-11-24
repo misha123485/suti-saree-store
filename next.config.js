@@ -60,6 +60,12 @@ const nextConfig = {
       { source: '/product/:slug/feed', destination: '/product/:slug/', permanent: true },
       { source: '/product-category/:path*/feed', destination: '/product-category/:path*/', permanent: true },
       { source: '/blog/:slug/feed', destination: '/blog/:slug/', permanent: true },
+      // Old WP blog pagination (/blog/page/7/): the blog has no paginated route any more -> blog index.
+      { source: '/blog/page/:n(\\d+)', destination: '/blog/', permanent: true },
+      // Old Woo tag RSS feeds: /product-tag/x/feed/ -> the tag page.
+      { source: '/product-tag/:slug/feed', destination: '/product-tag/:slug/', permanent: true },
+      // Old WP date archives (/2026/09/) -> blog index.
+      { source: '/:year(20\\d{2})/:month(\\d{2})', destination: '/blog/', permanent: true },
       // Old plugin pages (shipment tracking / Parcel Panel) -> our tracking page.
       { source: '/ts-shipment-tracking', destination: '/track/', permanent: true },
       { source: '/parcel-panel', destination: '/track/', permanent: true },
