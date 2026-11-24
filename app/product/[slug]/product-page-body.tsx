@@ -13,6 +13,7 @@
 
 import { descriptionToPlainText } from '@/lib/description-text';
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { ProductsProvider } from '@/lib/cart-context';
 import { fetchProductBySlugServer, fetchCategoriesServer } from '@/lib/products-api-server';
 import { fetchVariantBySlug, fetchVariantsForProductServer, VariantWithSizes, ProductVariant } from '@/lib/variants-api';
@@ -39,11 +40,26 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sutisaree.com'
  * can rank independently in search (e.g. "Red Banarasi Silk Saree" vs
  * "Blue Banarasi Silk Saree" as two distinct indexable pages).
  */
+// Retries a flaky DB call (Supabase timeout etc.) before giving up, so a brief
+// hiccup does not turn into a 5xx that Googlebot records as "Server error (5xx)".
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 async function resolveSeoTarget(slug: string) {
-  const product = await fetchProductBySlugServer(slug);
+  const product = await withRetry(() => fetchProductBySlugServer(slug));
   if (product) return { product, variant: null as VariantWithSizes | null };
 
-  const variantResult = await fetchVariantBySlug(slug, true);
+  const variantResult = await withRetry(() => fetchVariantBySlug(slug, true));
   if (!variantResult) return null;
   return { product: variantResult.product, variant: variantResult.variant };
 }
@@ -146,6 +162,9 @@ export async function buildProductMetadata(slug: string): Promise<Metadata> {
 
 export async function ProductPageBody({ slug, size }: { slug: string; size?: string }) {
   const resolved = await resolveSeoTarget(slug);
+  // Unknown / deleted product: answer with a real HTTP 404 (app/not-found.tsx)
+  // instead of a 200 "Product not found" page, which Google reports as "Soft 404".
+  if (!resolved) notFound();
   const product = resolved?.product ?? null;
   const variant = resolved?.variant ?? null;
 
