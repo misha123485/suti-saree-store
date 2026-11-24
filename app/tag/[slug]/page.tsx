@@ -1,4 +1,5 @@
-﻿import { Metadata } from 'next';
+﻿import { MIN_INDEXABLE_TAG_PRODUCTS } from '@/lib/tag-index';
+import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     };
   }
   const tagProducts = await getTagProducts(tag.id);
-  const hasProducts = tagProducts.length > 0;
+  const hasProducts = tagProducts.length >= MIN_INDEXABLE_TAG_PRODUCTS;
   const seo = buildTagSeo(tag.name, tag.slug, tagProducts.length);
   const title = `${seo.title} | ${BRAND_NAME}`;
   const description = seo.description;

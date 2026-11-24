@@ -25,6 +25,7 @@ import HeroBannerCarousel from '@/components/home/hero-banner-carousel';
 import { Button } from '@/components/ui/button';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import { productInCategory } from '@/lib/category-utils';
+import { categoryHrefByName } from '@/lib/category-href';
 
 // The home page's top banner comes from Admin > Hero Banners (carousel) and,
 // separately, the storewide Site Banner in the layout. The old fallback that
@@ -401,7 +402,7 @@ export default function HomeClient({
               asChild
               className="mt-5 bg-secondary text-secondary-foreground hover:bg-secondary/90"
             >
-              <Link href="/shop?category=Lehenga" className="gap-2">
+              <Link href={categoryHrefByName(categories, 'Lehenga')} className="gap-2">
                 Explore Lehengas <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

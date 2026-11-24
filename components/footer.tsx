@@ -6,12 +6,14 @@ import { Instagram, Facebook, Youtube, Twitter, Linkedin, MessageCircle, Mail, P
 import NewsletterSignup from './newsletter-signup';
 import CountrySwitcher from '@/components/country-switcher';
 import { useCart } from '@/lib/cart-context';
+import { useCategoryHref } from '@/lib/use-category-href';
 import { BrandLogo } from '@/lib/brand-context';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { BRAND_NAME } from '@/lib/seo-site';
 import { fetchSocialLinks, fetchStoreInfo, SocialLinks, StoreInfo } from '@/lib/settings-api';
 
 export default function Footer() {
+  const categoryHref = useCategoryHref();
   const { clearBuyNow } = useCart();
   const [social, setSocial] = useState<SocialLinks | null>(null);
   const [store, setStore] = useState<StoreInfo | null>(null);
@@ -65,8 +67,8 @@ export default function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-primary-foreground/80">
             <li><Link href="/shop" className="hover:text-secondary">All Products</Link></li>
             <li><Link href="/category/silk-sarees" className="hover:text-secondary">Silk Sarees</Link></li>
-            <li><Link href="/shop?category=Lehenga" className="hover:text-secondary">Lehenga</Link></li>
-            <li><Link href="/shop?category=Bridal" className="hover:text-secondary">Bridal</Link></li>
+            <li><Link href={categoryHref('Lehenga')} className="hover:text-secondary">Lehenga</Link></li>
+            <li><Link href={categoryHref('Bridal')} className="hover:text-secondary">Bridal</Link></li>
             <li><Link href="/gift-cards" className="hover:text-secondary">Gift Cards</Link></li>
             <li><Link href="/refer-earn" className="hover:text-secondary">Refer & Earn</Link></li>
           </ul>

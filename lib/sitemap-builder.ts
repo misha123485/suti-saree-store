@@ -1,3 +1,4 @@
+import { MIN_INDEXABLE_TAG_PRODUCTS } from '@/lib/tag-index';
 import { getServerSupabase } from '@/lib/supabase-server';
 import { ProductRow, CategoryRow } from '@/lib/types';
 import { LEGAL_PAGE_TITLES } from '@/lib/marketing-api';
@@ -315,7 +316,8 @@ async function productTagEntries(): Promise<SitemapEntry[]> {
   return tags.flatMap((t) => {
     if (REDIRECTED_TAG_SLUGS.has(t.slug)) return [];
     const info = perTag.get(t.id);
-    if (!info) return [];
+    // Thin tags (see lib/tag-index.ts) are noindex, so they are not listed here.
+    if (!info || info.count < MIN_INDEXABLE_TAG_PRODUCTS) return [];
     const base = `${SITE_URL}/product-tag/${t.slug}/`;
     return [
       { url: base, lastModified: info.latest ? new Date(info.latest) : new Date() },

@@ -128,6 +128,7 @@ export default function PriceQuickBrowseBar({ category }: PriceQuickBrowseBarPro
             <Link
               key={bucket.id}
               href={`/shop?category=${encodeURIComponent(category)}&pricebucket=${encodeURIComponent(bucket.id)}`}
+              rel="nofollow"
               className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground/80 transition-colors hover:border-primary/60 hover:text-primary"
             >
               <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">

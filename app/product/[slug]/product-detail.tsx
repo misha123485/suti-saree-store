@@ -107,6 +107,7 @@ export default function ProductDetail({
   blurPreviews,
   galleryOverlays,
   initialVariants,
+  categoryHref,
 }: {
   initialProduct?: Product | null;
   initialVariant?: VariantWithSizes | null;
@@ -120,6 +121,8 @@ export default function ProductDetail({
   /** Colour swatches fetched on the server so they're in the first HTML
    *  (no pop-in / layout shift). Optional -- falls back to a client fetch. */
   initialVariants?: ProductVariant[];
+  /** Real category page URL, resolved on the server (so it is in the first HTML). Falls back to the /shop?category= filter. */
+  categoryHref?: string;
 } = {}) {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
@@ -867,6 +870,7 @@ export default function ProductDetail({
         </div>
         <ProductInfo
           reviewsSlot={isDesktop === true ? null : reviewsBlock}
+          categoryHref={categoryHref}
           detailsSlot={
             <ProductAccordion
               product={product}
@@ -1160,7 +1164,10 @@ function ProductInfo({
   isLoggedIn,
   loyaltySettings,
   loyaltyBalance,
+  categoryHref,
 }: {
+  /** Real category page URL (server-resolved); falls back to the /shop?category= filter. */
+  categoryHref?: string;
   /** Reviews section, rendered between Product Highlights and Delivery details. */
   reviewsSlot?: React.ReactNode;
   detailsSlot?: React.ReactNode;
@@ -1244,7 +1251,7 @@ function ProductInfo({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-start gap-4">
               <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
-                <Link href={`/shop?category=${encodeURIComponent(product.category)}`} className="hover:underline">
+                <Link href={categoryHref || `/shop?category=${encodeURIComponent(product.category)}`} className="hover:underline">
                   {product.category}
                 </Link>
               </p>

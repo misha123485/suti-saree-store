@@ -278,7 +278,7 @@ export default function CategoryToolbarGrid({
         <div className="flex items-center gap-2">
           <QuickNavIcons />
           <Button variant="outline" className="lg:hidden" asChild>
-            <Link href={`/shop?category=${encodeURIComponent(categoryName)}`}>
+            <Link href={`/shop?category=${encodeURIComponent(categoryName)}`} rel="nofollow">
               <SlidersHorizontal className="mr-2 h-4 w-4" /> Filters
             </Link>
           </Button>

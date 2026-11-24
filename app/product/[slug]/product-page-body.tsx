@@ -263,11 +263,15 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
   // Breadcrumb's middle step must be the category's REAL URL (slug / old Woo
   // path from the categories table) -- a slug made from the name 404s.
   let breadcrumbCategoryUrl: string | null = null;
+  let categoryHref: string | undefined;
   if (product?.category) {
     try {
       const cats = await fetchCategoriesServer();
       const match = cats.find((c) => c.name === product.category);
-      if (match) breadcrumbCategoryUrl = `${SITE_URL}${categoryPath(match)}`;
+      if (match) {
+        breadcrumbCategoryUrl = `${SITE_URL}${categoryPath(match)}`;
+        categoryHref = categoryPath(match);
+      }
     } catch {
       breadcrumbCategoryUrl = null;
     }
@@ -331,6 +335,7 @@ export async function ProductPageBody({ slug, size }: { slug: string; size?: str
           blurPreviews={blurPreviews}
           galleryOverlays={galleryOverlays}
           initialVariants={initialVariants}
+          categoryHref={categoryHref}
         />
       </ProductsProvider>
       {product && <ProductInternalLinks product={product} />}

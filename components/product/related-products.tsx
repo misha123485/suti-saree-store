@@ -6,6 +6,7 @@ import ProductCarousel from '@/components/product/product-carousel';
 import { useTopVariants } from '@/lib/top-variant-api';
 import { useFeaturedPicks } from '@/components/featured-picks';
 import { markFeaturedClick } from '@/lib/track-api';
+import { useCategoryHref } from '@/lib/use-category-href';
 
 /**
  * Scores every candidate against the current product and returns the best
@@ -87,12 +88,13 @@ export default function RelatedProducts({
     return { related: out, highlightIds: new Set(trending.map((p) => p.id)) };
   }, [usingOverride, overrideProducts, scored, trending, limit]);
   const topVariants = useTopVariants();
+  const categoryHref = useCategoryHref();
 
   return (
     <ProductCarousel
       title={title}
       products={related}
-      viewAllHref={viewAllHref ?? `/shop?category=${encodeURIComponent(current.category)}`}
+      viewAllHref={viewAllHref ?? categoryHref(current.category)}
       variantOverrides={topVariants}
       highlightIds={highlightIds}
       onProductClick={highlightIds ? (p) => highlightIds.has(p.id) && markFeaturedClick(p.id, 'similar') : undefined}

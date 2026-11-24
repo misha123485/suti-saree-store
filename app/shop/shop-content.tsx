@@ -881,6 +881,7 @@ function ShopContentInner({
                       ? '/shop'
                       : `/shop?category=${encodeURIComponent(c.name)}`
                   }
+                  rel="nofollow"
                   className="flex w-12 shrink-0 flex-col items-center gap-1 text-center sm:w-14"
                 >
                   <span
