@@ -16,8 +16,8 @@
 ## Traffic Tab mein kya dikhega?
 
 ### Summary Cards (top)
-- ✅ **Real humans (30d)** — GA4 bot-filtered actual visitors
-- 🤖 **Bot traffic** — GA4 automatically filter karta hai (manually count nahi hoga)
+- ✅ **GA4 visitors (30d)** — GA4 sirf *known* bots (Googlebot etc.) hataata hai. Data-centre se aane wale headless-Chrome scrapers phir bhi count ho sakte hain, isliye ise "confirmed humans" mat samjho.
+- 🤖 **Scraper bots** — GA4 inhe nahi pakadta; Cloudflare > Security > Analytics mein dekho
 - 📊 **Sessions, Page Views, Avg Session Duration**
 - 👥 **New vs Returning visitors**
 
@@ -87,7 +87,7 @@ Ya Vercel pe deploy karoge to woh khud install kar lega.
 |---------|-----------|
 | GA4 Data API calls (historical data) | ✅ Haan |
 | GA4 Realtime API | ✅ Haan |
-| Bot filtering | ✅ GA4 automatically karta hai |
+| Bot filtering | ⚠️ Sirf known bots; scrapers (headless Chrome, data-centre IPs) ghus sakte hain |
 | Country/State breakdown | ✅ Haan |
 | Real-time active users | ✅ Haan |
 | Serverless function timeout | ✅ GA4 API fast hai, 10s se kam |
@@ -96,11 +96,12 @@ Ya Vercel pe deploy karoge to woh khud install kar lega.
 
 ---
 
-## AI Bot Detection ke baare mein
+## Bots ke baare mein (sahi tasveer)
 
-GA4 **automatically** known bots aur crawlers ko filter kar deta hai apne reports mein. Iska matlab:
-- Jo data Traffic tab mein dikhega → **100% real human visitors**
-- AI crawlers (GPTBot, Bingbot, Googlebot, etc.) → GA4 inhe filter kar deta hai
-- Isliye "Human vs Bot" mein hum dikhate hain: GA4 data = humans, rest = filtered bots
+GA4 sirf **IAB ki known-bots list** (Googlebot, Bingbot jaise declared crawlers) filter karta hai. Isliye:
+- Jo GA4 mein dikhe wo **100% real humans nahi** hota. Headless Chrome scrapers jo data-centre cities
+  (North Bergen, Slough, Hong Kong, Singapore, Santa Clara, Frankfurt) se aate hain, wo GA4 mein bhi ginte hain.
+- Pehchaan: device "(not set)", sirf desktop Chrome, 6-9 sec engagement, add-to-cart 0.
+- Asli sach ke liye Google Search Console (real clicks) aur Cloudflare Analytics (ASN / User-Agent) dekho.
 
 Agar aap specifically AI bot traffic count chahte hain, to Cloudflare Analytics (free plan mein) zyada detail deta hai.

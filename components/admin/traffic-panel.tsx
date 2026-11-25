@@ -167,7 +167,7 @@ function RealtimeWidget() {
             </div>
 
             <p className="mb-3 text-xs text-muted-foreground">
-              GA4 automatically filters bot traffic — these are real human visitors.
+              GA4 only removes KNOWN bots (e.g. Googlebot). Headless-browser scrapers from data centres still count here, so treat this as 'GA4 visitors', not 'confirmed humans'.
             </p>
 
             {/* Country mini list */}
@@ -296,16 +296,16 @@ export default function TrafficPanel() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           icon={<UserCheck className="h-4 w-4" />}
-          label="Real humans (30d)"
+          label="GA4 visitors (30d)"
           value={summary.totalUsers.toLocaleString('en-IN')}
-          sub="GA4 bot-filtered"
+          sub="Known bots removed; scrapers may remain"
           tone="green"
         />
         <StatCard
           icon={<Bot className="h-4 w-4" />}
-          label="Bot traffic"
-          value="Filtered"
-          sub="Auto-removed by GA4"
+          label="Scraper bots"
+          value="See Cloudflare"
+          sub="Cloudflare > Security > Analytics"
         />
         <StatCard
           icon={<TrendingUp className="h-4 w-4" />}
@@ -398,7 +398,7 @@ export default function TrafficPanel() {
             </LineChart>
           </ResponsiveContainer>
           <p className="mt-2 text-xs text-muted-foreground text-center">
-            Solid line = unique visitors · Dashed line = total sessions · Bots already excluded by GA4
+            Solid line = unique visitors · Dashed line = total sessions · Only known bots are excluded by GA4
           </p>
         </div>
       )}

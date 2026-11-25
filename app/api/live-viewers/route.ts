@@ -5,6 +5,11 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_WINDOW_MINUTES = 15;
 
+// QUOTA FIX: the count is "about how many people are looking right now", so being 60s old is fine.
+// Letting Vercel's CDN cache it per product means 100 visitors on one product = ~1 Supabase query/min
+// instead of 100 (each browser polls this every 60s).
+const CACHE_HEADERS = { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' };
+
 // Public, read-only "how many people are looking at this product right
 // now" count — powers the live-viewers badge on the product page.
 // Counts DISTINCT sessions (not raw events, so one person refreshing or
@@ -51,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     const distinctSessions = new Set((data ?? []).map((row: any) => row.session_id).filter(Boolean));
 
-    return NextResponse.json({ count: distinctSessions.size });
+    return NextResponse.json({ count: distinctSessions.size }, { headers: CACHE_HEADERS });
   } catch {
     // Fail quiet — this badge is decorative, never block the page for it.
     return NextResponse.json({ count: 0 });

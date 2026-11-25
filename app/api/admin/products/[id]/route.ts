@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { SHOP_DATA_TAG } from '@/lib/shop-data-cache';
 import { verifyAdminToken, ADMIN_SESSION_COOKIE } from '@/lib/admin-auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -22,6 +23,7 @@ function revalidateStorefront(slug?: string | null) {
   // which single category this product belonged to.
   revalidatePath('/category/[slug]', 'page');
   revalidatePath('/shop');
+  revalidateTag(SHOP_DATA_TAG); // instantly purge the cached /shop data (lib/shop-data-cache.ts)
   revalidatePath('/search');
   if (slug) revalidatePath(`/product/${slug}`);
 }

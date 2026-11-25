@@ -1,13 +1,14 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { fetchProductsServer } from '@/lib/products-api-server';
-import { fetchCategoriesServer } from '@/lib/products-api-server';
 import { fetchPopularityRankServer } from '@/lib/popularity-rank-server';
-import { fetchTopVariantMapServer, toJSON, TopVariantMapJSON } from '@/lib/top-variant-server';
-import { getBlurPreviews } from '@/lib/blur-preview';
-import { toPublicMediaUrl } from '@/lib/media-url';
-import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
-import { fetchFulfillmentSettings, DEFAULT_FULFILLMENT_SETTINGS } from '@/lib/marketing-api';
+import type { TopVariantMapJSON } from '@/lib/top-variant-server';
+import {
+  loadShopCatalog,
+  loadTopVariantsJSON,
+  loadBlurPreviews,
+  loadShopSettings,
+  type ShopCatalog,
+} from '@/lib/shop-data-cache';
 import { safeJsonLd } from '@/lib/json-ld';
 import ShopContent from './shop-content';
 import ShopSeoContent, { getShopFaqs } from './shop-seo-content';
@@ -102,56 +103,35 @@ export default async function ShopPage({
 
   // If Supabase has a transient hiccup, fail soft (empty catalog + "no
   // products found" state) instead of throwing -- an unhandled throw here
-  // would hit Next.js's default error screen, which is worse than the old
-  // client-fetched page ever showed for the same failure.
-  let products: Awaited<ReturnType<typeof fetchProductsServer>> = [];
-  let categories: Awaited<ReturnType<typeof fetchCategoriesServer>> = [];
+  // would hit Next.js's default error screen.
+  //
+  // QUOTA FIX: every block below is served from Next's Data Cache
+  // (see lib/shop-data-cache.ts), so bots hitting /shop/page/N no longer
+  // trigger fresh Supabase queries on every request.
+  let products: ShopCatalog['products'] = [];
+  let categories: ShopCatalog['categories'] = [];
   let initialPopularityRank: Map<string, number> = new Map();
   let initialTopVariants: TopVariantMapJSON = {};
   let blurPreviews: Record<string, string> = {};
   try {
-    const [productsRes, categoriesRes, popularityRes, topVariantsRes] = await Promise.all([
-      fetchProductsServer(),
-      fetchCategoriesServer(),
+    const [catalog, popularityRes, topVariantsRes] = await Promise.all([
+      loadShopCatalog(),
       fetchPopularityRankServer(),
-      fetchTopVariantMapServer(),
+      loadTopVariantsJSON(),
     ]);
-    products = productsRes;
-    categories = categoriesRes;
+    products = catalog.products;
+    categories = catalog.categories;
     initialPopularityRank = popularityRes;
-    initialTopVariants = toJSON(topVariantsRes);
-
-    // Real per-image blur previews (LQIP) for every product card on this
-    // grid — the same "real photo" blur the product-detail gallery uses,
-    // instead of the generic shimmer. Only the two photos each card can
-    // actually show (its main photo + the hover-swap photo) are looked
-    // up, keyed by the same canonical URL ProductCard itself computes via
-    // toPublicMediaUrl -- any photo without a real preview yet (still
-    // mid-backfill, or generation failed) simply falls back to the
-    // generic shimmer, never a blank/broken state. See lib/blur-preview.ts.
-    const cardImageUrls = new Set<string>();
-    for (const p of products) {
-      const main = toPublicMediaUrl(p.default_variant_image || p.images[0]);
-      const hover = toPublicMediaUrl(p.images[1]);
-      if (main) cardImageUrls.add(main);
-      if (hover) cardImageUrls.add(hover);
-    }
-    blurPreviews = Object.fromEntries(await getBlurPreviews(Array.from(cardImageUrls)));
+    initialTopVariants = topVariantsRes;
+    // Real per-image blur previews (LQIP) for every product card. Any photo
+    // without a preview simply falls back to the generic shimmer.
+    blurPreviews = await loadBlurPreviews(products);
   } catch (err) {
     console.error('Failed to load /shop data:', err);
   }
 
-  // Listing size + return window are tiny settings rows. Reading them here
-  // (not only in the browser) means the first paint already uses the same
-  // page size the shopper will see after hydration.
-  const [listingRes, fulfillmentRes] = await Promise.allSettled([
-    fetchCatalogListingSettings(),
-    fetchFulfillmentSettings(),
-  ]);
-  const listingSettings =
-    listingRes.status === 'fulfilled' ? listingRes.value : DEFAULT_CATALOG_LISTING_SETTINGS;
-  const fulfillment =
-    fulfillmentRes.status === 'fulfilled' ? fulfillmentRes.value : DEFAULT_FULFILLMENT_SETTINGS;
+  // Listing size + return window are tiny settings rows (cached 5 min).
+  const { listingSettings, fulfillment } = await loadShopSettings();
 
   const pageSize = Math.max(1, listingSettings.page_size);
   const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
@@ -216,7 +196,7 @@ export default async function ShopPage({
   // The grid never shows a product description and the browser has no use
   // for it on /shop, so it is dropped from the data sent to the client
   // (shorter HTML + less JavaScript to parse on a phone).
-  const slimProducts = products.map((p) => ({ ...p, description: '' }));
+  const slimProducts = products; // descriptions already dropped in lib/shop-data-cache.ts
 
   return (
     <>

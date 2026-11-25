@@ -4,11 +4,31 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { verifyAdminToken, ADMIN_SESSION_COOKIE } from './lib/admin-auth';
 import { isSpamPath, goneResponseHtml } from './lib/spam-410';
 
+// ---------- WordPress scanner probes ----------
+// This site used to be WordPress. Bots still hammer /xmlrpc.php, /wp-login.php, /wp-json/... looking for
+// holes. None of these exist any more, but without this early exit each one rendered the full 404 page
+// (a Vercel function run + layout settings queries). Now they get a tiny plain-text 404 straight from
+// middleware. NOTE: /wp-content/uploads/... is NOT listed on purpose -- those are your real images
+// (served from R2 via next.config.js rewrites).
+const WP_PROBE_RE =
+  /^\/(?:xmlrpc\.php|wp-login\.php|wp-cron\.php|wp-config\.php|wp-admin(?:\/|$)|wp-json(?:\/|$)|wp-includes(?:\/|$)|wp-content\/(?:plugins|themes)(?:\/|$))/i;
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  if (WP_PROBE_RE.test(pathname)) {
+    return new NextResponse('Not found', {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'x-robots-tag': 'noindex, nofollow',
+        'cache-control': 'public, max-age=0, s-maxage=86400',
+      },
+    });
+  }
 
   // ---------- Hacked-WordPress spam URLs: 410 Gone (not 404), never served ----------
   // Runs first and only for the spam matcher entries below; non-spam paths that
@@ -88,6 +108,16 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // WordPress scanner probes (see WP_PROBE_RE above)
+    '/xmlrpc.php',
+    '/wp-login.php',
+    '/wp-cron.php',
+    '/wp-config.php',
+    '/wp-admin/:path*',
+    '/wp-json/:path*',
+    '/wp-includes/:path*',
+    '/wp-content/plugins/:path*',
+    '/wp-content/themes/:path*',
     '/admin/:path*',
     '/account/:path*',
     '/vendor/:path*',
