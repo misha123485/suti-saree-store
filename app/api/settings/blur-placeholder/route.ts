@@ -33,7 +33,12 @@ import { getBlurPlaceholderSettingsServer } from '@/lib/blur-placeholder-flag';
 // beyond what the site already does.
 // ---------------------------------------------------------------------
 
+// QUOTA FIX: this is called on EVERY client-side route change by every visitor (and every bot that runs JS),
+// so each call was a Vercel function invocation. Two cosmetic booleans can safely be reused by the CDN for 60s
+// (+ stale-while-revalidate), so an Admin toggle still reaches open tabs within about a minute.
 export async function GET() {
   const settings = await getBlurPlaceholderSettingsServer();
-  return NextResponse.json(settings);
+  return NextResponse.json(settings, {
+    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+  });
 }

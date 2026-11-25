@@ -3,6 +3,11 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
+// QUOTA FIX: every storefront page view (and every headless-browser bot) called this, and each call ran a
+// Supabase `orders` query + a Vercel function. The toast text is decorative ("N minutes ago"), so letting
+// Vercel's CDN reuse one answer for ~2 min (+2 min stale-while-revalidate) is invisible to shoppers.
+const CACHE_HEADERS = { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=120' };
+
 // Public, read-only feed of the last few real orders — powers the
 // "Someone in Jaipur just bought this" toast on the storefront.
 // Only exposes product name + city + relative time, nothing personal.
@@ -37,9 +42,9 @@ export async function GET() {
       .filter(Boolean)
       .slice(0, 10);
 
-    return NextResponse.json({ events });
+    return NextResponse.json({ events }, { headers: CACHE_HEADERS });
   } catch {
     // Fail quiet — social proof is decorative, never block the page for it.
-    return NextResponse.json({ events: [] });
+    return NextResponse.json({ events: [] }, { headers: { 'Cache-Control': 'public, s-maxage=30' } });
   }
 }
