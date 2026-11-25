@@ -318,7 +318,7 @@ body[data-delivery-open] .fixed.bottom-24 {
 /* ---- Checkout: premium floating-label fields ---- */
 .ff { position: relative; }
 .ff > label {
-  position: absolute; left: 12px; top: 27px; z-index: 1;
+  position: absolute; left: 12px; top: 23px; z-index: 1;
   transform: translateY(-50%); transform-origin: left center;
   padding: 0 6px; max-width: calc(100% - 24px);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -328,7 +328,7 @@ body[data-delivery-open] .fixed.bottom-24 {
   transition: top .3s cubic-bezier(.2,.8,.2,1), transform .3s cubic-bezier(.2,.8,.2,1), color .25s;
 }
 div.ff input {
-  display: block; height: 54px !important; padding: 0 16px;
+  display: block; height: 46px !important; padding: 0 16px;
   border-radius: 14px; border: 1px solid hsl(var(--input));
   background: hsl(var(--card)); font-size: 16px;
   transition: border-color .3s, box-shadow .3s, background .3s;
@@ -344,6 +344,8 @@ div.ff input:focus-visible {
   top: 0; transform: translateY(-50%) scale(.8);
   color: hsl(var(--primary)); letter-spacing: .3px;
 }
+/* Filled boxes keep the highlighted (maroon) border after you leave them. */
+div.ff input:not(:placeholder-shown) { border-color: hsl(var(--primary)); }
 div.ff input[aria-invalid="true"],
 div.ff input[class*="border-red"] { border-color: #f87171; }
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import Script from 'next/script';
 import Providers from '@/components/providers';
@@ -114,15 +114,6 @@ async function getAnalyticsSettings(): Promise<AnalyticsSettings> {
   }
 }
 
-// No page zoom on any screen size (inputs are also kept >= 16px in globals.css
-// so iOS Safari never auto-zooms when a field is focused).
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
-
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSeoSettings();
   const keywords = seo.keywords
@@ -131,6 +122,9 @@ export async function generateMetadata(): Promise<Metadata> {
     .filter(Boolean);
 
   return {
+    // No page zoom on any screen size (Next 13.x: viewport lives in metadata).
+    // Inputs are also kept >= 16px in globals.css so iOS never auto-zooms on focus.
+    viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
     metadataBase: new URL(SITE_URL),
     title: {
       default: seo.site_title,
