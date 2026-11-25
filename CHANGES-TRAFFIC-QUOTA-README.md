@@ -11,7 +11,7 @@ Upar se `/xmlrpc.php`, `/wp-login.php`, `/wp-json/...` jaise purane WordPress pr
 |---|---|
 | `lib/shop-data-cache.ts` (NEW) | /shop ka sab data Next Data Cache me: products+categories 5 min, top-variants 1 h, blur 6 h (60-60 ke chunks), settings 5 min |
 | `app/shop/page.tsx` | Upar wala cache use karta hai (UI/SEO/JSON-LD same) |
-| `next.config.js` | `/shop/:path*` pe `Cache-Control: public, s-maxage=300, stale-while-revalidate=300` -> Vercel CDN repeat hits function chalaye bina serve karega |
+| `next.config.js` | `/shop/:path*` pe `Vercel-CDN-Cache-Control: public, s-maxage=300, stale-while-revalidate=300` (sirf Vercel CDN ke liye; plain Cache-Control Vercel pe override ho jaata hai) -> repeat hits function chalaye bina serve honge |
 | `middleware.ts` | WP probes (`xmlrpc.php`, `wp-login.php`, `wp-json`, `wp-admin`, `wp-includes`, plugins/themes) ko turant chhota 404. `/wp-content/uploads` ko CHHUA NAHI (asli images) |
 | `app/api/live-viewers/route.ts` | Response 60 sec CDN cache (har browser har 60s poll karta tha) |
 | `app/api/admin/products/route.ts`, `products/[id]/route.ts`, `categories/route.ts`, `categories/[id]/route.ts` | Admin save pe `revalidateTag('shop-data')` -> /shop ka cached data turant purge |
@@ -34,7 +34,7 @@ curl -I https://www.sutisaree.com/shop/page/5/
 curl -I https://www.sutisaree.com/shop/page/5/
 curl -I https://www.sutisaree.com/xmlrpc.php
 ```
-- /shop: `cache-control: public, s-maxage=300...` dikhna chahiye; 2nd call pe `x-vercel-cache: HIT`.
+- /shop: 2nd call pe `x-vercel-cache: HIT` aur `age:` badhta dikhna chahiye (cache-control private/no-store hi rahega, wo theek hai).
 - xmlrpc.php: `404` aur `Not found` text.
 - `cf-cache-status: DYNAMIC` normal hai jab tak Cloudflare Cache Rule na bane (alag step).
 

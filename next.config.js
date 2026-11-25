@@ -126,14 +126,16 @@ const nextConfig = {
         headers: [{ key: 'Link', value: `<${site}/:path*>; rel="canonical"` }],
       },
       // QUOTA FIX: /shop (and /shop/page/N, rewritten to /shop?page=N) reads searchParams, so Next renders it
-      // per request and by default tells every cache "private, no-store". Bots hammering /shop/page/14..17
-      // therefore ran a Vercel function every time. This public s-maxage lets Vercel's CDN (and Cloudflare, if a
-      // Cache Rule is enabled) answer repeat hits without touching the function or Supabase.
+      // per request and tells every cache "private, no-store". Bots hammering /shop/page/14..17 therefore ran a
+      // Vercel function (+ Supabase) on every hit.
+      // On Vercel a plain Cache-Control here LOSES to the one Next sets on dynamic pages, so we use
+      // Vercel-CDN-Cache-Control: it wins over that private/no-store, applies ONLY to Vercel's own CDN
+      // (it is not forwarded to Cloudflare or browsers, which keep seeing private/no-store), and lets repeat
+      // hits be answered from the edge without running the function.
       // Worst-case staleness after an admin edit: ~10 min (5 min fresh + 5 min stale-while-revalidate).
-      // Next only keeps this header on dynamic pages (it never overrides an existing Cache-Control there).
       {
         source: '/shop/:path*',
-        headers: [{ key: 'Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=300' }],
+        headers: [{ key: 'Vercel-CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=300' }],
       },
     ];
   },
