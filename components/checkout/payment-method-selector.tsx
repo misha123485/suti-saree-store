@@ -299,18 +299,13 @@ export default function PaymentMethodSelector({
           </button>
           <Expand open={cod}>
             <div className="px-3.5 pb-3.5">
-              <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                <Truck className="h-3.5 w-3.5 shrink-0" />
-                {PAYMENT_COPY.codQueueNote}
-              </p>
               {action && <div className="mt-3 [&_button]:rounded-xl [&_button]:shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.6)]">{action}</div>}
               {showSavings && (
                 <button
                   type="button"
                   onClick={() => onChange('online')}
-                  className="mt-2.5 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-green-600 bg-green-50 px-3 py-2 text-[13px] font-semibold text-green-900 transition-colors hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/40 dark:border-green-500 dark:bg-green-950/50 dark:text-green-300 dark:hover:bg-green-950/80"
+                  className="mt-2 block min-h-[44px] w-full text-center text-[13px] font-medium text-green-700 underline underline-offset-4 transition-colors hover:text-green-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600/40 dark:text-green-400 dark:hover:text-green-300"
                 >
-                  <Zap className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
                   {PAYMENT_COPY.switchToOnline} {formatINR(savings)}
                 </button>
               )}
