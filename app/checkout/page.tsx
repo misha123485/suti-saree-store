@@ -414,6 +414,26 @@ export default function CheckoutPage() {
   const [priceSheetOpen, setPriceSheetOpen] = useState(false);
   const [barMounted, setBarMounted] = useState(false);
   useEffect(() => setBarMounted(true), []);
+  // Mobile: slide the sticky pay bar away while any field is focused/typed in,
+  // so it never covers the field or rides above the keyboard.
+  const [fieldFocused, setFieldFocused] = useState(false);
+  useEffect(() => {
+    const isField = (el: EventTarget | null) =>
+      el instanceof HTMLElement &&
+      (el.matches('input, textarea, select, [contenteditable="true"]') ||
+        el.getAttribute('role') === 'combobox');
+    const onIn = (e: FocusEvent) => { if (isField(e.target)) setFieldFocused(true); };
+    const onOut = () => {
+      // Wait a tick: focus may just be moving to another field.
+      setTimeout(() => { if (!isField(document.activeElement)) setFieldFocused(false); }, 80);
+    };
+    document.addEventListener('focusin', onIn);
+    document.addEventListener('focusout', onOut);
+    return () => {
+      document.removeEventListener('focusin', onIn);
+      document.removeEventListener('focusout', onOut);
+    };
+  }, []);
   // "Choose Address" opens a dialog with a radio list of saved addresses,
   // a "+ New Address" option, and an "Edit" action for the highlighted one.
   const [showAddressPicker, setShowAddressPicker] = useState(false);
@@ -4095,7 +4115,7 @@ export default function CheckoutPage() {
                 Rendered in a portal on <body> so no parent (transform/overflow)
                 can break position:fixed; it still submits the form via form="". */}
             {barMounted && !phoneSheetActive && (checkoutButtons.sticky_button_enabled || checkoutButtons.sticky_price_bar_enabled) && createPortal(
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden">
+            <div className={`fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card shadow-[0_-4px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 ease-out lg:hidden ${fieldFocused ? 'pointer-events-none translate-y-full' : 'translate-y-0'}`} aria-hidden={fieldFocused}>
               {checkoutButtons.sticky_price_bar_enabled && totalSavings > 0 && (
                 <button
                   type="button"

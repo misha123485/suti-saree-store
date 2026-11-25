@@ -330,7 +330,7 @@ body[data-delivery-open] .fixed.bottom-24 {
 div.ff input {
   display: block; height: 54px !important; padding: 0 16px;
   border-radius: 14px; border: 1px solid hsl(var(--input));
-  background: hsl(var(--card)); font-size: 15px;
+  background: hsl(var(--card)); font-size: 16px;
   transition: border-color .3s, box-shadow .3s, background .3s;
 }
 div.ff input:hover { border-color: hsl(var(--primary) / .45); }
@@ -348,4 +348,11 @@ div.ff input[aria-invalid="true"],
 div.ff input[class*="border-red"] { border-color: #f87171; }
 @media (prefers-reduced-motion: reduce) {
   .ff > label, div.ff input { transition: none; }
+}
+
+/* No iOS/Android auto-zoom on focus: form controls must be >= 16px below lg. */
+@media (max-width: 1023px) {
+  input, select, textarea,
+  div.ff input,
+  [role="combobox"] { font-size: 16px !important; }
 }
