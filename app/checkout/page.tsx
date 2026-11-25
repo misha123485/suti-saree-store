@@ -2167,31 +2167,31 @@ export default function CheckoutPage() {
               />
             )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="ff grid grid-cols-1 gap-1.5">
                 <Label htmlFor="firstName">First name *</Label>
                 <Input
                   id="firstName"
                   name="firstName"
                   autoComplete="given-name"
                   required
-                  placeholder="Aanya"
+                  placeholder=" "
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="ff grid grid-cols-1 gap-1.5">
                 <Label htmlFor="lastName">Last name *</Label>
                 <Input
                   id="lastName"
                   name="lastName"
                   autoComplete="family-name"
                   required
-                  placeholder="Sharma"
+                  placeholder=" "
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
-              <div className="col-span-2 grid grid-cols-1 gap-1.5 sm:col-span-1">
+              <div className="ff col-span-2 grid grid-cols-1 gap-1.5 sm:col-span-1">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
@@ -2199,7 +2199,7 @@ export default function CheckoutPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  placeholder="aanya@example.com"
+                  placeholder=" "
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -2207,15 +2207,15 @@ export default function CheckoutPage() {
                   }}
                 />
               </div>
-              <div className="col-span-2 grid grid-cols-1 gap-1.5 sm:col-span-1">
-                <Label htmlFor="phone">Phone *</Label>
+              <div className="ff col-span-2 grid grid-cols-1 gap-1.5 sm:col-span-1">
+                <Label htmlFor="phone">10-digit mobile number *</Label>
                 <Input
                   id="phone"
                   name="phone"
                   type="tel"
                   autoComplete="tel"
                   required
-                  placeholder="+91 98765 43210"
+                  placeholder=" "
                   value={shipPhone}
                   onChange={(e) => setShipPhone(e.target.value)}
                 />
@@ -2227,7 +2227,7 @@ export default function CheckoutPage() {
   const shippingFields = (
           <section id="checkout-step-address" className={inlineForm ? '' : 'mt-7'}>
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="font-serif text-lg font-bold text-primary">Shipping Address</h2>
+              <h2 className="font-serif text-lg font-bold text-primary">Deliver To</h2>
             </div>
             <div className="grid grid-cols-1 gap-4">
               {intl.active && (
@@ -2277,7 +2277,7 @@ export default function CheckoutPage() {
                   }}
                 />
               )}
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="ff grid grid-cols-1 gap-1.5">
                 <Label htmlFor="address">Street address *</Label>
                 <div className="relative">
                   <Input
@@ -2285,7 +2285,7 @@ export default function CheckoutPage() {
                     name="address"
                     autoComplete="address-line1"
                     required
-                    placeholder="12, MG Road, Apt 304"
+                    placeholder=" "
                     value={addressLine1}
                     onChange={(e) => setAddressLine1(e.target.value)}
                     onFocus={() => setStreetFocused(true)}
@@ -2318,23 +2318,23 @@ export default function CheckoutPage() {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="ff grid grid-cols-1 gap-1.5">
                 <Label htmlFor="address2">Apartment, suite, etc. (optional)</Label>
                 <Input
                   id="address2"
                   name="address2"
                   autoComplete="address-line2"
-                  placeholder="Bandra West"
+                  placeholder=" "
                   value={addressLine2}
                   onChange={(e) => setAddressLine2(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="ff grid grid-cols-1 gap-1.5">
                 <Label htmlFor="landmark">Landmark (optional)</Label>
                 <Input
                   id="landmark"
                   name="landmark"
-                  placeholder="Near City Hospital / Opposite SBI Bank"
+                  placeholder=" "
                   value={landmark}
                   onChange={(e) => setLandmark(e.target.value)}
                 />
@@ -2342,14 +2342,14 @@ export default function CheckoutPage() {
                   Helps our delivery partner find your address faster.
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="ff grid grid-cols-1 gap-1.5">
                 <Label htmlFor="pincode">{isIntl ? `Postal code${intlPostalOptional ? ' (optional)' : ' *'}` : 'PIN code *'}</Label>
                 <Input
                   id="pincode"
                   name="pincode"
                   autoComplete="postal-code"
                   required={!isIntl || !intlPostalOptional}
-                  placeholder={isIntl ? '' : '400050'}
+                  placeholder=" "
                   inputMode={isIntl ? 'text' : 'numeric'}
                   value={pincode}
                   className={
@@ -2392,14 +2392,14 @@ export default function CheckoutPage() {
                 )}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="grid grid-cols-1 gap-1.5">
+                <div className="ff grid grid-cols-1 gap-1.5">
                   <Label htmlFor="city">City *</Label>
                   <Input
                     id="city"
                     name="city"
                     autoComplete="address-level2"
                     required
-                    placeholder="Mumbai"
+                    placeholder=" "
                     value={city}
                     onChange={(e) => {
                       // Shopper is typing city by hand — stop treating it as
