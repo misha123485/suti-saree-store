@@ -427,11 +427,27 @@ export default function CheckoutPage() {
       // Wait a tick: focus may just be moving to another field.
       setTimeout(() => { if (!isField(document.activeElement)) setFieldFocused(false); }, 80);
     };
+    // Scrolling with a finger while a field is focused: close the keyboard
+    // (blur the field) so the sticky pay bar comes back. Only real finger
+    // drags count, so the browser's own scroll-into-view when the keyboard
+    // opens never blurs the field.
+    let startY = 0;
+    const onTouchStart = (e: TouchEvent) => { startY = e.touches[0]?.clientY ?? 0; };
+    const onTouchMove = (e: TouchEvent) => {
+      const active = document.activeElement;
+      if (!isField(active) || e.target === active) return;
+      const y = e.touches[0]?.clientY ?? startY;
+      if (Math.abs(y - startY) > 12) (active as HTMLElement).blur();
+    };
     document.addEventListener('focusin', onIn);
     document.addEventListener('focusout', onOut);
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: true });
     return () => {
       document.removeEventListener('focusin', onIn);
       document.removeEventListener('focusout', onOut);
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
     };
   }, []);
   // "Choose Address" opens a dialog with a radio list of saved addresses,
