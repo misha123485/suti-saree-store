@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Star, X, BadgeCheck, Camera, ArrowUpDown } from 'lucide-react';
+import { Star, X, BadgeCheck, Camera, ArrowUpDown, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 import { fetchReviewDisplaySettings } from '@/lib/reviews-api';
 import type { ReviewDisplaySettings } from '@/lib/review-display-settings';
@@ -86,6 +86,104 @@ async function loadStats(source: Source): Promise<Stats> {
     photos: (photos as any).count ?? 0,
     verified: (verified as any).count ?? 0,
   };
+}
+
+/** One review card: avatar + name, stars, text with a photo thumbnail on the
+ *  right, "read more", and a "Was this helpful?" footer. */
+function ReviewCard({ r }: { r: Row }) {
+  const [expanded, setExpanded] = useState(false);
+  const [helpful, setHelpful] = useState(false);
+  const [down, setDown] = useState(false);
+  const photos = (r.photos ?? []).filter(Boolean);
+  const long = (r.comment?.length ?? 0) > 90;
+  return (
+    <li className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-serif text-base text-primary">
+          {(r.customer_name || '?').trim().charAt(0).toUpperCase()}
+        </span>
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{r.customer_name}</p>
+      </div>
+
+      <Stars value={r.rating} />
+
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground/85">
+          {r.title && <p className="mb-0.5 font-serif text-[15px] font-medium text-foreground">{r.title}</p>}
+          {r.comment ? (
+            <p className={`whitespace-pre-line break-words ${long && !expanded ? 'line-clamp-3' : ''}`}>{r.comment}</p>
+          ) : (
+            !r.title && <p className="text-muted-foreground">Rated {r.rating} out of 5</p>
+          )}
+          {long && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-0.5 text-xs font-semibold text-primary"
+            >
+              {expanded ? 'show less' : 'read more'}
+            </button>
+          )}
+        </div>
+        {photos.length > 0 && (
+          <div className="relative mr-1 mt-0.5 h-[88px] w-[72px] shrink-0">
+            {photos.length > 1 && (
+              <span className="absolute inset-0 rotate-6 rounded-lg border border-border/60 bg-muted" />
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photos[0]}
+              alt={`Photo from ${r.customer_name}'s review`}
+              loading="lazy"
+              className="relative h-full w-full rounded-xl border-2 border-background object-cover shadow-md"
+            />
+            {photos.length > 1 && (
+              <span className="absolute -bottom-1 -right-1 rounded-full bg-foreground px-1.5 text-[10px] font-semibold text-background">
+                +{photos.length - 1}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+        <span>Was this helpful?</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label="Helpful"
+            aria-pressed={helpful}
+            onClick={() => {
+              if (down) setDown(false);
+              setHelpful((v) => !v);
+            }}
+            className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
+              helpful
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:text-primary'
+            }`}
+          >
+            <ThumbsUp className={`h-3.5 w-3.5 ${helpful ? 'fill-primary' : ''}`} />
+            Helpful
+          </button>
+          <button
+            type="button"
+            aria-label="Not helpful"
+            aria-pressed={down}
+            onClick={() => {
+              if (!down && helpful) setHelpful(false);
+              setDown((v) => !v);
+            }}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors active:scale-95 ${
+              down ? 'bg-muted text-foreground' : 'hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <ThumbsDown className={`h-3.5 w-3.5 ${down ? 'fill-foreground' : ''}`} />
+          </button>
+        </div>
+      </div>
+    </li>
+  );
 }
 
 /** One list of reviews (product reviews from the whole store, or store
@@ -174,11 +272,6 @@ function ReviewFeed({ source, canWrite, onWrite }: { source: Source; canWrite: b
               <Star className="h-6 w-6 fill-secondary text-secondary" />
             </span>
             <span className="text-xs text-muted-foreground">{stats.total.toLocaleString('en-IN')} ratings</span>
-            {stats.verified > 0 && (
-              <span className="flex items-center gap-1 text-xs font-medium text-emerald-700">
-                <BadgeCheck className="h-3.5 w-3.5" /> {stats.verified.toLocaleString('en-IN')} verified buyers
-              </span>
-            )}
           </div>
           <div className="flex flex-col gap-1.5">
             {[5, 4, 3, 2, 1].map((star) => (
@@ -264,38 +357,7 @@ function ReviewFeed({ source, canWrite, onWrite }: { source: Source; canWrite: b
 
       <ul className="flex flex-col gap-3">
         {rows.map((r) => (
-          <li key={r.id} className="flex flex-col gap-2.5 rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">
-                {(r.customer_name || '?').trim().charAt(0).toUpperCase()}
-              </span>
-              <p className="min-w-0 flex-1 truncate text-sm font-semibold">{r.customer_name}</p>
-              {r.verified_purchase && (
-                <span className="flex items-center gap-1 text-xs font-medium text-emerald-700">
-                  <BadgeCheck className="h-3.5 w-3.5" /> Verified buyer
-                </span>
-              )}
-            </div>
-            <div className="rounded-lg bg-muted/70 px-3 py-1.5">
-              <Stars value={r.rating} />
-            </div>
-            {r.title && <p className="text-sm font-semibold">{r.title}</p>}
-            {r.comment && <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/85">{r.comment}</p>}
-            {(r.photos?.length ?? 0) > 0 && (
-              <div className={`flex gap-2 overflow-x-auto ${noScroll}`}>
-                {r.photos!.slice(0, 4).map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={src}
-                    alt={`Photo from ${r.customer_name}'s review`}
-                    loading="lazy"
-                    className="h-28 w-24 shrink-0 rounded-xl border border-border/60 object-cover"
-                  />
-                ))}
-              </div>
-            )}
-          </li>
+          <ReviewCard key={r.id} r={r} />
         ))}
       </ul>
 
