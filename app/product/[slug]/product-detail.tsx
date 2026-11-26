@@ -69,6 +69,7 @@ import { useAuth } from '@/lib/auth-context';
 import { fetchOfferDisplaySettings, DEFAULT_OFFER_DISPLAY_SETTINGS, OfferDisplaySettings } from '@/lib/offer-display-settings';
 import MegaDealOffers from '@/components/product/mega-deal-offers';
 import TrustBadges from '@/components/product/trust-badges';
+import TrustStrip from '@/components/product/trust-strip';
 import { toast } from 'sonner';
 import { markCheckoutEntry } from '@/lib/checkout-return';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
@@ -658,13 +659,13 @@ export default function ProductDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCouponCode, cartSubtotal]);
 
-  // Placement: on mobile, "You may also like" + Reviews live inside the
-  // product info column (right after Product Highlights / Additional
-  // Details, then Delivery etc.). On desktop (>= lg) they render full-width
-  // below the product grid: You may also like first, then Reviews. Only ONE
-  // copy is ever mounted (no duplicate #product-reviews id, no double fetch).
-  // Until the first media-query check (isDesktop === null) the mobile copy is
-  // rendered with `lg:hidden`, so desktop never flashes the mobile position.
+  // Placement: on mobile, "You may also like", Reviews and Trending Now live
+  // inside the product info column (right after the trust row under
+  // Additional Details, then Delivery etc.). On desktop (>= lg) they render
+  // full-width below the product grid. Only ONE copy is ever mounted (no
+  // duplicate #product-reviews id, no double fetch). Until the first
+  // media-query check (isDesktop === null) the mobile copy is rendered with
+  // `lg:hidden`, so desktop never flashes the mobile position.
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
@@ -853,7 +854,7 @@ export default function ProductDetail({
     </div>
   );
 
-  // Trending Now -- now AFTER Reviews. Admin toggle, default OFF.
+  // Trending Now -- AFTER Reviews. Admin toggle, default OFF.
   const trendingBlock = (
     <div className={isDesktop === null ? 'lg:hidden' : undefined}>
       <FeaturedCarousel placement="product" products={products} excludeIds={[product.id]} />
@@ -947,7 +948,7 @@ export default function ProductDetail({
         <SimilarProductsSheet current={product} allProducts={products} onClose={() => setSimilarOpen(false)} />
       )}
 
-      {/* Desktop only: "You may also like" then Reviews, full-width below the grid. */}
+      {/* Desktop only: "You may also like", Reviews, then Trending Now, full-width below the grid. */}
       {isDesktop === true && (
         <>
           {relatedBlock}
@@ -1177,9 +1178,9 @@ function ProductInfo({
 }: {
   /** Real category page URL (server-resolved); falls back to the /shop?category= filter. */
   categoryHref?: string;
-  /** "You may also like" (mobile), right after Product Highlights / Additional Details. */
+  /** "You may also like" (mobile), after the trust row. */
   relatedSlot?: React.ReactNode;
-  /** Reviews (mobile), after "You may also like", before Delivery details. */
+  /** Reviews (mobile), after "You may also like". */
   reviewsSlot?: React.ReactNode;
   /** "Trending Now" (mobile), right after Reviews. */
   trendingSlot?: React.ReactNode;
@@ -1561,11 +1562,16 @@ function ProductInfo({
 
       <ProductHighlights product={product} />
 
-      {relatedSlot && <SectionSplitter />}
+      {/* Trust row right after Additional Details, between two splitters. */}
+      <SectionSplitter />
+
+      <TrustStrip fulfillment={fulfillment} />
+
+      <SectionSplitter />
 
       {relatedSlot}
 
-      {reviewsSlot && <SectionSplitter />}
+      {relatedSlot && <SectionSplitter />}
 
       {reviewsSlot}
 
