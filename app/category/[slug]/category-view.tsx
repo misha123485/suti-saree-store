@@ -21,6 +21,7 @@ import { BRAND_NAME, SITE_URL } from '@/lib/seo-site';
 import { buildBreadcrumbJsonLd, buildFaqJsonLd } from '@/lib/seo-jsonld';
 import ViewItemListTracker from '@/components/analytics/view-item-list-tracker';
 import CategoryToolbarGrid from '@/components/category/category-toolbar-grid';
+import BackButton from '@/components/category/back-button';
 import { safeJsonLd } from '@/lib/json-ld';
 import { expandProductVariants } from '@/lib/expand-product-variants';
 import { fetchCatalogListingSettings, DEFAULT_CATALOG_LISTING_SETTINGS } from '@/lib/settings-api';
@@ -216,7 +217,7 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
   const faqJsonLd = page === 1 && rich && seoContent?.faqs?.length ? buildFaqJsonLd(seoContent.faqs) : null;
 
   return (
-    <div className="container-boutique py-8 pb-24 md:pb-12">
+    <div className="container-boutique py-6 pb-12 sm:py-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
@@ -250,7 +251,10 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
         ))}
       </nav>
 
-      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{pageHeading}</h1>
+      <div className="flex items-center gap-2">
+        <BackButton fallbackHref="/categories/" />
+        <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{pageHeading}</h1>
+      </div>
       <p className="mt-3 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>

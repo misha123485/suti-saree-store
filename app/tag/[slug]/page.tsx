@@ -14,6 +14,7 @@ import { getBlurPreviews } from '@/lib/blur-preview';
 import { toPublicMediaUrl } from '@/lib/media-url';
 import ViewItemListTracker from '@/components/analytics/view-item-list-tracker';
 import CategoryToolbarGrid from '@/components/category/category-toolbar-grid';
+import BackButton from '@/components/category/back-button';
 import { safeJsonLd } from '@/lib/json-ld';
 import { BRAND_NAME, SITE_URL } from '@/lib/seo-site';
 import { buildBreadcrumbJsonLd } from '@/lib/seo-jsonld';
@@ -124,7 +125,7 @@ export default async function TagPage({ params }: Params) {
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(crumbs);
 
   return (
-    <div className="container-boutique py-8 pb-24 md:pb-12">
+    <div className="container-boutique py-6 pb-12 sm:py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }} />
 
@@ -134,7 +135,10 @@ export default async function TagPage({ params }: Params) {
         <span className="text-foreground" aria-current="page">{tag.name}</span>
       </nav>
 
-      <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{seo.h1}</h1>
+      <div className="flex items-center gap-2">
+        <BackButton fallbackHref="/" />
+        <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{seo.h1}</h1>
+      </div>
       <p className="mt-3 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>

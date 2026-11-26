@@ -532,7 +532,7 @@ export default function ReviewsBadge() {
         onClick={() => setOpen(true)}
         aria-label="Open customer reviews"
         style={{ writingMode: 'vertical-rl' }}
-        className="fixed right-0 top-1/2 z-30 -translate-y-1/2 rounded-l-xl bg-primary px-2.5 py-4 text-sm font-medium tracking-wide text-primary-foreground shadow-[0_10px_30px_-12px_hsl(var(--primary)/0.6)] transition-[padding] hover:pr-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary [.cart-drawer-open_&]:hidden"
+        className="fixed right-0 top-1/2 z-[35] -translate-y-1/2 rounded-l-xl bg-primary px-2.5 py-4 text-sm font-medium tracking-wide text-primary-foreground shadow-[0_10px_30px_-12px_hsl(var(--primary)/0.6)] transition-[padding] hover:pr-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary [.cart-drawer-open_&]:hidden"
       >
         Reviews
       </button>

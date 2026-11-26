@@ -253,6 +253,17 @@ export default function CategoryToolbarGrid({
     });
   }, [products, filters, visiblePriceBuckets]);
 
+  // This page no longer has a fixed bottom bar, so tell the floating WhatsApp /
+  // live-chat / Google reviews buttons (they lift themselves by --sticky-bar-h)
+  // that nothing needs clearing: they sit at the very bottom of the screen.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--sticky-bar-h', '0px');
+    return () => {
+      root.style.removeProperty('--sticky-bar-h');
+    };
+  }, []);
+
   // Delivery pincode -- same localStorage entry the product page's pincode
   // checker uses, so a pincode saved here is remembered there and vice versa.
   const [loc, setLoc] = useState<SavedLocation | null>(null);
@@ -492,7 +503,7 @@ export default function CategoryToolbarGrid({
       <button
         type="button"
         onClick={openPin}
-        className={`mt-4 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[13px] ${
+        className={`-mx-4 mt-4 flex w-[calc(100%+2rem)] items-center gap-2 px-4 py-2.5 text-left text-[13px] sm:-mx-6 sm:w-[calc(100%+3rem)] sm:px-6 lg:-mx-8 lg:w-[calc(100%+4rem)] lg:px-8 ${
           loc ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' : 'bg-muted text-foreground/80'
         }`}
       >
@@ -511,7 +522,7 @@ export default function CategoryToolbarGrid({
       </button>
 
       {/* Sticky Filters / Sort bar, directly under the 48px site header */}
-      <div className="sticky top-12 z-30 mt-3 border-b border-border/60 bg-background/95 py-2 backdrop-blur-sm">
+      <div className="sticky top-12 z-30 -mx-4 mt-3 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <QuickNavIcons />
           <Chip active={activeFilterCount > 0} onClick={() => openFilters(filterTabs[0]?.[0] ?? 'price')}>
@@ -684,7 +695,7 @@ export default function CategoryToolbarGrid({
         </SheetContent>
       </Sheet>
 
-      <div ref={gridTopRef} className="mt-4 scroll-mt-24 grid grid-flow-row-dense grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div ref={gridTopRef} className="-mx-4 mt-3 grid scroll-mt-24 grid-flow-row-dense grid-cols-2 gap-1.5 px-1.5 sm:mx-0 sm:mt-4 sm:grid-cols-3 sm:gap-4 sm:px-0 lg:grid-cols-4">
         {expandProductVariants(visibleProducts, listingSettings.max_variant_cards_per_product).map((p, i) => {
           // Show this product's best-performing colour instead of always
           // its default -- skipped for already-exploded per-colour cards,
