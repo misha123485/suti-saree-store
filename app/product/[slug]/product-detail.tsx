@@ -658,22 +658,6 @@ export default function ProductDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCouponCode, cartSubtotal]);
 
-  // Reviews placement: on mobile they stay inside the product info column
-  // (unchanged). On desktop (>= lg, 1024px) they move out of the right
-  // column and render full-width below the product grid, right above
-  // "You may also like". Only ONE copy is ever mounted (so there is no
-  // duplicate #product-reviews id and no double fetch). Until the first
-  // client-side media-query check (isDesktop === null) the mobile copy is
-  // rendered with `lg:hidden`, so desktop never flashes the old position.
-  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const update = () => setIsDesktop(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
-
   if (isLoading && !product) {
     return (
       <div className="container-boutique py-8">
@@ -827,7 +811,7 @@ export default function ProductDetail({
   };
 
   const reviewsBlock = (
-    <div id="product-reviews" className={`scroll-mt-24${isDesktop === null ? ' lg:hidden' : ''}`}>
+    <div id="product-reviews" className="scroll-mt-24">
       <LazyOnView minHeight={240}>
         <ReviewsSection productId={baseProduct.id} productSlug={baseProduct.slug} selectedColor={product?.colors?.[0] ?? null} />
       </LazyOnView>
@@ -869,7 +853,7 @@ export default function ProductDetail({
           </div>
         </div>
         <ProductInfo
-          reviewsSlot={isDesktop === true ? null : reviewsBlock}
+          reviewsSlot={null}
           categoryHref={categoryHref}
           detailsSlot={
             <ProductAccordion
@@ -919,16 +903,6 @@ export default function ProductDetail({
         <SimilarProductsSheet current={product} allProducts={products} onClose={() => setSimilarOpen(false)} />
       )}
 
-      {/* Desktop only: reviews sit full-width right above "You may also like". */}
-      {isDesktop === true && (
-        <>
-          <div className="mt-8">{reviewsBlock}</div>
-          <div className="mt-8">
-            <SectionSplitter />
-          </div>
-        </>
-      )}
-
       {/* Trending Now -- "You may also like" se pehle. Admin toggle, default OFF. */}
       <FeaturedCarousel placement="product" products={products} excludeIds={[product.id]} />
 
@@ -946,11 +920,17 @@ export default function ProductDetail({
             BOGO collection, so the generic "You may also like" picks never
             render on those pages. Rendering a second, plain RelatedProducts
             here (no overrideProducts) restores it -- BOGO offer first, then
-            "You may also like" -- both ahead of Reviews below. */}
+            "You may also like" -- both ahead of Reviews. */}
         {bogoCollectionProducts.length > 0 && (
           <RelatedProducts current={product} allProducts={products} />
         )}
       </LazyOnView>
+
+      {/* Reviews now come AFTER "You may also like" on mobile and desktop. */}
+      <div className="mt-8">
+        <SectionSplitter />
+      </div>
+      <div className="mt-8">{reviewsBlock}</div>
 
       <LazyOnView minHeight={200}>
         <FrequentlyBoughtTogether productId={baseProduct.id} />
