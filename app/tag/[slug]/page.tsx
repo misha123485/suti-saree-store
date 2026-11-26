@@ -135,7 +135,6 @@ export default async function TagPage({ params }: Params) {
       </nav>
 
       <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{seo.h1}</h1>
-      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{seo.intro}</p>
       <p className="mt-3 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>
@@ -156,6 +155,14 @@ export default async function TagPage({ params }: Params) {
           blurPreviews={blurPreviews}
         />
       )}
+      {/* Description now sits BELOW the products (still server-rendered, so crawlers read it). */}
+      <section className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6">
+        <h2 className="font-serif text-xl font-bold text-primary sm:text-2xl">{seo.h1}</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{seo.intro}</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          {displayCount} {displayCount === 1 ? 'product' : 'products'}
+        </p>
+      </section>
       {seo.tips && (
         <section className="mt-10 border-t border-border/60 pt-8">
           <h2 className="font-serif text-xl font-semibold text-foreground">Buying tips</h2>

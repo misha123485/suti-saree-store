@@ -251,9 +251,6 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
       </nav>
 
       <h1 className="font-serif text-3xl font-bold text-primary sm:text-4xl">{pageHeading}</h1>
-      {page === 1 && (
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{intro}</p>
-      )}
       <p className="mt-3 text-xs text-muted-foreground">
         {displayCount} {displayCount === 1 ? 'product' : 'products'}
       </p>
@@ -279,6 +276,16 @@ export async function CategoryView({ slug, page }: { slug: string; page: number 
           initialPage={page}
           initialListingSettings={listingSettings}
         />
+      )}
+      {/* Description now sits BELOW the products (still server-rendered, so crawlers read it). */}
+      {page === 1 && (
+        <section className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <h2 className="font-serif text-xl font-bold text-primary sm:text-2xl">{heading}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">{intro}</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {displayCount} {displayCount === 1 ? 'product' : 'products'}
+          </p>
+        </section>
       )}
       {page === 1 && rich && (
         <>
