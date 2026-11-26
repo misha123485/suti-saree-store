@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import CategoryScroller from './category-scroller';
 import type { AppCategoryItem } from './app-category-bar';
 import type { HomeAppLayoutSettings } from '@/lib/home-app-layout';
 
@@ -18,9 +19,8 @@ export default function AppCategoryGrid({
 }) {
   if (!layout.show_grid || items.length === 0) return null;
 
-  // With few categories extra rows would leave dangling cards;
-  // never use more rows than we can fill (about 4 cards per row).
-  const rows = Math.max(1, Math.min(layout.grid_rows, Math.ceil(items.length / 4)));
+  // Never use more rows than there are categories to fill (at least 2 per row).
+  const rows = Math.max(1, Math.min(layout.grid_rows, Math.ceil(items.length / 2)));
   const picRadius = layout.tile_shape === 'circle' ? 'rounded-full' : 'rounded-xl';
 
   return (
@@ -37,7 +37,7 @@ export default function AppCategoryGrid({
           </div>
         </div>
       )}
-      <div className="snap-x snap-proximity overflow-x-auto px-3.5 pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:container-boutique sm:px-0 [&::-webkit-scrollbar]:hidden">
+      <CategoryScroller className="snap-x snap-proximity overflow-x-auto px-3.5 pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:container-boutique sm:px-0 [&::-webkit-scrollbar]:hidden">
         <div
           className="grid w-max grid-flow-col gap-x-[9px] gap-y-3"
           style={{
@@ -79,7 +79,7 @@ export default function AppCategoryGrid({
             </Link>
           ))}
         </div>
-      </div>
+      </CategoryScroller>
     </section>
   );
 }
