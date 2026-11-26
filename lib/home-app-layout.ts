@@ -24,7 +24,7 @@ export interface HomeAppLayoutSettings {
   show_grid: boolean;
   grid_title: string;
   /** How many rows the (horizontally scrollable) grid uses. */
-  grid_rows: 2 | 3;
+  grid_rows: 2 | 3 | 4;
   tile_shape: AppTileShape;
   /** Tile background colour (hex). */
   tile_bg: string;
@@ -66,7 +66,7 @@ export function normalizeHomeAppLayout(raw: unknown): HomeAppLayoutSettings {
     primary_category_ids: ids(v.primary_category_ids),
     show_grid: v.show_grid ?? d.show_grid,
     grid_title: (v.grid_title ?? d.grid_title).slice(0, 60),
-    grid_rows: v.grid_rows === 3 ? 3 : 2,
+    grid_rows: v.grid_rows === 4 ? 4 : v.grid_rows === 3 ? 3 : 2,
     tile_shape: v.tile_shape === 'circle' ? 'circle' : 'rounded',
     tile_bg: v.tile_bg && HEX.test(v.tile_bg) ? v.tile_bg : d.tile_bg,
     bar_bg: v.bar_bg && HEX.test(v.bar_bg) ? v.bar_bg : '',

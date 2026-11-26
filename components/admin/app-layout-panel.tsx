@@ -184,7 +184,7 @@ export default function AppLayoutPanel() {
           <div className="space-y-1">
             <Label>Rows</Label>
             <div className="flex gap-2">
-              {([2, 3] as const).map((n) => (
+              {([2, 3, 4] as const).map((n) => (
                 <Button key={n} type="button" size="sm" variant={s.grid_rows === n ? 'default' : 'outline'} onClick={() => set('grid_rows', n)}>
                   {n} rows
                 </Button>
