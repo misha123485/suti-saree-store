@@ -43,7 +43,7 @@ function StarRow({
         <Star
           key={i}
           className={`${size} ${
-            i < Math.round(value) ? 'fill-orange-500 text-orange-500' : 'text-muted-foreground/30'
+            i < Math.round(value) ? 'fill-[#C9962B] text-[#C9962B]' : 'fill-[#E8DCCF] text-[#E8DCCF] dark:fill-white/10 dark:text-white/10'
           }`}
         />
       ))}
@@ -75,8 +75,8 @@ function StarPicker({
             <Star
               className={`h-7 w-7 transition-colors ${
                 n <= (hover || value)
-                  ? 'fill-orange-500 text-orange-500'
-                  : 'text-muted-foreground/30'
+                  ? 'fill-[#C9962B] text-[#C9962B]'
+                  : 'fill-[#E8DCCF] text-[#E8DCCF] dark:fill-white/10 dark:text-white/10'
               }`}
             />
           </button>
@@ -351,7 +351,7 @@ function RatingBars({
           >
             <span className="flex w-6 shrink-0 items-center gap-0.5 font-semibold text-foreground">
               {n}
-              <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
+              <Star className="h-3 w-3 fill-[#C9962B] text-[#C9962B]" />
             </span>
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <span className={`block h-full rounded-full ${BAR_TONE[n]}`} style={{ width: `${pct}%` }} />
@@ -397,7 +397,7 @@ function ReviewCardHeader({ r, settings }: { r: Review; settings: ReviewDisplayS
       {settings.showAvatar && (
         <span
           aria-hidden="true"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-serif text-base text-primary"
         >
           {initials(name).charAt(0)}
         </span>
@@ -413,20 +413,18 @@ function ReviewCardHeader({ r, settings }: { r: Review; settings: ReviewDisplayS
   );
 }
 
-/** Soft rounded bar: "Verified purchase" on the left, the rating on the right. */
+/** Stars on the left, green "Verified" pill on the right. */
 function ReviewRatingPill({ r, settings }: { r: Review; settings: ReviewDisplaySettings }) {
   const verified = settings.showVerifiedBadge && r.verified_purchase;
   return (
-    <div className="flex items-center gap-2 rounded-full bg-muted/70 px-3 py-1.5">
+    <div className="flex items-center justify-between gap-2">
+      {settings.cardStyle === 'chip' ? <RatingChip value={r.rating} /> : <StarRow value={r.rating} size="h-4 w-4" />}
       {verified && (
-        <span className="inline-flex min-w-0 items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-          <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">Verified purchase</span>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+          <BadgeCheck className="h-3.5 w-3.5" />
+          Verified
         </span>
       )}
-      <span className="ml-auto shrink-0">
-        {settings.cardStyle === 'chip' ? <RatingChip value={r.rating} /> : <StarRow value={r.rating} size="h-3.5 w-3.5" />}
-      </span>
     </div>
   );
 }
@@ -444,13 +442,13 @@ function ReviewHelpfulRow({
   const [down, setDown] = useState(false);
   return (
     <div
-      className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"
+      className="flex items-center justify-between gap-3 border-t border-border/50 pt-3 text-xs text-muted-foreground"
       // Lives inside the clickable preview card -- taps here must not open the popup.
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
       <span>Was this helpful?</span>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           aria-label="Helpful"
@@ -459,12 +457,14 @@ function ReviewHelpfulRow({
             if (down) setDown(false);
             onToggleHelpful();
           }}
-          className={`inline-flex items-center gap-1 transition-colors active:scale-95 ${
-            helpful ? 'text-primary' : 'hover:text-primary'
+          className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
+            helpful
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:text-primary'
           }`}
         >
           <ThumbsUp className={`h-3.5 w-3.5 ${helpful ? 'fill-primary' : ''}`} />
-          {helpfulCount > 0 && <span className="font-medium">{helpfulCount}</span>}
+          Helpful{helpfulCount > 0 ? ` (${helpfulCount})` : ''}
         </button>
         <button
           type="button"
@@ -474,8 +474,8 @@ function ReviewHelpfulRow({
             if (!down && helpful) onToggleHelpful();
             setDown((v) => !v);
           }}
-          className={`inline-flex items-center transition-colors active:scale-95 ${
-            down ? 'text-foreground' : 'hover:text-foreground'
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors active:scale-95 ${
+            down ? 'bg-muted text-foreground' : 'hover:bg-muted hover:text-foreground'
           }`}
         >
           <ThumbsDown className={`h-3.5 w-3.5 ${down ? 'fill-foreground' : ''}`} />
@@ -488,8 +488,8 @@ function ReviewHelpfulRow({
 /** "Reply from store" box under a review. */
 function StoreReplyBox({ text, clamp = false }: { text: string; clamp?: boolean }) {
   return (
-    <div className="rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed">
-      <p className="text-xs font-semibold text-foreground">Reply from store</p>
+    <div className="rounded-xl bg-primary/[0.06] px-3 py-2.5 text-[13px] leading-relaxed">
+      <p className="text-xs font-medium text-primary">Sutisaree replied</p>
       <p className={`mt-0.5 whitespace-pre-line break-words text-foreground/80 ${clamp ? 'line-clamp-3' : ''}`}>{text}</p>
     </div>
   );
@@ -516,7 +516,7 @@ function ReviewPreviewCard({
   const title = settings.showTitle ? r.title : null;
   const hasText = !!(title || r.comment);
   const reply = settings.showStoreReply ? r.store_reply?.trim() : '';
-  const bold = settings.cardStyle === 'stars' ? 'font-bold text-[15px]' : 'font-semibold';
+  const bold = 'font-serif text-[15px] font-medium';
   return (
     <li className="w-[86%] shrink-0 snap-start sm:w-[60%] lg:w-auto">
       <div
@@ -538,7 +538,7 @@ function ReviewPreviewCard({
           <div className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground/85">
             {hasText ? (
               <>
-                {title && <p className={`line-clamp-1 text-foreground ${bold}`}>{title}</p>}
+                {title && <p className={`mb-0.5 line-clamp-1 text-foreground ${bold}`}>{title}</p>}
                 {r.comment && <p className="line-clamp-3 break-words">{r.comment}</p>}
                 {(r.comment?.length ?? 0) > 90 && (
                   <span className="text-xs font-semibold text-primary">read more</span>
@@ -556,7 +556,7 @@ function ReviewPreviewCard({
                 e.stopPropagation();
                 onOpenPhoto(photos[0]);
               }}
-              className="relative mr-1 mt-0.5 h-16 w-16 shrink-0"
+              className="relative mr-1 mt-0.5 h-[88px] w-[72px] shrink-0"
             >
               {photos.length > 1 && (
                 <span className="absolute inset-0 rotate-6 rounded-lg border border-border/60 bg-muted" />
@@ -564,7 +564,7 @@ function ReviewPreviewCard({
               <PhotoThumb
                 src={photos[0]}
                 alt={`Photo from ${firstName(r.customer_name)}'s review`}
-                className="relative h-full w-full rounded-lg border-2 border-background object-cover shadow-md"
+                className="relative h-full w-full rounded-xl border-2 border-background object-cover shadow-md"
               />
               {photos.length > 1 && (
                 <span className="absolute -bottom-1 -right-1 rounded-full bg-foreground px-1.5 text-[10px] font-semibold text-background">
@@ -610,7 +610,7 @@ function SheetReviewItem({
   const photos = settings.showCardPhotos ? (r.photos ?? []).filter(Boolean) : [];
   const title = settings.showTitle ? r.title : null;
   const reply = settings.showStoreReply ? r.store_reply?.trim() : '';
-  const bold = settings.cardStyle === 'stars' ? 'font-bold' : 'font-semibold';
+  const bold = 'font-serif text-[15px] font-medium';
   return (
     <li
       id={`rv-${r.id}`}
@@ -632,7 +632,7 @@ function SheetReviewItem({
 
       {(title || r.comment || long) && (
         <div>
-          {title && <p className={`text-sm text-foreground ${bold}`}>{title}</p>}
+          {title && <p className={`text-foreground ${bold}`}>{title}</p>}
           {r.comment && (
             <p
               className={`${title ? 'mt-1' : ''} whitespace-pre-line break-words text-sm leading-relaxed text-foreground/85 ${
@@ -1446,6 +1446,7 @@ export default function ReviewsSection({
       </div>
     ) : null;
 
+  const verifiedCount = reviews.filter((r) => r.verified_purchase).length;
   const galleryTiles = allPhotos.slice(0, 4);
   const hiddenPhotoCount = Math.max(0, allPhotos.length - 3);
 
@@ -1457,46 +1458,25 @@ export default function ReviewsSection({
         onClick={() => reviews.length > 0 && openSheet()}
         className="flex w-full items-center justify-between text-left"
       >
-        <h3 className="font-serif text-xl font-bold text-foreground">Ratings &amp; Reviews</h3>
+        <h3 className="font-serif text-xl font-medium text-foreground">Ratings &amp; Reviews</h3>
         {reviews.length > 0 && <ChevronRight className="h-5 w-5 text-muted-foreground lg:hidden" />}
       </button>
 
       <div className="grid gap-5 lg:grid-cols-[320px_1fr] lg:gap-8">
         {/* ---------- Left: summary + photos + CTA ---------- */}
-        <div className="flex min-w-0 flex-col gap-4 lg:rounded-3xl lg:border lg:border-border/60 lg:bg-card lg:p-5 lg:shadow-[0_2px_24px_-12px_rgba(0,0,0,0.1)]">
+        <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-border/60 bg-card p-4 shadow-[0_2px_24px_-12px_rgba(0,0,0,0.1)] lg:p-5">
           {loading ? (
             <Skeleton className="h-12 w-full rounded-xl" />
           ) : reviews.length > 0 ? (
             <>
-              {/* Mobile: badge + count pill */}
-              <button
-                type="button"
-                onClick={() => openSheet()}
-                className="flex w-full items-center gap-3 text-left lg:hidden"
-              >
-                <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-base font-bold text-white ${ratingTone(summary.average)}`}>
-                  {summary.average.toFixed(1)}
-                  <Star className="h-4 w-4 fill-white" />
-                </span>
-                <span className="flex items-center gap-1.5 rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground/80">
-                  {summary.totalRatings.toLocaleString('en-IN')} rating{summary.totalRatings === 1 ? '' : 's'}
-                  <span className="text-muted-foreground/50">|</span>
-                  {summary.totalReviews.toLocaleString('en-IN')} review{summary.totalReviews === 1 ? '' : 's'}
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </span>
-              </button>
-
-              {/* Desktop: big number + clickable bars */}
-              <div className="hidden flex-col gap-4 lg:flex">
-                <button type="button" onClick={() => openSheet()} className="flex items-end gap-3 text-left">
-                  <p className="font-serif text-5xl font-bold leading-none text-primary">{summary.average.toFixed(1)}</p>
-                  <div className="flex flex-col gap-1 pb-0.5">
-                    <StarRow value={summary.average} size="h-4 w-4" />
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {summary.totalRatings.toLocaleString('en-IN')} Rating{summary.totalRatings === 1 ? '' : 's'} ·{' '}
-                      {summary.totalReviews.toLocaleString('en-IN')} Review{summary.totalReviews === 1 ? '' : 's'}
-                    </p>
-                  </div>
+              {/* Big number + clickable bars (all screen sizes) */}
+              <div className="flex items-center gap-4">
+                <button type="button" onClick={() => openSheet()} className="flex min-w-[92px] flex-col items-center gap-1.5 text-center">
+                  <p className="font-serif text-5xl font-medium leading-none text-primary">{summary.average.toFixed(1)}</p>
+                  <StarRow value={summary.average} size="h-4 w-4" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {summary.totalRatings.toLocaleString('en-IN')} rating{summary.totalRatings === 1 ? '' : 's'}
+                  </p>
                 </button>
                 {settings.showRatingBreakdown && (
                   <RatingBars
@@ -1507,7 +1487,28 @@ export default function ReviewsSection({
                 )}
               </div>
 
+              {verifiedCount > 0 && (
+                <div className="flex items-center gap-2 rounded-xl bg-primary/[0.06] px-3 py-2.5 text-xs text-foreground/80">
+                  <BadgeCheck className="h-[18px] w-[18px] shrink-0 text-emerald-600" />
+                  {verifiedCount === reviews.length
+                    ? 'All reviews are from verified buyers'
+                    : `${verifiedCount} of ${reviews.length} reviews are from verified buyers`}
+                </div>
+              )}
+
               {/* Photo strip: 3 photos + "+N" tile */}
+              {settings.showPhotoGallery && allPhotos.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">Customer photos</span>
+                  <button
+                    type="button"
+                    onClick={() => setLightboxIndex(0)}
+                    className="text-xs font-medium text-primary underline underline-offset-4"
+                  >
+                    See all {allPhotos.length}
+                  </button>
+                </div>
+              )}
               {settings.showPhotoGallery && allPhotos.length > 0 && (
                 <div className="grid grid-cols-4 gap-2">
                   {galleryTiles.map((ph, i) => {
@@ -1518,7 +1519,7 @@ export default function ReviewsSection({
                         type="button"
                         onClick={() => setLightboxIndex(i)}
                         aria-label={isLast ? `See ${hiddenPhotoCount} more photos` : `Open customer photo ${i + 1}`}
-                        className="relative aspect-square overflow-hidden rounded-xl border border-border/60 transition-transform active:scale-95"
+                        className="relative aspect-square overflow-hidden rounded-2xl border border-border/60 transition-transform active:scale-95"
                       >
                         <PhotoThumb src={ph.src} alt={`Customer photo ${i + 1}`} className="h-full w-full object-cover" />
                         {isLast && (
@@ -1541,11 +1542,15 @@ export default function ReviewsSection({
           {writeCta && settings.showRateButton && (
             <Button
               onClick={writeCta.onClick}
-              className="w-full bg-black text-white shadow-sm transition-transform hover:scale-[1.01] hover:bg-black/90 hover:shadow-md"
+              className="min-h-[46px] w-full rounded-full bg-black text-[15px] text-white shadow-sm transition-transform hover:scale-[1.01] hover:bg-black/85 hover:shadow-md"
             >
-              <Star className="mr-1.5 h-4 w-4 fill-orange-500 text-orange-500" />
+              <Star className="mr-2 h-[18px] w-[18px] fill-[#C9962B] text-[#C9962B]" />
               {writeCta.label}
             </Button>
+          )}
+
+          {writeCta && settings.showRateButton && (
+            <p className="-mt-2 text-center text-xs text-muted-foreground">Takes 30 seconds. Add a photo to help other buyers.</p>
           )}
 
           {user && !myReview && !eligible && !settings.allowGuestReviews && (
@@ -1764,6 +1769,21 @@ export default function ReviewsSection({
                 </button>
               </div>
 
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+                {([
+                  ['all', `All (${reviews.length})`],
+                  ['photos', `With photos (${chipCounts.photos})`],
+                  ['5', `5 star (${chipCounts['5']})`],
+                  ['4', `4 star (${chipCounts['4']})`],
+                ] as [RatingFilter, string][])
+                  .filter(([key]) => key === 'all' || chipCounts[key] > 0)
+                  .map(([key, label]) => (
+                    <button key={key} type="button" onClick={() => openSheet({ filter: key })} className={`${chipBase} ${key === 'all' ? chipOn : chipOff}`}>
+                      {label}
+                    </button>
+                  ))}
+              </div>
+
               <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-2 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:[&>li:nth-child(n+5)]:hidden">
                 {previewReviews.map((r) => (
                   <ReviewPreviewCard
@@ -1783,7 +1803,7 @@ export default function ReviewsSection({
                 type="button"
                 variant="outline"
                 onClick={() => openSheet()}
-                className="hidden w-full rounded-full border-primary/40 font-semibold text-primary hover:bg-primary/5 lg:inline-flex"
+                className="hidden w-full rounded-full border-foreground/80 font-medium text-foreground hover:bg-muted lg:inline-flex"
               >
                 View all {reviews.length} review{reviews.length === 1 ? '' : 's'}
               </Button>
