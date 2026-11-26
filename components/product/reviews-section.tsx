@@ -1487,7 +1487,7 @@ export default function ReviewsSection({
                 )}
               </div>
 
-              {verifiedCount > 0 && (
+              {settings.showVerifiedBadge && verifiedCount > 0 && (
                 <div className="flex items-center gap-2 rounded-xl bg-primary/[0.06] px-3 py-2.5 text-xs text-foreground/80">
                   <BadgeCheck className="h-[18px] w-[18px] shrink-0 text-emerald-600" />
                   {verifiedCount === reviews.length
@@ -1769,6 +1769,7 @@ export default function ReviewsSection({
                 </button>
               </div>
 
+              {settings.showFilters && (
               <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
                 {([
                   ['all', `All (${reviews.length})`],
@@ -1783,6 +1784,7 @@ export default function ReviewsSection({
                     </button>
                   ))}
               </div>
+              )}
 
               <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-2 lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:[&>li:nth-child(n+5)]:hidden">
                 {previewReviews.map((r) => (
