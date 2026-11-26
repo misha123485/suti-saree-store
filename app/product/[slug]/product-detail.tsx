@@ -836,9 +836,6 @@ export default function ProductDetail({
 
   const relatedBlock = (
     <div className={isDesktop === null ? 'lg:hidden' : undefined}>
-      {/* Trending Now -- "You may also like" se pehle. Admin toggle, default OFF. */}
-      <FeaturedCarousel placement="product" products={products} excludeIds={[product.id]} />
-
       <LazyOnView className="mt-8" minHeight={320}>
         <RelatedProducts
           current={product}
@@ -853,6 +850,13 @@ export default function ProductDetail({
           <RelatedProducts current={product} allProducts={products} />
         )}
       </LazyOnView>
+    </div>
+  );
+
+  // Trending Now -- now AFTER Reviews. Admin toggle, default OFF.
+  const trendingBlock = (
+    <div className={isDesktop === null ? 'lg:hidden' : undefined}>
+      <FeaturedCarousel placement="product" products={products} excludeIds={[product.id]} />
     </div>
   );
 
@@ -893,6 +897,7 @@ export default function ProductDetail({
         <ProductInfo
           relatedSlot={isDesktop === true ? null : relatedBlock}
           reviewsSlot={isDesktop === true ? null : reviewsBlock}
+          trendingSlot={isDesktop === true ? null : trendingBlock}
           categoryHref={categoryHref}
           detailsSlot={
             <ProductAccordion
@@ -950,6 +955,7 @@ export default function ProductDetail({
             <SectionSplitter />
           </div>
           <div className="mt-8">{reviewsBlock}</div>
+          {trendingBlock}
         </>
       )}
 
@@ -1140,6 +1146,7 @@ function SectionSplitter() {
 function ProductInfo({
   relatedSlot,
   reviewsSlot,
+  trendingSlot,
   detailsSlot,
   product,
   displayName,
@@ -1174,6 +1181,8 @@ function ProductInfo({
   relatedSlot?: React.ReactNode;
   /** Reviews (mobile), after "You may also like", before Delivery details. */
   reviewsSlot?: React.ReactNode;
+  /** "Trending Now" (mobile), right after Reviews. */
+  trendingSlot?: React.ReactNode;
   detailsSlot?: React.ReactNode;
   product: Product;
   displayName: string;
@@ -1559,6 +1568,8 @@ function ProductInfo({
       {reviewsSlot && <SectionSplitter />}
 
       {reviewsSlot}
+
+      {trendingSlot}
 
       {reviewsSlot && <SectionSplitter />}
 
