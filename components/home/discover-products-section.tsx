@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Loader2, ShoppingBag } from 'lucide-react';
 import { Product, CategoryRow } from '@/lib/types';
-import type { DiscoverSectionSettings } from '@/lib/discover-products-api';
+import { DISCOVER_PAGE_SIZE, type DiscoverSectionSettings } from '@/lib/discover-products-api';
 import { formatINR, discountPct } from '@/lib/format';
 import { getVariantDisplayName } from '@/lib/variant-display-name';
 import { toPublicMediaUrl } from '@/lib/media-url';
@@ -28,8 +28,8 @@ interface DiscoverProductsSectionProps {
 /**
  * Admin-managed (Admin > Discover Products) homepage section — sits right
  * after "Today's Picks" and before the promo slider (see app/home-client.tsx).
- * Renders its first page server-side (props above, from
- * lib/home-data-server.ts) then paginates further pages / re-fetches on
+ * Renders its first page (10 products) server-side (props above, from
+ * lib/home-data-server.ts) then a "Load more" button fetches further pages / re-fetches on
  * filter changes from /api/discover-products. Clicking a product opens an
  * inline Quick View instead of navigating to /product/[slug].
  */
@@ -73,7 +73,7 @@ export default function DiscoverProductsSection({
           params.set('priceMax', String(bucket.max));
         }
         params.set('page', String(pageNum));
-        params.set('pageSize', String(settings.page_size || 12));
+        params.set('pageSize', String(DISCOVER_PAGE_SIZE));
         const res = await fetch(`/api/discover-products?${params.toString()}`);
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || 'Failed to load products');
@@ -87,7 +87,7 @@ export default function DiscoverProductsSection({
         setLoading(false);
       }
     },
-    [settings.page_size]
+    []
   );
 
   // Tapping a category/price pill while scrolled down (the sticky bar's
@@ -117,26 +117,12 @@ export default function DiscoverProductsSection({
     scrollToGridTop();
   };
 
-  // Infinite scroll — a sentinel div at the bottom of the grid triggers the
-  // next page once it enters the viewport, so shoppers never have to tap a
-  // "Load more" button unless their connection/scroll is slow enough that
-  // they outrun it (in which case the small spinner row below covers them).
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (hidden || !hasMore) return;
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading) {
-          runFetch(activeCategory, activeBucket, page + 1, false);
-        }
-      },
-      { rootMargin: '400px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hidden, hasMore, loading, page, activeCategory, activeBucket, runFetch]);
+  // "Load more" — the first DISCOVER_PAGE_SIZE (10) products come from the
+  // server render; each tap on the button below appends the next 10.
+  const handleLoadMore = () => {
+    if (loading || !hasMore) return;
+    runFetch(activeCategory, activeBucket, page + 1, false);
+  };
 
   // Hide any category pill that has zero products in the Discover set —
   // without this, a shopper could tap a category and land on "No products
@@ -237,8 +223,22 @@ export default function DiscoverProductsSection({
       )}
 
       {hasMore && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-6">
-          <Loader2 className="h-5 w-5 animate-spin text-primary/60" />
+        <div className="flex items-center justify-center pb-2 pt-6">
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="inline-flex min-w-[160px] items-center justify-center gap-2 rounded-full border border-primary bg-background px-6 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              'Load more'
+            )}
+          </button>
         </div>
       )}
 

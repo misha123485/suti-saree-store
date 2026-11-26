@@ -22,13 +22,17 @@ export interface DiscoverSectionSettings {
   show_price_filter: boolean;
 }
 
+/** Products shown per page in the homepage "Discover Products For You" grid.
+ *  First 10 render server-side, each "Load more" tap appends 10 more. */
+export const DISCOVER_PAGE_SIZE = 10;
+
 export const DEFAULT_DISCOVER_SETTINGS: DiscoverSectionSettings = {
   enabled: true,
   title: 'Discover Products For You',
   subtitle: null,
   mode: 'auto',
   sort: 'popularity',
-  page_size: 12,
+  page_size: DISCOVER_PAGE_SIZE,
   show_category_filter: true,
   show_price_filter: true,
 };

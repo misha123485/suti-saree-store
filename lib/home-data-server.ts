@@ -6,7 +6,7 @@ import { Product, CategoryRow } from './types';
 import { HomepageTile } from './homepage-tiles-api';
 import { HeroBanner } from './hero-banners-api';
 import { HomeAppLayoutSettings, DEFAULT_HOME_APP_LAYOUT, HOME_APP_LAYOUT_KEY, normalizeHomeAppLayout } from './home-app-layout';
-import { fetchDiscoverProductsServer, fetchDiscoverCategoryCountsServer, DiscoverSectionSettings, DEFAULT_DISCOVER_SETTINGS } from './discover-products-api';
+import { fetchDiscoverProductsServer, fetchDiscoverCategoryCountsServer, DiscoverSectionSettings, DEFAULT_DISCOVER_SETTINGS, DISCOVER_PAGE_SIZE } from './discover-products-api';
 
 export interface HomeBanner {
   image_url: string;
@@ -182,7 +182,7 @@ async function fetchHomeDiscoverProducts(): Promise<{
   hasMore: boolean;
 }> {
   try {
-    const result = await fetchDiscoverProductsServer({ page: 1 });
+    const result = await fetchDiscoverProductsServer({ page: 1, pageSize: DISCOVER_PAGE_SIZE });
     return result;
   } catch {
     return { settings: DEFAULT_DISCOVER_SETTINGS, products: [], hasMore: false };
