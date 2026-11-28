@@ -16,7 +16,7 @@ export default function TrustStrip({ fulfillment }: { fulfillment: FulfillmentSe
     { key: 'secure', icon: Lock, label: 'Secure payment' },
   ];
   return (
-    <ul className="flex items-stretch py-5" aria-label="Why shop with us">
+    <ul className="-my-1.5 flex items-stretch py-1" aria-label="Why shop with us">
       {items.map((it, i) => {
         const Icon = it.icon;
         return (
@@ -24,10 +24,10 @@ export default function TrustStrip({ fulfillment }: { fulfillment: FulfillmentSe
             key={it.key}
             className={`min-w-0 flex-1 px-1 text-center ${i > 0 ? 'border-l border-secondary/40' : ''}`}
           >
-            <span className="mx-auto mb-2 flex h-[42px] w-[42px] items-center justify-center rounded-full border border-secondary bg-card">
-              <Icon className="h-5 w-5 text-primary" strokeWidth={1.6} aria-hidden="true" />
+            <span className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full border border-secondary bg-card">
+              <Icon className="h-4 w-4 text-primary" strokeWidth={1.6} aria-hidden="true" />
             </span>
-            <p className="text-xs font-medium leading-snug text-primary">{it.label}</p>
+            <p className="text-[11px] font-medium leading-tight text-primary">{it.label}</p>
           </li>
         );
       })}
